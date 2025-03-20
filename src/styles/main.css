@@ -1,0 +1,124 @@
+/** 
+ * VULNEX -Bytes Revealer-
+ * 
+ * File: main.css
+ * Author: Simon Roses Femerling
+ * Created: 2025-02-12
+ * Last Modified: 2025-02-12
+ * Version: 0.1
+ * License: Apache-2.0
+ * Copyright (c) 2025 VULNEX. All rights reserved.
+ * https://www.vulnex.com
+ */
+
+/* Main container styles */
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  color: #2c3e50;
+  margin-bottom: 20px;
+}
+
+.file-input {
+  margin-bottom: 20px;
+}
+
+/* Search box styles */
+.search-box {
+  margin-bottom: 20px;
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.search-box input {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  width: 300px;
+}
+
+.search-type {
+  padding: 8px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  background: white;
+}
+
+.search-box button.search-button {
+  padding: 8px 16px;
+  background: #42b983;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-box button.search-button:hover {
+  background: #3aa876;
+}
+
+.search-box button.clear-button {
+  padding: 8px 16px;
+  background: #e74c3c;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.search-box button.clear-button:hover {
+  background: #c0392b;
+}
+
+/* Tab styles */
+.tabs {
+  display: flex;
+  margin-bottom: 20px;
+  border-bottom: 2px solid #ddd;
+}
+
+.tab {
+  padding: 10px 20px;
+  cursor: pointer;
+  border: none;
+  background: none;
+  font-size: 16px;
+}
+
+.tab.active {
+  border-bottom: 2px solid #42b983;
+  margin-bottom: -2px;
+  color: #42b983;
+}
+/* Loading states for general UI elements */
+.tab:disabled,
+input:disabled,
+button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.error-message {
+  color: #e74c3c;
+  margin-top: 0.5rem;
+  font-size: 0.9rem;
+}
+
+.loading-message {
+  display: inline-block;
+  margin-left: 1rem;
+  color: #666;
+  font-size: 0.9rem;
+}
+
+.view-container {
+  position: relative;
+  min-height: 200px;
+}

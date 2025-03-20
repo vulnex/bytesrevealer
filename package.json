@@ -1,0 +1,25 @@
+{
+  "name": "bytesrevealer",
+  "version": "1.0.0",
+  "description": "A Vue.js reverse engineering visualization tool",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "generate-favicon": "node scripts/generate-favicon.js",
+    "prebuild": "npm run generate-favicon",
+    "dev": "npm run generate-favicon && vite",
+    "build": "vite build",
+    "serve": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "crypto-js": "^4.2.0",
+    "lodash-es": "^4.17.21",
+    "vue": "^3.2.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.1",
+    "vite": "^6.1.0"
+  }
+}

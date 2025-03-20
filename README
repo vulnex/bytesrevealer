@@ -1,0 +1,185 @@
+
+https://bytesrevealer.online/
+
+VULNEX
+https://www.vulnex.com/
+
+# Bytes Revealer
+
+Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.
+
+Bytes Revealer do NOT store any file or data. All analysis is performed in your browser.
+
+Current Limitation: Files less than 50MB can perform all analysis, files bigger up to 1.5GB will only do Visual View and Hex View analysis.
+
+## Features
+
+### File Analysis
+- Chunked file processing for memory efficiency
+- Real-time progress tracking
+- File signature detection
+- Hash calculations (MD5, SHA-1, SHA-256)
+- Entropy and Bytes Frequency analysis
+
+### Multiple Views
+
+#### File View
+- Basic file information and metadata
+- File signatures detection
+- Hash values
+- Entropy calculation
+- Statistical analysis
+
+#### Visual View
+- Binary data visualization
+- ASCII or Bytes searching
+- Data distribution view
+- Highlighted pattern matching
+
+#### Hex View
+- Traditional hex editor interface
+- Byte-level inspection
+- Highlighted pattern matching
+- ASCII representation
+- ASCII or Bytes searching
+
+#### String Analysis
+- ASCII and UTF-8 string extraction
+- String length analysis
+- String type categorization
+- Advanced filtering and sorting
+- String pattern recognition
+- Export capabilities
+
+### Search Capabilities
+- Hex pattern search
+- ASCII/UTF-8 string search
+- Regular expression support
+- Highlighted search results
+
+## Technical Details
+
+### Built With
+- Vue.js 3
+- Tailwind CSS
+- Web Workers for performance
+- Modern JavaScript APIs
+
+### Performance Features
+- Chunked file processing
+- Web Worker implementation
+- Memory optimization
+- Cancelable operations
+- Progress tracking
+
+## Getting Started
+
+### Prerequisites
+```bash
+# Node.js 14+ is required
+node -v
+```
+
+### Docker Usage
+
+```bash
+docker-compose build --no-cache
+
+docker-compose up -d
+```
+
+Now open your browser: http://localhost:8080/
+
+To stop the docker container
+
+```bash
+docker-compose down
+```
+
+### Installation
+```bash
+# Clone the repository
+git clone https://github.com/vulnex/bytesrevealer
+
+# Navigate to project directory
+cd bytesrevealer
+
+# Install dependencies
+npm install
+
+# Start development server
+npm run dev
+```
+
+### Building for Production
+```bash
+# Build the application
+npm run build
+
+# Preview production build
+npm run preview
+```
+
+## Usage
+
+1. **File Upload**
+   - Click "Choose File" or drag and drop a file
+   - Progress bar shows upload and analysis status
+
+2. **Analysis Views**
+   - Switch between views using the tab interface
+   - Each view provides different analysis perspectives
+   - Real-time updates as you navigate
+
+3. **Search Functions**
+   - Use the search bar for pattern matching
+   - Toggle between hex and string search modes
+   - Results are highlighted in the current view
+
+4. **String Analysis**
+   - View extracted strings with type and length
+   - Filter strings by type or content
+   - Sort by various criteria
+   - Export results in multiple formats
+
+## Performance Considerations
+
+- Large files are processed in chunks
+- Web Workers handle intensive operations
+- Memory usage is optimized
+- Operations can be canceled if needed
+
+## Browser Compatibility
+
+- Chrome 80+
+- Firefox 75+
+- Safari 13.1+
+- Edge 80+
+
+## Contributing
+
+1. Fork the project
+2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md) file for details.
+
+## Security Considerations
+
+- All strings are properly escaped
+- Input validation is implemented
+- Memory limits are enforced
+- File size restrictions are in place
+
+## Future Enhancements
+
+- Additional file format support
+- More visualization options
+- Pattern recognition improvements
+- Advanced string analysis features
+- Export/import capabilities
+- Collaboration features

@@ -1,0 +1,48 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+# Dependencies
+node_modules/
+pnpm-lock.yaml
+yarn.lock
+package-lock.json
+
+# Build files
+dist/
+!.gitkeep
+
+# Editor files
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Cache files
+.cache/
+.temp/
+
+# NPM & Yarn
+.npm/
+.yarn/
+
+# Vue & Vite specific files
+.vite/
+*.local
+*.bak
+
+# Nginx & Certbot
+certbot/
+nginx.conf
+
+# System files
+Thumbs.db

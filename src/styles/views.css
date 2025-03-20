@@ -1,0 +1,167 @@
+/** 
+ * VULNEX -Bytes Revealer-
+ * 
+ * File: views.css
+ * Author: Simon Roses Femerling
+ * Created: 2025-02-12
+ * Last Modified: 2025-02-12
+ * Version: 0.1
+ * License: Apache-2.0
+ * Copyright (c) 2025 VULNEX. All rights reserved.
+ * https://www.vulnex.com
+ */
+
+/* Analysis panel styles */
+.analysis-panel {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  margin-bottom: 20px;
+}
+
+/* Common View Styles */
+.visual-view,
+.hex-view {
+  background: #fff;
+  padding: 20px;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  max-width: 100%;
+  font-family: monospace;
+}
+
+.visual-view {
+  overflow-x: auto;
+}
+
+.hex-view {
+  white-space: pre-wrap;
+}
+
+/* Row Styles */
+.byte-row,
+.hex-line {
+  display: flex;
+  align-items: center;
+  margin-bottom: 4px;
+  white-space: nowrap;
+  font-size: 12px;
+  padding: 2px 4px;
+}
+
+/* Common Elements */
+.offset {
+  color: #666;
+  margin-right: 2ch;
+  user-select: none;
+}
+
+.hex-values {
+  margin-right: 2ch;
+}
+
+.ascii,
+.ascii-group {
+  color: #42b983;
+}
+
+/* Square and Byte Styles */
+.squares-group {
+  display: flex;
+  gap: 1px;
+  margin-right: 1ch;
+  flex-wrap: nowrap;
+}
+
+.byte-square {
+  width: 12px;
+  height: 12px;
+  border: 1px solid #eee;
+  position: relative;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+/* Highlight and Hover Styles */
+.hex-values span,
+.ascii span {
+  cursor: pointer;
+  padding: 1px 2px;
+  user-select: none;
+  transition: all 0.15s ease;
+  display: inline-block;
+}
+
+/* Search highlight - Orange */
+.hex-values span.highlighted,
+.ascii span.highlighted,
+.byte-square.highlighted,
+.ascii-group span.highlighted {
+  background-color: #FF9800 !important;  /* Orange */
+  color: white !important;
+  border-radius: 2px !important;
+  padding: 1px 2px !important;
+  font-weight: bold !important;
+  box-shadow: 0 0 5px rgba(255, 152, 0, 0.5) !important;
+  transform: scale(1.1) !important;
+  z-index: 2 !important;
+  border: none !important;
+}
+
+/* Hover state - Professional Gray */
+.hex-values span.hovered,
+.ascii span.hovered,
+.byte-square.hovered,
+.ascii-group span.hovered {
+  background-color: #4A5568 !important;  /* Slate gray */
+  color: white !important;
+  border-radius: 2px !important;
+  padding: 1px 2px !important;
+  transform: scale(1.1) !important;
+  box-shadow: 0 2px 4px rgba(74, 85, 104, 0.3) !important;
+  z-index: 3 !important;
+  border: none !important;
+  transition: all 0.15s ease !important;
+}
+
+/* Active state for clicks */
+.hex-values span:active,
+.ascii span:active,
+.byte-square:active {
+  transform: scale(0.95) !important;
+}
+
+/* Add these to your views.css */
+
+/* Color Palette */
+.color-palette {
+  padding: 8px;
+  background: #fff;
+  border-radius: 6px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  margin-bottom: 12px;
+}
+
+.color-palette button {
+  transition: all 0.2s ease;
+}
+
+.color-palette button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Colored bytes styles */
+.byte-square.colored,
+.hex-values span.colored,
+.ascii span.colored {
+  border: none !important;
+  transition: all 0.15s ease !important;
+}
+
+/* Selection styles */
+.selecting {
+  background-color: rgba(59, 130, 246, 0.2) !important;
+  outline: 1px solid rgba(59, 130, 246, 0.5) !important;
+}

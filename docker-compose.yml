@@ -1,0 +1,10 @@
+
+services:
+  vue-app:
+    image: bytesrevealer
+    build: .
+    ports:
+      - "8080:80"
+    volumes:
+      - ./public/favicon.ico:/usr/share/nginx/html/favicon.ico
+    restart: unless-stopped
