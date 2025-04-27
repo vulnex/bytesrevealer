@@ -4,8 +4,8 @@
  * File: App.vue
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
- * Last Modified: 2025-03-19
- * Version: 0.1
+ * Last Modified: 2025-04-01
+ * Version: 0.2
  * License: Apache-2.0
  * Copyright (c) 2025 VULNEX. All rights reserved.
  * https://www.vulnex.com
@@ -13,7 +13,7 @@
 
 <template>
   <div class="container">
-    <h1>VULNEX -Bytes Revealer (v0.1)-</h1>
+    <h1>VULNEX -Bytes Revealer (v0.2)-</h1>
     <p style="text-align:center">- Uncover the Secrets of Binary Files -</p>
     <p style="text-align:center">2025 &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a></p>
     
@@ -24,9 +24,10 @@
     <label class="flex items-center space-x-2">
       <input
         type="checkbox"
-        v-model="analysisOptions.fileAnalysis"
+        v-model="features.fileAnalysis"
         :disabled="loading.file || loading.analysis || (fileBytes.length && fileBytes.length > FILE_LIMITS.ANALYSIS_SIZE_LIMIT)"
         class="form-checkbox"
+        checked
       >
       <span>File Analysis</span>
     </label>
@@ -34,9 +35,10 @@
     <label class="flex items-center space-x-2">
       <input
         type="checkbox"
-        v-model="analysisOptions.visualView"
+        v-model="features.visualView"
         :disabled="loading.file || loading.analysis"
         class="form-checkbox"
+        checked
       >
       <span>Visual View</span>
     </label>
@@ -44,9 +46,10 @@
     <label class="flex items-center space-x-2">
       <input
         type="checkbox"
-        v-model="analysisOptions.hexView"
+        v-model="features.hexView"
         :disabled="loading.file || loading.analysis"
         class="form-checkbox"
+        checked
       >
       <span>Hex View</span>
     </label>
@@ -54,9 +57,10 @@
     <label class="flex items-center space-x-2">
       <input
         type="checkbox"
-        v-model="analysisOptions.stringAnalysis"
+        v-model="features.stringAnalysis"
         :disabled="loading.file || loading.analysis || (fileBytes.length && fileBytes.length > FILE_LIMITS.ANALYSIS_SIZE_LIMIT)"
         class="form-checkbox"
+        checked
       >
       <span>String Analysis</span>
     </label>
@@ -112,7 +116,7 @@
         >Information</button>
 
       <button 
-        v-if="fileBytes.length && analysisOptions.fileAnalysis"
+        v-if="fileBytes.length && features.fileAnalysis"
         class="tab" 
         :class="{ active: activeTab === 'file' }"
         @click="activeTab = 'file'"
@@ -120,7 +124,7 @@
       >File View</button>
       
       <button 
-        v-if="fileBytes.length && analysisOptions.visualView"
+        v-if="fileBytes.length && features.visualView"
         class="tab" 
         :class="{ active: activeTab === 'visual' }"
         @click="activeTab = 'visual'"
@@ -128,7 +132,7 @@
       >Visual View</button>
       
       <button 
-        v-if="fileBytes.length && analysisOptions.hexView"
+        v-if="fileBytes.length && features.hexView"
         class="tab" 
         :class="{ active: activeTab === 'hex' }"
         @click="activeTab = 'hex'"
@@ -136,12 +140,25 @@
       >Hex View</button>
       
       <button 
-        v-if="fileBytes.length && analysisOptions.stringAnalysis"
+        v-if="fileBytes.length && features.stringAnalysis"
         class="tab" 
         :class="{ active: activeTab === 'strings' }"
         @click="activeTab = 'strings'"
         :disabled="loading.analysis"
       >String Analysis</button>
+      
+      <button 
+        v-if="fileBytes.length && (features.fileAnalysis || features.stringAnalysis)"
+        class="tab" 
+        :class="{ active: activeTab === 'export' }"
+        @click="activeTab = 'export'"
+      >Export</button>
+      
+      <button 
+        class="tab" 
+        :class="{ active: activeTab === 'settings' }"
+        @click="activeTab = 'settings'"
+      >Settings</button>
       
     </div>
 
@@ -159,7 +176,7 @@
 
       <!-- File Analysis View -->
       <FileAnalysis
-        v-if="activeTab === 'file' && analysisOptions.fileAnalysis && fileBytes.length"
+        v-if="activeTab === 'file' && features.fileAnalysis && fileBytes.length"
         :fileBytes="fileBytes"
         :entropy="entropy"
         :fileSignatures="fileSignatures"
@@ -168,7 +185,7 @@
       />
 
       <!-- Visual View -->
-      <div v-if="activeTab === 'visual' && analysisOptions.visualView && fileBytes.length">
+      <div v-if="activeTab === 'visual' && features.visualView && fileBytes.length">
         <VisualView
           :fileBytes="fileBytes"
           :highlightedBytes="highlightedBytes"
@@ -178,7 +195,7 @@
       </div>
 
       <!-- Hex View -->
-      <div v-if="activeTab === 'hex' && analysisOptions.hexView && fileBytes.length">
+      <div v-if="activeTab === 'hex' && features.hexView && fileBytes.length">
         <HexView
           :fileBytes="fileBytes"
           :highlightedBytes="highlightedBytes"
@@ -189,7 +206,7 @@
 
       <!-- String Analysis View -->
       <StringAnalysisView
-        v-if="activeTab === 'strings' && analysisOptions.stringAnalysis && fileBytes.length"
+        v-if="activeTab === 'strings' && features.stringAnalysis && fileBytes.length"
         :fileBytes="fileBytes"
       />
 
@@ -198,9 +215,9 @@
         <h2 class="text-xl font-semibold">How to Use Bytes Revealer</h2>
         <p>Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.</p>
 
-        <p>Bytes Revealer do NOT store any file or data. All analysis is performed in your browser.</p>
+        <p>Bytes Revealer does NOT store any files or data. All analysis is performed in your browser.</p>
 
-        <p><u>Current Limitation:</u> Files less than 50MB can perform all analysis, files bigger up to 1.5GB will only do Visual View and Hex View analysis.</p>
+        <p><u>Current Limitation:</u> Files smaller than 50MB can undergo full analysis, while files larger than 50MB and up to 1.5GB are limited to Visual View and Hex View analysis.</p>
 
         <p>Let us know if you like any modifications! 😊</p>
 
@@ -211,10 +228,22 @@
           <li>Select the type of analysis you want (File Analysis, Visual View, Hex View, or String Analysis).</li>
           <li>Navigate through the different tabs to explore the file structure.</li>
           <li>Use the search bar to find specific byte patterns or ASCII strings.</li>
-          <li>Click on any color squares and highlight any byte. To delete, select the white square and click on the highlight bytes.</li>
+          <li>Click on any colored square to highlight a byte. To remove a highlight, select the white square and click on the highlighted byte.</li>
         </ul>
 
       </div>
+
+      <!-- Export Options View -->
+      <ExportOptions
+        v-if="activeTab === 'export'"
+        @error="handleError"
+      />
+
+      <!-- Settings Panel View -->
+      <SettingsPanel
+        v-if="activeTab === 'settings'"
+        @settings-updated="handleSettingsUpdate"
+      />
 
     </div>
 
@@ -235,6 +264,8 @@ import AnalysisOptions from './components/AnalysisOptions.vue'
 import ProgressTracking from './components/ProgressTracking.vue'
 import StringAnalysisView from './components/StringAnalysisView.vue'
 import ColorPalette from './components/ColorPalette.vue'
+import ExportOptions from './components/ExportOptions.vue'
+import SettingsPanel from './components/SettingsPanel.vue'
 import { 
   processFileInChunks, 
   analyzeFileInChunks,
@@ -243,17 +274,14 @@ import {
   calculateFileHashes,
   FILE_LIMITS 
 } from './utils/fileHandler'
-
-// File signatures database
-const SIGNATURES = [
-  { pattern: [0x50, 0x4B, 0x03, 0x04], name: 'ZIP Archive' },
-  { pattern: [0x89, 0x50, 0x4E, 0x47], name: 'PNG Image' },
-  { pattern: [0xFF, 0xD8, 0xFF], name: 'JPEG Image' },
-  { pattern: [0x7F, 0x45, 0x4C, 0x46], name: 'ELF Binary' },
-  { pattern: [0x4D, 0x5A], name: 'Windows Executable' },
-  { pattern: [0x25, 0x50, 0x44, 0x46], name: 'PDF Document' },
-  { pattern: [0x47, 0x49, 0x46, 0x38], name: 'GIF Image' }
-]
+import { FILE_SIGNATURES, detectFileTypes, isFileType } from './utils/fileSignatures'
+import { 
+  findPEHeaderOffset,
+  analyzePEStructure,
+  detectSpecificFileType,
+  detectNestedFiles 
+} from './utils/advancedFileDetection'
+import { useSettingsStore } from './stores/settings'
 
 export default {
   name: 'App',
@@ -266,7 +294,9 @@ export default {
     AnalysisOptions,
     ProgressTracking,
     StringAnalysisView,
-    ColorPalette
+    ColorPalette,
+    ExportOptions,
+    SettingsPanel
   },
 
   data() {
@@ -291,7 +321,7 @@ export default {
       },
       error: null,
       progress: 0,
-      analysisOptions: {
+      features: {
         fileAnalysis: true,
         visualView: true,
         hexView: true,
@@ -323,8 +353,8 @@ export default {
     // Check file size and adjust analysis options
     if (file.size > FILE_LIMITS.ANALYSIS_SIZE_LIMIT) {
       // Disable complex analysis for large files
-      this.analysisOptions.fileAnalysis = false;
-      this.analysisOptions.stringAnalysis = false;
+      this.features.fileAnalysis = false;
+      this.features.stringAnalysis = false;
       
       // Show warning to user
       this.error = `File size exceeds 50MB. Only Visual and Hex views are available for large files.`;
@@ -352,7 +382,7 @@ export default {
     }
 
     // Only perform file analysis if selected AND file size is within limit
-    if (this.analysisOptions.fileAnalysis && file.size <= FILE_LIMITS.ANALYSIS_SIZE_LIMIT) {
+    if (this.features.fileAnalysis && file.size <= FILE_LIMITS.ANALYSIS_SIZE_LIMIT) {
       this.loading.analysis = true;
       try {
         // First detect file signatures as this is faster
@@ -424,42 +454,43 @@ export default {
       });
     },
 
-    detectFileSignatures() {
-  this.fileSignatures = [];
-  
-  // Make sure we have bytes to analyze
-  if (!this.fileBytes || !this.fileBytes.length) {
-    console.warn('No file bytes available for signature detection');
-    return;
-  }
-  
-  SIGNATURES.forEach(sig => {
-    // Only check if we have enough bytes for the pattern
-    if (this.fileBytes.length >= sig.pattern.length) {
-      for (let i = 0; i <= this.fileBytes.length - sig.pattern.length; i++) {
-        let match = true;
-        for (let j = 0; j < sig.pattern.length; j++) {
-          if (this.fileBytes[i + j] !== sig.pattern[j]) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          console.log(`Found signature: ${sig.name} at offset ${i}`); // Debug log
-          this.fileSignatures.push({
-            name: sig.name,
-            offset: i,
-            pattern: sig.pattern.map(b => b.toString(16).padStart(2, '0').toUpperCase()).join(' ')
-          });
-          // Only find first occurrence of each signature
-          break;
-        }
+    async detectFileSignatures() {
+      if (!this.fileBytes || !this.fileBytes.length) {
+        console.warn('No file bytes available for signature detection');
+        return;
       }
-    }
-  });
-  
-  console.log('Detected signatures:', this.fileSignatures); // Debug log
-},
+
+      try {
+        // Get basic and enhanced file type information
+        const enhancedTypes = await detectSpecificFileType(this.fileBytes);
+        
+        // Detect nested files
+        const nestedFiles = await detectNestedFiles(this.fileBytes);
+        
+        // Combine the results
+        this.fileSignatures = enhancedTypes.map(type => ({
+          ...type,
+          nestedFiles: nestedFiles.filter(nested => 
+            nested.offset >= type.offset && 
+            nested.offset < (type.offset + (type.size || this.fileBytes.length))
+          )
+        }));
+        
+        if (this.fileSignatures.length > 0) {
+          console.log('Detected signatures:', this.fileSignatures);
+        } else {
+          console.log('No known file signatures detected');
+        }
+      } catch (error) {
+        console.error('Error detecting file signatures:', error);
+        this.error = `Failed to detect file signatures: ${error.message}`;
+        this.fileSignatures = []; // Reset signatures on error
+      }
+    },
+
+    isSpecificFileType(format) {
+      return isFileType(this.fileBytes, format);
+    },
 
     handleByteSelection({ start, end, color }) {
       if (color === '#ffffff') {
@@ -548,7 +579,7 @@ export default {
     // Save analysis preferences to localStorage
     saveAnalysisPreferences() {
       try {
-        localStorage.setItem('analysisOptions', JSON.stringify(this.analysisOptions));
+        localStorage.setItem('analysisOptions', JSON.stringify(this.features));
       } catch (error) {
         console.error('Error saving analysis preferences:', error);
       }
@@ -559,11 +590,39 @@ export default {
       try {
         const saved = localStorage.getItem('analysisOptions');
         if (saved) {
-          this.analysisOptions = JSON.parse(saved);
+          this.features = JSON.parse(saved);
         }
       } catch (error) {
         console.error('Error loading analysis preferences:', error);
       }
+    },
+
+    handleError(message) {
+      this.error = message;
+    },
+    
+    handleSettingsUpdate(newSettings) {
+      const settingsStore = useSettingsStore()
+      
+      // Update base offset
+      if (typeof newSettings.baseOffset === 'number') {
+        settingsStore.setBaseOffset(newSettings.baseOffset)
+      }
+      
+      // Handle other settings...
+    },
+    
+    applySettings(settings) {
+      // Apply settings to the application
+      if (settings.hexUppercase) {
+        // Update hex display format
+      }
+      
+      if (settings.bytesPerRow) {
+        // Update bytes per row in hex view
+      }
+      
+      // Update other settings as needed
     }
   },
 
@@ -574,7 +633,7 @@ export default {
 
   // Save preferences when they change
   watch: {
-    analysisOptions: {
+    features: {
       handler(newOptions) {
         this.saveAnalysisPreferences();
       },
@@ -585,6 +644,81 @@ export default {
 </script>
 
 <style>
+/* ... existing styles ... */
+
+/* Theme Variables */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  --link-color: #3b82f6;
+  --error-bg: #fee2e2;
+  --error-text: #dc2626;
+  --checkbox-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-text: #1a1a1a;
+}
+
+:root[class='dark-mode'] {
+  --bg-primary: #1a202c;
+  --bg-secondary: #2d3748;
+  --text-primary: #f7fafc;
+  --text-secondary: #cbd5e0;
+  --border-color: #4a5568;
+  --link-color: #60a5fa;
+  --error-bg: #7f1d1d;
+  --error-text: #fecaca;
+  --checkbox-bg: #374151;
+  --input-bg: #374151;
+  --input-text: #f7fafc;
+  --hex-text: #f7fafc;
+  --hex-offset: #cbd5e0;
+  --hex-ascii: #60a5fa;
+  --graph-text: #f7fafc;
+  --graph-line: #60a5fa;
+  --graph-bg: #2d3748;
+}
+
+/* Apply theme to main elements */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.container {
+  background-color: var(--bg-primary);
+}
+
+.view-container {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.tab {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--link-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
 .container {
   max-width: 1200px;
   margin: 0 auto;
@@ -603,8 +737,8 @@ h1 {
 }
 
 .error-message {
-  color: red;
-  margin-top: 10px;
+  background-color: var(--error-bg);
+  color: var(--error-text);
 }
 
 .cancel-button {
@@ -624,7 +758,7 @@ h1 {
 .tabs {
   display: flex;
   gap: 1px;
-  background-color: #f1f5f9;
+  background-color: var(--bg-secondary);
   padding: 4px;
   border-radius: 8px;
   margin-bottom: 20px;
@@ -637,19 +771,19 @@ h1 {
   cursor: pointer;
   font-weight: 500;
   background: transparent;
-  color: #64748b;
+  color: var(--text-secondary);
   transition: all 0.2s ease;
 }
 
 .tab:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.7);
-  color: #334155;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
 }
 
 .tab.active {
-  background: white;
-  color: #2563eb;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  background: var(--bg-primary);
+  color: var(--link-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .tab:disabled {
@@ -674,18 +808,23 @@ h1 {
 
 /* Analysis Options Styles */
 .analysis-options {
-  background: #f8f9fa;
-  border: 1px solid #e9ecef;
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
   border-radius: 8px;
   padding: 16px;
   margin-bottom: 20px;
 }
 
+.analysis-options span {
+  color: var(--text-primary);
+}
+
 .form-checkbox {
+  background-color: var(--checkbox-bg);
+  border-color: var(--border-color);
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1px solid #cbd5e0;
   cursor: pointer;
 }
 
@@ -728,6 +867,190 @@ h1 {
   grid-template-columns: repeat(32, 12px);
   gap: 1px;
   margin-right: 16px;
+}
+
+/* Add dark mode specific styles */
+.analysis-options {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.analysis-options span {
+  color: var(--text-primary);
+}
+
+.form-checkbox {
+  background-color: var(--checkbox-bg);
+  border-color: var(--border-color);
+}
+
+.file-input {
+  color: var(--text-primary) !important;
+}
+
+.file-input input[type="file"] {
+  color: var(--text-primary);
+}
+
+.file-input input[type="file"]::file-selector-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.error-message {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+}
+
+.tabs {
+  background-color: var(--bg-secondary);
+}
+
+.tab {
+  color: var(--text-secondary);
+}
+
+.tab.active {
+  background-color: var(--bg-primary);
+  color: var(--link-color);
+}
+
+.view-container {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Info tab specific styles */
+.view-container .bg-gray-100 {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Links */
+a {
+  color: var(--link-color);
+}
+
+/* Search bar */
+input[type="text"],
+input[type="search"] {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--border-color);
+}
+
+/* Progress bar */
+.bg-gray-200 {
+  background-color: var(--bg-secondary);
+}
+
+/* Add at the top of your style section */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Add specific dark mode styles for tabs */
+:root[class='dark-mode'] .tab {
+  color: var(--text-secondary);
+}
+
+:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .tab.active {
+  background-color: var(--bg-primary);
+  color: var(--link-color);
+}
+
+/* Add specific styles for File View */
+:root[class='dark-mode'] .file-analysis {
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .entropy-graph {
+  background-color: var(--graph-bg);
+  color: var(--graph-text);
+}
+
+:root[class='dark-mode'] .entropy-graph path {
+  stroke: var(--graph-line);
+}
+
+:root[class='dark-mode'] .graph-tabs button {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .graph-tabs button.active {
+  background-color: var(--link-color);
+  color: white;
+}
+
+/* Add specific styles for Hex View */
+:root[class='dark-mode'] .hex-view {
+  color: var(--hex-text);
+}
+
+:root[class='dark-mode'] .hex-offset {
+  color: var(--hex-offset);
+}
+
+:root[class='dark-mode'] .hex-ascii {
+  color: var(--hex-ascii);
+}
+
+:root[class='dark-mode'] .hex-byte {
+  color: var(--hex-text);
+}
+
+/* Update the tab styles to ensure visibility */
+:root[class='dark-mode'] .tabs {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .tab {
+  color: var(--text-secondary);
+}
+
+:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .tab.active {
+  background-color: var(--bg-primary);
+  color: var(--link-color);
+}
+
+/* Add styles for the byte frequency graph */
+:root[class='dark-mode'] .byte-frequency {
+  background-color: var(--graph-bg);
+  color: var(--graph-text);
+}
+
+:root[class='dark-mode'] .byte-frequency .bar {
+  background-color: var(--link-color);
+}
+
+/* Add styles for any tooltips or overlays */
+:root[class='dark-mode'] .tooltip {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* Ensure text visibility in all views */
+:root[class='dark-mode'] .view-container {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .view-container > div {
+  color: var(--text-primary);
 }
 
 </style>

@@ -5,21 +5,18 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "generate-favicon": "node scripts/generate-favicon.js",
-    "prebuild": "npm run generate-favicon",
-    "dev": "npm run generate-favicon && vite",
+    "dev": "vite",
     "build": "vite build",
-    "serve": "vite preview",
-    "predeploy": "npm run build",
-    "deploy": "gh-pages -d dist"
+    "preview": "vite preview",
+    "generate-favicon": "node scripts/generate-favicon.js"
   },
   "dependencies": {
-    "crypto-js": "^4.2.0",
-    "lodash-es": "^4.17.21",
-    "vue": "^3.2.0"
+    "vue": "3.4.15",
+    "pinia": "2.1.7",
+    "crypto-js": "4.2.0"
   },
   "devDependencies": {
-    "@vitejs/plugin-vue": "^5.2.1",
-    "vite": "^6.1.0"
+    "@vitejs/plugin-vue": "5.0.3",
+    "vite": "5.0.12"
   }
 }

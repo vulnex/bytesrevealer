@@ -6,3 +6,4 @@ dist
 README.md
 .env
 .env.*
+*.log

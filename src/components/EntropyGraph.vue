@@ -5,7 +5,7 @@
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
  * Last Modified: 2025-02-12
- * Version: 0.1
+ * Version: 0.2
  * License: Apache-2.0
  * Copyright (c) 2025 VULNEX. All rights reserved.
  * https://www.vulnex.com
@@ -16,10 +16,12 @@
     <h3>Entropy Analysis</h3>
     <div class="graph-tabs">
       <button 
+        class="tab-button"
         :class="{ active: activeGraphTab === 'entropy' }"
         @click="$emit('update:activeGraphTab', 'entropy')"
       >Entropy Distribution</button>
       <button 
+        class="tab-button"
         :class="{ active: activeGraphTab === 'frequency' }"
         @click="$emit('update:activeGraphTab', 'frequency')"
       >Byte Frequency</button>
@@ -35,7 +37,7 @@
           <span>High Entropy Regions</span>
         </div>
       </div>
-      <canvas ref="canvas"></canvas>
+      <canvas ref="canvas" class="graph-canvas"></canvas>
     </div>
   </div>
 </template>
@@ -80,10 +82,19 @@ export default {
     initCanvas() {
       const container = this.$refs.graphContainer
       const canvas = this.$refs.canvas
-      canvas.width = container.clientWidth
-      canvas.height = 150
+      
+      // Set canvas size with device pixel ratio for sharp rendering
+      const dpr = window.devicePixelRatio || 1
+      canvas.width = container.clientWidth * dpr
+      canvas.height = container.clientHeight * dpr
+      
       this.canvas = canvas
       this.ctx = canvas.getContext('2d')
+      this.ctx.scale(dpr, dpr)
+      
+      // Set canvas CSS size
+      canvas.style.width = `${container.clientWidth}px`
+      canvas.style.height = `${container.clientHeight}px`
     },
 
     drawGraph() {
@@ -99,113 +110,161 @@ export default {
     },
 
     drawEntropyDistribution() {
+      const ctx = this.ctx
+      const width = this.canvas.width / window.devicePixelRatio
+      const height = this.canvas.height / window.devicePixelRatio
+      
+      // Clear canvas
+      ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg-primary').trim()
+      ctx.fillRect(0, 0, width, height)
+      
       const blockSize = 256
       const entropyValues = []
       this.hasHighEntropy = false
-
-      // Calculate entropy for each block
+      
+      // Calculate entropy values
       for (let i = 0; i < this.fileBytes.length; i += blockSize) {
         const block = this.fileBytes.slice(i, i + blockSize)
-        const byteCounts = new Array(256).fill(0)
-        block.forEach(byte => byteCounts[byte]++)
+        const frequencies = new Array(256).fill(0)
+        block.forEach(byte => frequencies[byte]++)
         
-        const probabilities = byteCounts.map(count => count / block.length)
-        const entropy = -probabilities.reduce((sum, p) => {
-          return sum + (p > 0 ? p * Math.log2(p) : 0)
-        }, 0)
+        const entropy = this.calculateEntropy(frequencies, block.length)
+        entropyValues.push(entropy)
         
         if (entropy > 7.5) this.hasHighEntropy = true
-        entropyValues.push(entropy)
       }
-
-      // Draw background
-      this.ctx.fillStyle = '#f8f9fa'
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-
-      // Draw grid lines
-      this.ctx.strokeStyle = '#ddd'
-      this.ctx.lineWidth = 0.5
-      for (let i = 0; i <= 8; i++) {
-        const y = this.canvas.height - (i / 8) * this.canvas.height
-        this.ctx.beginPath()
-        this.ctx.moveTo(0, y)
-        this.ctx.lineTo(this.canvas.width, y)
-        this.ctx.stroke()
-      }
-
+      
+      // Draw grid
+      this.drawGrid(ctx, width, height)
+      
       // Draw entropy line
       if (entropyValues.length > 0) {
-        this.ctx.beginPath()
-        this.ctx.moveTo(0, this.canvas.height - (entropyValues[0] / 8) * this.canvas.height)
+        ctx.beginPath()
+        ctx.strokeStyle = '#42b983'
+        ctx.lineWidth = 2
         
         entropyValues.forEach((entropy, index) => {
-          const x = (index / entropyValues.length) * this.canvas.width
-          const y = this.canvas.height - (entropy / 8) * this.canvas.height
-          this.ctx.lineTo(x, y)
+          const x = (index / entropyValues.length) * width
+          const y = height - (entropy / 8) * height
+          
+          if (index === 0) {
+            ctx.moveTo(x, y)
+          } else {
+            ctx.lineTo(x, y)
+          }
 
           // Highlight high entropy regions
           if (entropy > 7.5) {
-            this.ctx.fillStyle = 'rgba(255, 107, 107, 0.2)'
-            this.ctx.fillRect(x - 1, 0, 2, this.canvas.height)
+            ctx.fillStyle = 'rgba(255, 107, 107, 0.2)'
+            ctx.fillRect(x - 1, 0, 2, height)
           }
         })
-
-        this.ctx.strokeStyle = '#42b983'
-        this.ctx.lineWidth = 2
-        this.ctx.stroke()
+        
+        ctx.stroke()
       }
-
-      // Add scale labels
-      this.ctx.fillStyle = '#666'
-      this.ctx.font = '10px sans-serif'
-      this.ctx.textAlign = 'right'
-      for (let i = 0; i <= 8; i += 2) {
-        const y = this.canvas.height - (i / 8) * this.canvas.height
-        this.ctx.fillText(i.toString(), 20, y + 4)
-      }
+      
+      // Draw labels
+      this.drawLabels(ctx, width, height)
     },
 
     drawByteFrequency() {
-      // Calculate byte frequencies
-      const byteCounts = new Array(256).fill(0)
-      this.fileBytes.forEach(byte => byteCounts[byte]++)
+      const ctx = this.ctx
+      const width = this.canvas.width / window.devicePixelRatio
+      const height = this.canvas.height / window.devicePixelRatio
       
-      // Draw background
-      this.ctx.fillStyle = '#f8f9fa'
-      this.ctx.fillRect(0, 0, this.canvas.width, this.canvas.height)
-
-      // Find max frequency for scaling
-      const maxCount = Math.max(...byteCounts)
-      if (maxCount === 0) return
-
-      // Draw frequency bars
-      byteCounts.forEach((count, byte) => {
-        const x = (byte / 256) * this.canvas.width
-        const height = (count / maxCount) * this.canvas.height
-        const y = this.canvas.height - height
-
-        // Color based on byte type
-        if (byte === 0) {
-          this.ctx.fillStyle = '#ff6b6b'  // Null bytes
-        } else if (byte >= 32 && byte <= 126) {
-          this.ctx.fillStyle = '#4a90e2'  // ASCII printable
-        } else {
-          this.ctx.fillStyle = '#aaa'     // Control chars
-        }
-
-        this.ctx.fillRect(x, y, Math.max(1, this.canvas.width / 256), height)
+      // Clear canvas
+      ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--bg-primary').trim()
+      ctx.fillRect(0, 0, width, height)
+      
+      // Calculate frequencies
+      const frequencies = new Array(256).fill(0)
+      this.fileBytes.forEach(byte => frequencies[byte]++)
+      
+      const maxFreq = Math.max(...frequencies)
+      const barWidth = width / 256
+      
+      // Draw bars
+      frequencies.forEach((freq, byte) => {
+        const x = (byte / 256) * width
+        const barHeight = (freq / maxFreq) * (height - 40)
+        const y = height - barHeight - 20
+        
+        ctx.fillStyle = this.getByteColor(byte)
+        ctx.fillRect(x, y, barWidth, barHeight)
       })
+      
+      // Draw axis and labels
+      this.drawFrequencyAxis(ctx, width, height)
+    },
 
-      // Add labels
-      this.ctx.fillStyle = '#666'
-      this.ctx.font = '10px sans-serif'
-      this.ctx.textAlign = 'center'
+    drawGrid(ctx, width, height) {
+      ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--border-color').trim()
+      ctx.lineWidth = 0.5
+      
+      // Draw horizontal grid lines
+      for (let i = 0; i <= 8; i++) {
+        const y = height - (i / 8) * height
+        ctx.beginPath()
+        ctx.moveTo(0, y)
+        ctx.lineTo(width, y)
+        ctx.stroke()
+      }
+    },
+
+    drawLabels(ctx, width, height) {
+      ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-primary').trim()
+      ctx.font = '12px sans-serif'
+      ctx.textAlign = 'right'
+      
+      // Y-axis labels
+      for (let i = 0; i <= 8; i += 2) {
+        const y = height - (i / 8) * height
+        ctx.fillText(i.toString(), 25, y + 4)
+      }
+    },
+
+    calculateEntropy(frequencies, total) {
+      return -frequencies.reduce((sum, freq) => {
+        const p = freq / total
+        return sum + (p > 0 ? p * Math.log2(p) : 0)
+      }, 0)
+    },
+
+    getByteColor(byte) {
+      if (byte === 0) return '#ff6b6b'
+      if (byte >= 32 && byte <= 126) return '#4a90e2'
+      return '#aaa'
+    },
+
+    drawFrequencyAxis(ctx, width, height) {
+      ctx.strokeStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-secondary').trim()
+      ctx.lineWidth = 0.5
+      
+      // Draw vertical grid lines
+      for (let i = 0; i <= 4; i++) {
+        const x = (i / 4) * width
+        ctx.beginPath()
+        ctx.moveTo(x, 0)
+        ctx.lineTo(x, height)
+        ctx.stroke()
+      }
+      
+      // Draw axis labels
+      ctx.fillStyle = getComputedStyle(document.documentElement)
+        .getPropertyValue('--text-primary').trim()
+      ctx.font = '12px sans-serif'
+      ctx.textAlign = 'center'
       
       // X-axis labels
       const labels = ['0x00', '0x40', '0x80', '0xC0', '0xFF']
       labels.forEach((label, i) => {
-        const x = (i / (labels.length - 1)) * this.canvas.width
-        this.ctx.fillText(label, x, this.canvas.height - 5)
+        const x = (i / (labels.length - 1)) * width
+        ctx.fillText(label, x, height - 5)
       })
     }
   },
@@ -215,3 +274,106 @@ export default {
   }
 }
 </script>
+
+<style scoped>
+.entropy-graph {
+  background-color: var(--bg-secondary);
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+}
+
+h3 {
+  color: var(--text-primary);
+  font-size: 1.5rem;
+  margin-bottom: 16px;
+}
+
+.graph-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+}
+
+.tab-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: all 0.2s ease;
+  font-size: 14px;
+}
+
+.tab-button:hover {
+  background-color: var(--bg-hover);
+}
+
+.tab-button.active {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+.graph-container {
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  height: 400px;
+  position: relative;
+}
+
+.graph-canvas {
+  width: 100%;
+  height: 100%;
+  background-color: var(--bg-primary);
+}
+
+/* Dark mode overrides */
+:root[class='dark-mode'] .entropy-graph {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .graph-container {
+  background-color: var(--bg-primary);
+  border-color: var(--border-color);
+}
+
+.graph-legend {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  padding: 10px;
+  background-color: var(--bg-primary);
+  border-radius: 6px;
+  border: 1px solid var(--border-color);
+}
+
+.legend-item {
+  display: flex;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.legend-color {
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  margin-right: 8px;
+}
+
+.legend-item span {
+  font-size: 12px;
+  color: var(--text-primary);
+}
+
+.legend-item.high-entropy {
+  margin-top: 8px;
+}
+
+.legend-item.high-entropy .legend-color {
+  background-color: #ff6b6b;
+}
+</style>

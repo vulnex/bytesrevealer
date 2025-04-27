@@ -5,7 +5,7 @@
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
  * Last Modified: 2025-02-16
- * Version: 0.1
+ * Version: 0.2
  * License: Apache-2.0
  * Copyright (c) 2025 VULNEX. All rights reserved.
  * https://www.vulnex.com
@@ -56,10 +56,10 @@ export default {
 
 <style scoped>
 .color-palette-container {
-  background: white;
+  background-color: var(--bg-secondary);
   padding: 12px;
   border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   margin-bottom: 16px;
 }
 
@@ -72,7 +72,7 @@ export default {
 .color-square {
   width: 32px;
   height: 32px;
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
   border-radius: 4px;
   cursor: pointer;
   transition: transform 0.2s;
@@ -83,16 +83,27 @@ export default {
 }
 
 .color-square.selected {
-  box-shadow: 0 0 0 2px #2196f3;
+  box-shadow: 0 0 0 2px var(--link-color);
 }
 
 .color-instruction {
   font-size: 14px;
-  color: #666;
+  color: var(--text-secondary);
 }
 
 /* Special styling for white color square */
 .color-square[style*="background-color: #ffffff"] {
-  border: 1px solid #ddd;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary) !important;
+}
+
+/* Dark mode specific overrides */
+:root[class='dark-mode'] .color-palette-container {
+  background-color: var(--bg-secondary);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+:root[class='dark-mode'] .color-instruction {
+  color: var(--text-secondary);
 }
 </style>

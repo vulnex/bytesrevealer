@@ -13,7 +13,7 @@
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
-import { resolve } from 'path'
+import { fileURLToPath, URL } from 'url'
 
 export default defineConfig({
   plugins: [vue()],
@@ -28,9 +28,22 @@ export default defineConfig({
     copyPublicDir: true,
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html')
+        main: fileURLToPath(new URL('./index.html', import.meta.url))
       }
+    },
+    commonjsOptions: {
+      include: [/node_modules/],
+      extensions: ['.js', '.cjs']
     }
   },
-  publicDir: 'public'
+  publicDir: 'public',
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+      'crypto-js': 'crypto-js'
+    }
+  },
+  optimizeDeps: {
+    include: ['vue', 'pinia', 'crypto-js']
+  }
 })

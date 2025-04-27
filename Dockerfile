@@ -1,24 +1,27 @@
-# Use node image for building the app
-FROM node:18-alpine AS builder
+# Build stage
+FROM node:20-alpine as builder
 
 WORKDIR /app
 
-# Copy package.json first to leverage Docker caching
-COPY package.json package-lock.json ./
-RUN npm install
+# Install build dependencies
+RUN apk add --no-cache python3 make g++
 
-# Copy the entire project
-COPY . . 
+# Copy package files
+COPY package*.json ./
 
-# Build the Vue app
+# Install dependencies with legacy peer deps to avoid conflicts
+RUN npm install --legacy-peer-deps
+
+# Copy project files
+COPY . .
+
+# Build the app
 RUN npm run build
 
-# Use Nginx for serving the built Vue app
+# Production stage
 FROM nginx:alpine
 
-WORKDIR /usr/share/nginx/html
-
-# Copy the built Vue app
+# Copy built files from builder stage
 COPY --from=builder /app/dist /usr/share/nginx/html
 
 # Ensure favicon.ico and static assets are copied

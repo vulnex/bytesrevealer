@@ -6,6 +6,8 @@ https://www.vulnex.com/
 
 # Bytes Revealer
 
+Version: 0.2
+
 Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.
 
 Bytes Revealer do NOT store any file or data. All analysis is performed in your browser.
@@ -29,12 +31,15 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 - Hash values
 - Entropy calculation
 - Statistical analysis
+- Detailed file signarure information
 
 #### Visual View
 - Binary data visualization
 - ASCII or Bytes searching
 - Data distribution view
 - Highlighted pattern matching
+- Jump-to-offset box
+- Data Inspector View
 
 #### Hex View
 - Traditional hex editor interface
@@ -42,6 +47,8 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 - Highlighted pattern matching
 - ASCII representation
 - ASCII or Bytes searching
+- Jump-to-offset box
+- Data Inspector View
 
 #### String Analysis
 - ASCII and UTF-8 string extraction
@@ -51,11 +58,23 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 - String pattern recognition
 - Export capabilities
 
+### Export View
+- Save analysis data into JSON
+
+### Settings View
+- Light and Dark mode
+- Set base offset
+
 ### Search Capabilities
 - Hex pattern search
 - ASCII/UTF-8 string search
 - Regular expression support
 - Highlighted search results
+
+### Data Inspector
+- Get information about bytes on Visual and Hex views
+- Press L to lock data on a byte
+- Basic, Number, Text, 16-bit, 32-bit, 64-bit, Integer, Float, Additional and Date/Time information
 
 ## Technical Details
 
