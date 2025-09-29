@@ -1,10 +1,17 @@
-
 services:
-  vue-app:
-    image: bytesrevealer
-    build: .
+  bytesrevealer:
+    image: bytesrevealer:latest
+    build:
+      context: .
+      dockerfile: Dockerfile
     ports:
-      - "8080:80"
-    volumes:
-      - ./public/favicon.ico:/usr/share/nginx/html/favicon.ico
+      - "8080:3000"
+    environment:
+      - NODE_ENV=production
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://localhost:3000/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s

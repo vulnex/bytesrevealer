@@ -16,14 +16,24 @@
     <div class="main-panel">
       <div class="controls-bar">
         <div class="jump-control">
-          <input 
-            type="text" 
+          <input
+            type="text"
             v-model="jumpOffset"
             placeholder="Jump to offset (hex/dec)"
             @keyup.enter="handleJump"
             class="jump-input"
           />
           <button class="jump-button" @click="handleJump">Jump</button>
+        </div>
+        <div class="toolbar-buttons">
+          <button
+            class="color-scheme-button"
+            :class="{ 'hex-colors': useHexColors }"
+            @click="toggleColorScheme"
+            :title="useHexColors ? 'Switch to blue color scheme' : 'Switch to hex view color scheme'"
+          >
+            <span class="color-icon">{{ useHexColors ? '🎨' : '🔵' }}</span>
+          </button>
         </div>
         <div v-if="baseOffset" class="base-offset-indicator">
           Base Offset: 0x{{ formatOffset(baseOffset) }}
@@ -56,17 +66,22 @@
                 
                 <!-- Byte squares grid -->
                 <div class="squares-container">
-                  <div 
-                    v-for="(byte, index) in row.bytes" 
+                  <div
+                    v-for="(byte, index) in row.bytes"
                     :key="index"
                     :data-byte-index="row.offset + index"
                     class="byte-square"
-                    :class="{ 
+                    :class="{
                       'highlighted': isHighlighted(row.offset + index),
                       'hovered': !inspectorLocked && hoveredByte === (row.offset + index),
-                      'ascii-byte': isAsciiByte(byte),
+                      'ascii-byte': !useHexColors && isAsciiByte(byte),
                       'selected': isSelected(row.offset + index),
-                      'locked': inspectorLocked && lockedByte === (row.offset + index)
+                      'locked': inspectorLocked && lockedByte === (row.offset + index),
+                      'byte-null': useHexColors && byte === 0x00,
+                      'byte-printable': useHexColors && byte >= 0x20 && byte <= 0x7E,
+                      'byte-control': useHexColors && byte >= 0x01 && byte <= 0x1F,
+                      'byte-extended': useHexColors && byte >= 0x7F && byte <= 0xFE,
+                      'byte-ff': useHexColors && byte === 0xFF
                     }"
                     :style="getByteStyles(row.offset + index)"
                     @mouseenter="onByteHover(row.offset + index, $event)"
@@ -115,6 +130,12 @@
       :x="tooltipX"
       :y="tooltipY"
     />
+
+    <!-- Chunk Loading Indicator -->
+    <ChunkLoadingIndicator
+      :chunk-manager="chunkManager"
+      :file-bytes="fileBytes"
+    />
   </div>
 </template>
 
@@ -124,17 +145,20 @@ import { useSettingsStore } from '../stores/settings'
 import ColorPalette from './ColorPalette.vue'
 import ByteTooltip from './shared/ByteTooltip.vue'
 import DataInspector from './shared/DataInspector.vue'
+import ChunkLoadingIndicator from './ChunkLoadingIndicator.vue'
 
 export default {
   name: 'VisualView',
   components: {
     ColorPalette,
     ByteTooltip,
-    DataInspector
+    DataInspector,
+    ChunkLoadingIndicator
   },
   props: {
     fileBytes: {
-      type: Uint8Array,
+      type: Object,
+      validator: (value) => value instanceof Uint8Array,
       required: true
     },
     highlightedBytes: {
@@ -144,6 +168,10 @@ export default {
     coloredBytes: {
       type: Array,
       default: () => []
+    },
+    chunkManager: {
+      type: Object,
+      default: null
     }
   },
 
@@ -168,7 +196,7 @@ export default {
     // Virtual scrolling constants
     const ROW_HEIGHT = 24 // pixels
     const BYTES_PER_ROW = 32
-    const BUFFER_ROWS = 10 // Number of extra rows to render above/below viewport
+    const BUFFER_ROWS = 30 // Increased to show more rows for better experience
 
     // Scrolling state
     const visibleRows = ref(0)
@@ -200,24 +228,47 @@ export default {
       visibleRange.value.start * ROW_HEIGHT
     )
 
-    // Update visibleData computed to correctly handle base offset
+    // Update visibleData computed to correctly handle base offset and progressive loading
     const visibleData = computed(() => {
       const { start, end } = visibleRange.value
       const rows = []
-      
+
       for (let i = start; i < end; i++) {
         const actualOffset = i * BYTES_PER_ROW // Actual position in file
         const displayOffset = actualOffset + baseOffset.value // Display offset
-        
+
         if (actualOffset >= props.fileBytes.length) break
-        
+
+        // Handle progressive loading
+        let bytes = []
+        if (props.fileBytes.isProgressive && props.chunkManager) {
+          // For progressive arrays, handle chunk loading
+          const endOffset = Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)
+
+          // Get data from progressive array (will trigger loading)
+          for (let j = actualOffset; j < endOffset; j++) {
+            bytes.push(props.fileBytes[j] || 0)
+          }
+
+          // Trigger async load if chunks not loaded
+          const startChunkIndex = Math.floor(actualOffset / props.chunkManager.CHUNK_SIZE)
+          if (props.fileBytes.loadedChunks && !props.fileBytes.loadedChunks.has(startChunkIndex)) {
+            props.chunkManager.getRange(actualOffset, endOffset).then(data => {
+              // This will update the view when loaded
+            })
+          }
+        } else {
+          // Standard mode - use slice
+          bytes = Array.from(props.fileBytes.slice(actualOffset, Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)))
+        }
+
         rows.push({
           offset: displayOffset, // For display purposes only
           actualOffset, // Actual position in file
-          bytes: Array.from(props.fileBytes.slice(actualOffset, Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)))
+          bytes: bytes
         })
       }
-      
+
       return rows
     })
 
@@ -272,6 +323,9 @@ export default {
       }
     })
 
+    // Color scheme toggle state
+    const useHexColors = ref(false)
+
     // Add to setup()
     const showJumpInput = ref(false)
     const jumpOffset = ref('')
@@ -322,6 +376,11 @@ export default {
       jumpOffset.value = ''
     }
 
+    // Toggle color scheme method
+    const toggleColorScheme = () => {
+      useHexColors.value = !useHexColors.value
+    }
+
     return {
       containerRef,
       hoveredByte,
@@ -343,7 +402,9 @@ export default {
       jumpOffset,
       showJumpDialog,
       handleJump,
-      cancelJump
+      cancelJump,
+      useHexColors,
+      toggleColorScheme
     }
   },
 
@@ -362,7 +423,11 @@ export default {
 
     isHighlighted(displayOffset) {
       const actualOffset = displayOffset - this.baseOffset
-      return this.highlightedBytes.includes(actualOffset)
+      // highlightedBytes contains absolute offsets from the search
+      if (this.highlightedBytes && this.highlightedBytes.length > 0) {
+        return this.highlightedBytes.includes(actualOffset)
+      }
+      return false
     },
 
     isSelected(displayOffset) {
@@ -473,7 +538,7 @@ export default {
 .controls-bar {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 15px;
   padding: 8px;
   background-color: var(--bg-primary);
   border-bottom: 1px solid var(--border-color);
@@ -504,6 +569,46 @@ export default {
   cursor: pointer;
 }
 
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color);
+}
+
+.color-scheme-button {
+  padding: 8px 10px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  min-width: 40px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-scheme-button:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+}
+
+.color-scheme-button.hex-colors {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #357abd;
+}
+
+.color-scheme-button.hex-colors:hover {
+  background-color: #357abd;
+}
+
 .content-area {
   flex: 1;
   overflow: hidden;
@@ -513,7 +618,7 @@ export default {
 }
 
 .inspector-panel {
-  width: 320px;
+  width: 450px; /* Increased to match HexView panel width */
   border-left: 1px solid var(--border-color);
   background-color: var(--bg-secondary);
 }
@@ -536,7 +641,7 @@ export default {
   flex: 1;
   display: flex;
   flex-direction: column;
-  padding: 20px;
+  padding: 12px; /* Reduced for more compact layout */
   overflow: hidden;
 }
 
@@ -595,22 +700,51 @@ export default {
   background-color: var(--link-color);
 }
 
+/* Hex View color scheme for byte squares */
+.byte-square.byte-null {
+  background-color: #e5e5e5 !important;
+  border-color: #999;
+}
+
+.byte-square.byte-printable {
+  background-color: #4a90e2 !important;
+  border-color: #357abd;
+}
+
+.byte-square.byte-control {
+  background-color: #f5a623 !important;
+  border-color: #d48806;
+}
+
+.byte-square.byte-extended {
+  background-color: #7e3ff2 !important;
+  border-color: #6320c4;
+}
+
+.byte-square.byte-ff {
+  background-color: #d0021b !important;
+  border-color: #a00116;
+}
+
 .byte-square.highlighted,
-.ascii-group span.highlighted {
-  background-color: var(--link-color);
-  color: white;
+.ascii-char.highlighted {
+  background-color: #3b82f6 !important; /* Blue for light mode */
+  color: white !important;
+  font-weight: 500;
 }
 
 .byte-square.hovered,
-.ascii-group span.hovered {
-  background-color: var(--link-color);
-  opacity: 0.7;
+.ascii-char.hovered {
+  background-color: rgba(59, 130, 246, 0.3) !important; /* Semi-transparent blue */
+  outline: 1px solid #3b82f6;
+  outline-offset: -1px;
 }
 
 .byte-square.selected,
-.ascii-group span.selected {
-  outline: 2px solid var(--link-color);
+.ascii-char.selected {
+  outline: 2px solid #3b82f6 !important;
   outline-offset: -2px;
+  background-color: rgba(59, 130, 246, 0.2) !important;
 }
 
 .ascii-column {
@@ -619,7 +753,7 @@ export default {
   margin-left: 16px;
 }
 
-.ascii-group span {
+.ascii-char {
   cursor: pointer;
   padding: 1px 2px;
   border-radius: 2px;
@@ -641,6 +775,54 @@ export default {
   background-color: var(--link-color);
 }
 
+/* Dark mode hex view color scheme */
+:root[class='dark-mode'] .byte-square.byte-null {
+  background-color: #2a2a2a !important;
+  border-color: #555;
+}
+
+:root[class='dark-mode'] .byte-square.byte-printable {
+  background-color: #3b82f6 !important;
+  border-color: #2563eb;
+}
+
+:root[class='dark-mode'] .byte-square.byte-control {
+  background-color: #ffb86c !important;
+  border-color: #f59e0b;
+}
+
+:root[class='dark-mode'] .byte-square.byte-extended {
+  background-color: #bd93f9 !important;
+  border-color: #a78bfa;
+}
+
+:root[class='dark-mode'] .byte-square.byte-ff {
+  background-color: #ff79c6 !important;
+  border-color: #ec4899;
+}
+
+/* Dark mode button styling */
+:root[class='dark-mode'] .color-scheme-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+:root[class='dark-mode'] .color-scheme-button:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+}
+
+:root[class='dark-mode'] .color-scheme-button.hex-colors {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+:root[class='dark-mode'] .color-scheme-button.hex-colors:hover {
+  background-color: #2563eb;
+}
+
 :root[class='dark-mode'] .ascii-group {
   color: var(--text-primary);
 }
@@ -651,6 +833,37 @@ export default {
 
 :root[class='dark-mode'] .offset {
   color: var(--text-secondary);
+}
+
+/* Fix highlight visibility in dark mode - matching HexView orange colors */
+:root[class='dark-mode'] .byte-square.highlighted,
+:root[class='dark-mode'] .ascii-char.highlighted {
+  background-color: #fb923c !important; /* Orange background matching HexView */
+  color: white !important;
+  font-weight: 500;
+  border-color: #fb923c !important;
+}
+
+:root[class='dark-mode'] .byte-square.hovered,
+:root[class='dark-mode'] .ascii-char.hovered {
+  background-color: rgba(251, 146, 60, 0.3) !important; /* Semi-transparent orange for hover */
+  color: white !important;
+  outline: 1px solid #fb923c;
+  outline-offset: -1px;
+}
+
+:root[class='dark-mode'] .byte-square.selected,
+:root[class='dark-mode'] .ascii-char.selected {
+  outline: 2px solid #fb923c !important;
+  outline-offset: -2px;
+  background-color: rgba(251, 146, 60, 0.5) !important;
+}
+
+:root[class='dark-mode'] .byte-square.locked {
+  outline: 2px solid #fb923c !important;
+  outline-offset: -2px;
+  background-color: #fb923c !important;
+  color: white !important;
 }
 
 /* Ensure tooltip is visible in dark mode */

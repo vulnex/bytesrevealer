@@ -6,4 +6,14 @@ dist
 README.md
 .env
 .env.*
+.vscode
+.idea
+*.md
+.DS_Store
 *.log
+coverage
+.nyc_output
+.github
+.gitlab-ci.yml
+.editorconfig
+devnotes

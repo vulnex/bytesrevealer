@@ -21,6 +21,31 @@
     
     <!-- Show content when analysis is complete -->
     <div v-else>
+      <!-- File Type Detection Section -->
+      <div v-if="detectedFileType" class="file-type-section">
+        <h3>File Type Detection</h3>
+        <div class="file-type-grid">
+          <div class="type-item">
+            <label>Type:</label>
+            <span class="type-value">{{ detectedFileType.description || 'Unknown' }}</span>
+          </div>
+          <div class="type-item">
+            <label>Extension:</label>
+            <span class="type-ext">.{{ detectedFileType.ext }}</span>
+          </div>
+          <div class="type-item">
+            <label>MIME Type:</label>
+            <span class="type-mime">{{ detectedFileType.mime }}</span>
+          </div>
+          <div class="type-item">
+            <label>Confidence:</label>
+            <span :class="['type-confidence', `confidence-${detectedFileType.confidence}`]">
+              {{ detectedFileType.confidence }}
+            </span>
+          </div>
+        </div>
+      </div>
+
       <div class="stats-section">
         <h3>File Statistics</h3>
         <div class="stats-grid">
@@ -79,6 +104,9 @@
 import EntropyGraph from './EntropyGraph.vue'
 import FileSignatures from './FileSignatures.vue'
 import HashSection from './HashSection.vue'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('FileAnalysis')
 
 export default {
   name: 'FileAnalysis',
@@ -89,7 +117,8 @@ export default {
   },
   props: {
     fileBytes: {
-      type: Array,
+      type: [Array, Object],
+      validator: (value) => Array.isArray(value) || value instanceof Uint8Array,
       required: true
     },
     entropy: {
@@ -103,6 +132,10 @@ export default {
     hashes: {
       type: Object,
       required: true
+    },
+    detectedFileType: {
+      type: Object,
+      default: null
     },
     activeGraphTab: {
       type: String,
@@ -122,40 +155,82 @@ export default {
   },
   computed: {
     nullByteCount() {
-      return this.fileBytes.filter(byte => byte === 0).length
+      // For large files, use sampled data or return estimate
+      if (this.fileBytes.length > 50 * 1024 * 1024) {
+        return 0; // Skip for large files
+      }
+      let count = 0;
+      for (let i = 0; i < this.fileBytes.length; i++) {
+        if (this.fileBytes[i] === 0) count++;
+      }
+      return count;
     },
     
     uniqueBytes() {
-      return new Set(this.fileBytes).size
+      // For large files, sample instead of processing all
+      if (this.fileBytes.length > 50 * 1024 * 1024) {
+        return 'N/A'; // Skip for large files
+      }
+      return new Set(this.fileBytes).size;
     },
     
     asciiPercentage() {
-      const printable = this.fileBytes.filter(byte => byte >= 32 && byte <= 126).length
-      return (printable / this.fileBytes.length) * 100
+      // For large files, sample the first 1MB
+      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
+      let printable = 0;
+      for (let i = 0; i < sampleSize; i++) {
+        const byte = this.fileBytes[i];
+        if (byte >= 32 && byte <= 126) printable++;
+      }
+      return (printable / sampleSize) * 100;
     },
     
     printableCount() {
-      return this.fileBytes.filter(byte => byte >= 32 && byte <= 126).length
+      // For large files, return estimate based on sample
+      if (this.fileBytes.length > 50 * 1024 * 1024) {
+        const percentage = this.asciiPercentage / 100;
+        return Math.round(this.fileBytes.length * percentage);
+      }
+      let count = 0;
+      for (let i = 0; i < this.fileBytes.length; i++) {
+        const byte = this.fileBytes[i];
+        if (byte >= 32 && byte <= 126) count++;
+      }
+      return count;
     },
     
     controlCount() {
-      return this.fileBytes.filter(byte => byte < 32 || byte === 127).length
+      // For large files, return estimate
+      if (this.fileBytes.length > 50 * 1024 * 1024) {
+        return 0; // Skip for large files
+      }
+      let count = 0;
+      for (let i = 0; i < this.fileBytes.length; i++) {
+        const byte = this.fileBytes[i];
+        if (byte < 32 || byte === 127) count++;
+      }
+      return count;
     },
     
     mostCommonByte() {
-      const byteCounts = new Array(256).fill(0)
-      this.fileBytes.forEach(byte => byteCounts[byte]++)
+      // For large files, sample first 1MB
+      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
+      const byteCounts = new Array(256).fill(0);
       
-      let maxCount = 0
-      let maxByte = 0
-      byteCounts.forEach((count, byte) => {
-        if (count > maxCount) {
-          maxCount = count
-          maxByte = byte
+      for (let i = 0; i < sampleSize; i++) {
+        byteCounts[this.fileBytes[i]]++;
+      }
+      
+      let maxCount = 0;
+      let maxByte = 0;
+      for (let byte = 0; byte < 256; byte++) {
+        if (byteCounts[byte] > maxCount) {
+          maxCount = byteCounts[byte];
+          maxByte = byte;
         }
-      })
+      }
       
-      return { value: maxByte, count: maxCount }
+      return { value: maxByte, count: maxCount };
     }
   },
   watch: {
@@ -170,35 +245,48 @@ export default {
   },
   methods: {
     performAnalysis() {
-      this.isAnalyzing = true
-      try {
-        // Calculate basic statistics
-        const byteCounts = new Array(256).fill(0)
-        let nullBytes = 0
-        let printableChars = 0
-        let controlChars = 0
-
-        // Process all bytes
-        for (let i = 0; i < this.fileBytes.length; i++) {
-          const byte = this.fileBytes[i]
-          byteCounts[byte]++
-          
-          if (byte === 0) nullBytes++
-          if (byte >= 32 && byte <= 126) printableChars++
-          if (byte < 32 || byte === 127) controlChars++
-        }
-
-        this.analysisResults = {
-          nullBytes,
-          printableChars,
-          controlChars,
-          byteCounts
-        }
-      } catch (error) {
-        console.error('Analysis error:', error)
-      } finally {
-        this.isAnalyzing = false
+      // Skip heavy analysis for large files
+      if (this.fileBytes.length > 50 * 1024 * 1024) {
+        logger.debug('Skipping detailed analysis for large file (>50MB)');
+        this.isAnalyzing = false;
+        return;
       }
+      
+      this.isAnalyzing = true;
+      
+      // Use setTimeout to prevent blocking
+      setTimeout(() => {
+        try {
+          // Calculate basic statistics
+          const byteCounts = new Array(256).fill(0);
+          let nullBytes = 0;
+          let printableChars = 0;
+          let controlChars = 0;
+
+          // For files over 10MB, only sample first 1MB
+          const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
+          
+          for (let i = 0; i < sampleSize; i++) {
+            const byte = this.fileBytes[i];
+            byteCounts[byte]++;
+            
+            if (byte === 0) nullBytes++;
+            if (byte >= 32 && byte <= 126) printableChars++;
+            if (byte < 32 || byte === 127) controlChars++;
+          }
+
+          this.analysisResults = {
+            nullBytes,
+            printableChars,
+            controlChars,
+            byteCounts
+          };
+        } catch (error) {
+          logger.error('Analysis error:', error);
+        } finally {
+          this.isAnalyzing = false;
+        }
+      }, 10);
     },
 
     formatFileSize(bytes) {
@@ -213,12 +301,6 @@ export default {
       
       return `${size.toFixed(1)} ${units[unitIndex]}`
     }
-  },
-  created() {
-    // Listen for analysis results
-    this.$on('analysis-complete', (results) => {
-      this.analysisResults = results
-    })
   }
 }
 </script>
@@ -229,6 +311,77 @@ export default {
   background-color: var(--bg-secondary);
   padding: 20px;
   border-radius: 8px;
+}
+
+/* File Type Detection section */
+.file-type-section {
+  margin-bottom: 24px;
+  background: var(--bg-primary);
+  padding: 16px;
+  border-radius: 8px;
+  border: 1px solid rgba(66, 185, 131, 0.2);
+}
+
+.file-type-section h3 {
+  color: var(--accent-primary);
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+}
+
+.file-type-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 12px;
+}
+
+.type-item {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.type-item label {
+  color: var(--text-secondary);
+  font-size: 0.875rem;
+  font-weight: 500;
+}
+
+.type-value {
+  color: var(--text-primary);
+  font-weight: 600;
+  font-size: 1rem;
+}
+
+.type-ext {
+  color: var(--accent-primary);
+  font-family: monospace;
+  font-size: 1rem;
+}
+
+.type-mime {
+  color: var(--text-primary);
+  font-family: monospace;
+  font-size: 0.9rem;
+}
+
+.type-confidence {
+  font-weight: 600;
+  text-transform: uppercase;
+  font-size: 0.875rem;
+}
+
+.confidence-high {
+  color: #4ade80;
+}
+
+.confidence-medium {
+  color: #fbbf24;
+}
+
+.confidence-low,
+.confidence-none {
+  color: #f87171;
 }
 
 /* File Statistics section */

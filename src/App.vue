@@ -4,8 +4,8 @@
  * File: App.vue
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
- * Last Modified: 2025-04-01
- * Version: 0.2
+ * Last Modified: 2025-09-29
+ * Version: 0.3
  * License: Apache-2.0
  * Copyright (c) 2025 VULNEX. All rights reserved.
  * https://www.vulnex.com
@@ -13,9 +13,9 @@
 
 <template>
   <div class="container">
-    <h1>VULNEX -Bytes Revealer (v0.2)-</h1>
-    <p style="text-align:center">- Uncover the Secrets of Binary Files -</p>
-    <p style="text-align:center">2025 &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a></p>
+    <h1 class="title">VULNEX -Bytes Revealer (v0.3)-</h1>
+    <p class="subtitle">- Uncover the Secrets of Binary Files -</p>
+    <p class="copyright">2025 &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a></p>
     
 <!-- Analysis Options -->
 <div class="analysis-options bg-white p-4 rounded-lg shadow mb-4">
@@ -25,7 +25,7 @@
       <input
         type="checkbox"
         v-model="features.fileAnalysis"
-        :disabled="loading.file || loading.analysis || (fileBytes.length && fileBytes.length > FILE_LIMITS.ANALYSIS_SIZE_LIMIT)"
+        :disabled="loading.file || loading.analysis"
         class="form-checkbox"
         checked
       >
@@ -58,7 +58,7 @@
       <input
         type="checkbox"
         v-model="features.stringAnalysis"
-        :disabled="loading.file || loading.analysis || (fileBytes.length && fileBytes.length > FILE_LIMITS.ANALYSIS_SIZE_LIMIT)"
+        :disabled="loading.file || loading.analysis"
         class="form-checkbox"
         checked
       >
@@ -69,14 +69,44 @@
 
     <!-- File Input -->
     <div class="file-input mb-4">
-      <input 
-        type="file" 
-        @change="handleFileUpload" 
-        :disabled="loading.file || loading.analysis"
-        class="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 
-               file:rounded-full file:border-0 file:text-sm file:font-semibold
-               file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100"
-      >
+      <div class="flex items-center gap-2">
+        <!-- Custom file input wrapper -->
+        <div class="custom-file-input">
+          <label class="file-label">
+            <input
+              ref="fileInput"
+              type="file"
+              @change="handleFileUpload"
+              :disabled="loading.file || loading.analysis"
+              class="hidden-file-input"
+            >
+            <span class="file-button">
+              Choose File
+            </span>
+          </label>
+          <span class="file-name">
+            {{ fileName || 'No file selected' }}
+          </span>
+          <button
+            v-if="fileName"
+            @click="resetFile"
+            class="reset-btn"
+            title="Clear file and reset"
+          >
+            ✕
+          </button>
+          <!-- Help button with separator -->
+          <div class="help-section">
+            <button
+              @click="showHelpDialog = true"
+              class="help-btn"
+              title="Help & Information"
+            >
+              ?
+            </button>
+          </div>
+        </div>
+      </div>
       <div v-if="progress > 0" class="mt-2">
         <div class="w-full bg-gray-200 rounded-full h-2.5">
           <div 
@@ -93,8 +123,13 @@
       <SearchBar
         v-model:searchType="searchType"
         v-model:searchPattern="searchPattern"
+        :isSearching="isSearching"
+        :progress="searchProgress"
+        :results="searchResults"
         @search="search"
         @clear="clearSearch"
+        @cancel="cancelSearch"
+        @navigateToMatch="navigateToMatch"
       />
     </div>
 
@@ -104,6 +139,12 @@
       class="mb-4 p-4 bg-red-50 text-red-700 rounded"
     >
       {{ error }}
+    </div>
+
+    <!-- Performance Indicator for Large Files -->
+    <div v-if="chunkManager && chunkManager.isLargeFile" class="performance-indicator">
+      <span class="indicator-icon">⚡</span>
+      <span>Optimized mode for large file ({{ formatFileSize(fileBytes.length) }})</span>
     </div>
 
     <!-- Navigation Tabs -->
@@ -175,62 +216,96 @@
       />
 
       <!-- File Analysis View -->
-      <FileAnalysis
-        v-if="activeTab === 'file' && features.fileAnalysis && fileBytes.length"
-        :fileBytes="fileBytes"
-        :entropy="entropy"
-        :fileSignatures="fileSignatures"
-        :hashes="hashes"
-        v-model:activeGraphTab="activeGraphTab"
-      />
+      <template v-if="features.fileAnalysis && fileBytes.length">
+        <FileAnalysis
+          v-show="activeTab === 'file'"
+          :fileBytes="fileBytes"
+          :entropy="entropy"
+          :fileSignatures="fileSignatures"
+          :hashes="hashes"
+          :detectedFileType="detectedFileType"
+          v-model:activeGraphTab="activeGraphTab"
+        />
+      </template>
 
       <!-- Visual View -->
-      <div v-if="activeTab === 'visual' && features.visualView && fileBytes.length">
-        <VisualView
-          :fileBytes="fileBytes"
-          :highlightedBytes="highlightedBytes"
-          :coloredBytes="coloredBytes"
-          @byte-selection="handleByteSelection"
-        />
-      </div>
+      <template v-if="features.visualView && fileBytes.length">
+        <div v-show="activeTab === 'visual'">
+          <VisualView
+            :fileBytes="fileBytes"
+            :highlightedBytes="highlightedBytes"
+            :coloredBytes="coloredBytes"
+            :chunkManager="chunkManager"
+            @byte-selection="handleByteSelection"
+          />
+        </div>
+      </template>
 
       <!-- Hex View -->
-      <div v-if="activeTab === 'hex' && features.hexView && fileBytes.length">
-        <HexView
-          :fileBytes="fileBytes"
-          :highlightedBytes="highlightedBytes"
-          :coloredBytes="coloredBytes"
-          @byte-selection="handleByteSelection"
-        />
-      </div>
+      <template v-if="features.hexView && fileBytes.length">
+        <div v-show="activeTab === 'hex'">
+          <HexView
+            :fileBytes="fileBytes"
+            :fileName="fileName"
+            :highlightedBytes="highlightedBytes"
+            :coloredBytes="coloredBytes"
+            :chunkManager="chunkManager"
+            @byte-selection="handleByteSelection"
+          />
+        </div>
+      </template>
 
       <!-- String Analysis View -->
-      <StringAnalysisView
-        v-if="activeTab === 'strings' && features.stringAnalysis && fileBytes.length"
-        :fileBytes="fileBytes"
-      />
+      <template v-if="features.stringAnalysis && fileBytes.length">
+        <StringAnalysisView
+          v-show="activeTab === 'strings'"
+          :fileBytes="fileBytes"
+          ref="stringAnalysisView"
+        />
+      </template>
 
       <!-- New Information Tab Content -->
       <div v-if="activeTab === 'info'" class="p-4 bg-gray-100 rounded-lg">
-        <h2 class="text-xl font-semibold">How to Use Bytes Revealer</h2>
-        <p>Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.</p>
+        <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.3</h2>
 
-        <p>Bytes Revealer does NOT store any files or data. All analysis is performed in your browser.</p>
+        <p class="mt-3"><strong>About:</strong> Bytes Revealer is a comprehensive binary analysis and reverse engineering tool designed for security researchers, forensic analysts, malware analysts, and developers. It provides powerful features for examining, searching, and understanding binary files of any type.</p>
 
-        <p><u>Current Limitation:</u> Files smaller than 50MB can undergo full analysis, while files larger than 50MB and up to 1.5GB are limited to Visual View and Hex View analysis.</p>
-
-        <p>Let us know if you like any modifications! 😊</p>
-
-        <p class="mt-2">Follow these steps:</p>
-        
+        <p class="mt-3"><strong>Key Features:</strong></p>
         <ul class="list-disc ml-6 mt-2">
-          <li>Upload a file by clicking the file input field.</li>
-          <li>Select the type of analysis you want (File Analysis, Visual View, Hex View, or String Analysis).</li>
-          <li>Navigate through the different tabs to explore the file structure.</li>
-          <li>Use the search bar to find specific byte patterns or ASCII strings.</li>
-          <li>Click on any colored square to highlight a byte. To remove a highlight, select the white square and click on the highlighted byte.</li>
+          <li><strong>Multiple Analysis Views:</strong> File analysis, Visual representation, Hex editor, and String extraction</li>
+          <li><strong>Advanced File Support:</strong> Handles files up to 1.5GB with progressive loading</li>
+          <li><strong>Kaitai Struct Integration:</strong> Parse and analyze 100+ binary formats automatically</li>
+          <li><strong>Security & Privacy:</strong> All processing happens locally in your browser - no data is uploaded or stored</li>
+          <li><strong>Export Capabilities:</strong> Export analysis results to JSON with timestamps and comprehensive data</li>
         </ul>
 
+        <p class="mt-3"><strong>Performance Modes:</strong></p>
+        <ul class="list-disc ml-6 mt-2">
+          <li><strong>Files under 50MB:</strong> Full analysis including hashes, entropy, signatures, and string extraction</li>
+          <li><strong>Files 50MB-1.5GB:</strong> Optimized analysis with Visual and Hex views, progressive chunk loading</li>
+        </ul>
+
+        <p class="mt-3"><strong>Getting Started:</strong></p>
+        <ol class="list-decimal ml-6 mt-2">
+          <li><strong>Choose a file:</strong> Click "Choose File" or drag and drop a binary file</li>
+          <li><strong>Select analysis features:</strong> Check which analysis types you want to perform</li>
+          <li><strong>Navigate views:</strong> Use the tabs to switch between different analysis perspectives</li>
+          <li><strong>Search and explore:</strong> Use the search bar for hex patterns or ASCII/UTF-8 strings</li>
+          <li><strong>Export results:</strong> Save your analysis to JSON format with comprehensive metadata</li>
+        </ol>
+
+        <p class="mt-3"><strong>Pro Tips:</strong></p>
+        <ul class="list-disc ml-6 mt-2">
+          <li>Press <kbd style="padding: 2px 6px; background: #e5e7eb; border: 1px solid #9ca3af; border-radius: 3px;">L</kbd> to lock the data inspector on a specific byte</li>
+          <li>Use the color palette in Visual/Hex views to highlight and annotate interesting bytes</li>
+          <li>Right-click in Hex View to access the context menu for copying bytes in various formats</li>
+          <li>Toggle between blue and categorized color schemes in Visual View using the 🎨 button</li>
+          <li>Click the <strong>?</strong> button in the header for detailed help, changelog, and documentation</li>
+        </ul>
+
+        <p class="mt-3"><strong>Need Help?</strong> Click the help button (?) next to the file selector for the user manual, changelog, and more information.</p>
+
+        <p class="mt-3 text-sm text-gray-600">Version 0.3 | © 2025 VULNEX | <a href="https://github.com/vulnex/bytesrevealer" target="_blank" class="text-blue-600 underline">GitHub</a> | <a href="https://bytesrevealer.online" target="_blank" class="text-blue-600 underline">Website</a></p>
       </div>
 
       <!-- Export Options View -->
@@ -249,7 +324,14 @@
 
   </div>
 
-  <p style="text-align:center"><a href="https://github.com/vulnex/bytesrevealer" target="_blank" class="text-blue-600 underline">Download in Github</a></p>
+  <!-- Format Loading Indicator -->
+  <FormatLoadingIndicator ref="formatLoadingIndicator" />
+
+  <!-- Help Dialog -->
+  <HelpDialog
+    v-if="showHelpDialog"
+    @close="showHelpDialog = false"
+  />
 
 </template>
 
@@ -266,13 +348,16 @@ import StringAnalysisView from './components/StringAnalysisView.vue'
 import ColorPalette from './components/ColorPalette.vue'
 import ExportOptions from './components/ExportOptions.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
-import { 
-  processFileInChunks, 
+import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
+import HelpDialog from './components/HelpDialog.vue'
+import {
+  processFileInChunks,
   analyzeFileInChunks,
   validateFileSize,
   formatFileSize,
   calculateFileHashes,
-  FILE_LIMITS 
+  detectFileType,
+  FILE_LIMITS
 } from './utils/fileHandler'
 import { FILE_SIGNATURES, detectFileTypes, isFileType } from './utils/fileSignatures'
 import { 
@@ -282,6 +367,15 @@ import {
   detectNestedFiles 
 } from './utils/advancedFileDetection'
 import { useSettingsStore } from './stores/settings'
+import { useFormatStore } from './stores/format'
+import { createLogger } from './utils/logger'
+import fileChunkManager from './utils/FileChunkManager'
+import { calculateOptimizedEntropy } from './utils/entropyOptimized'
+
+const logger = createLogger('App')
+
+// Initialize search worker
+let searchWorker = null
 
 export default {
   name: 'App',
@@ -296,16 +390,23 @@ export default {
     StringAnalysisView,
     ColorPalette,
     ExportOptions,
-    SettingsPanel
+    SettingsPanel,
+    FormatLoadingIndicator,
+    HelpDialog
   },
 
   data() {
     return {
       fileBytes: new Uint8Array(),
+      fileName: null,
       activeTab: 'info',
       searchPattern: '',
       searchType: 'hex',
       highlightedBytes: [],
+      searchProgress: 0,
+      isSearching: false,
+      searchResults: [],
+      showHelpDialog: false,
       entropy: 0,
       fileSignatures: [],
       hashes: {
@@ -313,6 +414,7 @@ export default {
         sha1: '',
         sha256: ''
       },
+      detectedFileType: null,
       activeGraphTab: 'entropy',
       loading: {
         file: false,
@@ -330,12 +432,12 @@ export default {
       coloredBytes: [],
       currentColor: null,
       isSelecting: false,
-      FILE_LIMITS
+      FILE_LIMITS,
+      chunkManager: null
     }
   },
 
   methods: {
-
     async handleFileUpload(event) {
   const file = event.target.files[0];
   if (!file) return;
@@ -345,26 +447,109 @@ export default {
     this.error = null;
     this.resetProgress();
     this.coloredBytes = []; // Reset colored bytes
-    
-    // Basic file loading first
-    const buffer = await file.arrayBuffer();
-    this.fileBytes = new Uint8Array(buffer);
-    
-    // Check file size and adjust analysis options
-    if (file.size > FILE_LIMITS.ANALYSIS_SIZE_LIMIT) {
-      // Disable complex analysis for large files
-      this.features.fileAnalysis = false;
-      this.features.stringAnalysis = false;
-      
-      // Show warning to user
-      this.error = `File size exceeds 50MB. Only Visual and Hex views are available for large files.`;
-      
-      // Set active tab to visual view since analysis is disabled
-      this.activeTab = 'visual';
-      return;
+    this.fileName = file.name; // Store the filename
+
+    // Reset format store for new file
+    const formatStore = useFormatStore()
+    formatStore.resetForFile()
+
+    // Clear any previous chunk data
+    if (this.chunkManager) {
+      await fileChunkManager.clear()
+      this.chunkManager = null
     }
 
-    this.activeTab = 'file'; // Auto-switch to File View after successful upload
+    // Basic file loading first
+    logger.info(`Loading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
+
+    // For very large files, show a warning
+    if (file.size > 100 * 1024 * 1024) { // > 100MB
+      this.error = `Loading large file (${(file.size / 1024 / 1024).toFixed(0)}MB). This may take a moment...`;
+    }
+
+    // Give UI time to update before blocking operation
+    await new Promise(resolve => setTimeout(resolve, 10));
+
+    // Use chunk manager for large files (>50MB)
+    if (file.size > 50 * 1024 * 1024) {
+      logger.info('Using chunk manager for large file');
+
+      // Use V1 FileChunkManager which is stable
+      this.fileBytes = await fileChunkManager.initialize(file);
+
+      // Check if it's a chunked array
+      if (this.fileBytes.isChunked) {
+        logger.info('File loaded with chunking enabled');
+        // Store chunk manager reference for components
+        this.chunkManager = fileChunkManager;
+      }
+    } else {
+      // Standard loading for smaller files
+      const buffer = await file.arrayBuffer();
+      this.fileBytes = new Uint8Array(buffer);
+      this.chunkManager = null;
+    }
+
+    logger.info(`File loaded: ${this.fileBytes.length} bytes`);
+    
+    // Clear the loading message
+    if (file.size > 100 * 1024 * 1024) {
+      this.error = null;
+    }
+    
+    // Check file size for analysis mode
+    const isLargeFile = file.size > FILE_LIMITS.ANALYSIS_SIZE_LIMIT;
+
+    // Detect file type (works for both large and small files)
+    try {
+      // Try to detect from the file object first
+      this.detectedFileType = await detectFileType(file);
+
+      // If detected as ZIP and filename ends with .app.zip, update description
+      if (this.detectedFileType && this.detectedFileType.ext === 'zip' &&
+          file.name.toLowerCase().endsWith('.app.zip')) {
+        this.detectedFileType.description = 'macOS Application Bundle (ZIP)';
+      }
+    } catch (err) {
+      logger.warn('File type detection from File object failed, trying from loaded bytes:', err);
+
+      // If that fails and we have bytes, try detecting from the loaded bytes
+      if (this.fileBytes && this.fileBytes.length > 0) {
+        try {
+          // For progressive files, get first chunk
+          const firstBytes = this.fileBytes.isProgressive
+            ? await this.fileBytes.slice(0, Math.min(1024 * 1024, this.fileBytes.length))
+            : this.fileBytes;
+
+          this.detectedFileType = await detectFileType(firstBytes);
+        } catch (err2) {
+          logger.error('File type detection from bytes also failed:', err2);
+          this.detectedFileType = {
+            detected: false,
+            ext: 'unknown',
+            mime: 'application/octet-stream',
+            description: 'Unable to detect file type',
+            confidence: 'none'
+          };
+        }
+      }
+    }
+
+    if (isLargeFile) {
+      // For large files, keep all features enabled (optimized for performance)
+      // Don't change the features state - keep user's selection
+      // this.features are already set by user via checkboxes
+
+      // Show info to user about optimized mode
+      this.error = `File size exceeds 50MB. Using optimized analysis mode.`;
+    }
+
+    // Set active tab based on features
+    if (this.features.fileAnalysis) {
+      this.activeTab = 'file'; // Auto-switch to File View after successful upload
+    } else {
+      this.activeTab = 'visual';
+    }
 
     // Validate file size for overall limit
     try {
@@ -381,40 +566,66 @@ export default {
       return;
     }
 
-    // Only perform file analysis if selected AND file size is within limit
-    if (this.features.fileAnalysis && file.size <= FILE_LIMITS.ANALYSIS_SIZE_LIMIT) {
+    // Perform file analysis if selected
+    if (this.features.fileAnalysis) {
       this.loading.analysis = true;
       try {
-        // First detect file signatures as this is faster
+        // Always detect file signatures (fast, works for any size)
         await this.detectFileSignatures();
         this.progress = 20;
 
-        // Then calculate hashes
-        const hashes = await calculateFileHashes(
-          file,
-          (progress) => {
-            this.progress = 20 + progress * 0.4;
-          }
-        );
-        this.hashes = hashes;
-        
-        // Finally calculate entropy as it's most intensive
-        const results = await analyzeFileInChunks(
-          file, 
-          { fileAnalysis: true },
-          (progress) => {
-            this.progress = 60 + progress * 0.4;
-          }
-        );
-        this.entropy = results.entropy;
-        
-        this.progress = 100;
+        if (isLargeFile) {
+          // Limited analysis for large files
+          // Skip full hashes for performance, but calculate entropy on a sample
+          this.hashes = {
+            md5: 'N/A (file > 50MB)',
+            sha1: 'N/A (file > 50MB)',
+            sha256: 'N/A (file > 50MB)'
+          };
+
+          // Use optimized entropy calculation for large files
+          const entropyResult = calculateOptimizedEntropy(this.fileBytes, {
+            blockSize: 256,
+            maxBlocks: 1000,
+            sampleRate: 0.1 // Sample 10% of blocks for very large files
+          })
+          this.entropy = entropyResult.globalEntropy
+          logger.info(`Calculated entropy using optimized sampling: ${this.entropy.toFixed(4)}`)
+          logger.info(`Processed ${this.formatFileSize(entropyResult.processedBytes)} of ${this.formatFileSize(entropyResult.totalBytes)}`)
+
+          this.progress = 100;
+        } else {
+          // Full analysis for smaller files
+          // Calculate hashes
+          const hashes = await calculateFileHashes(
+            file,
+            (progress) => {
+              this.progress = 20 + progress * 0.4;
+            }
+          );
+          this.hashes = hashes;
+
+          // Detect file type
+          this.detectedFileType = await detectFileType(file);
+
+          // Calculate entropy
+          const results = await analyzeFileInChunks(
+            file, 
+            { fileAnalysis: true },
+            (progress) => {
+              this.progress = 60 + progress * 0.4;
+            }
+          );
+          this.entropy = results.entropy;
+          
+          this.progress = 100;
+        }
 
         // Set active tab to file analysis if all succeeded
         this.activeTab = 'file';
 
       } catch (error) {
-        console.error('Analysis error:', error);
+        logger.error('Analysis error:', error);
         this.error = `Analysis error: ${error.message}`;
         this.entropy = 0;
         this.fileSignatures = [];
@@ -426,19 +637,21 @@ export default {
         
         // If analysis fails, set to visual view
         this.activeTab = 'visual';
+      } finally {
+        this.loading.analysis = false;
       }
-    } else {
-      // If no analysis is selected, default to visual view
+    } else if (!this.features.fileAnalysis) {
+      // If file analysis is not selected, default to visual view
       this.activeTab = 'visual';
     }
 
   } catch (error) {
-    console.error('File processing error:', error);
+    logger.error('File processing error:', error);
     this.error = error.message;
   } finally {
     this.loading.file = false;
     this.loading.analysis = false;
-    this.progress = 0;
+    this.resetProgress();
   }
 },
 
@@ -456,7 +669,7 @@ export default {
 
     async detectFileSignatures() {
       if (!this.fileBytes || !this.fileBytes.length) {
-        console.warn('No file bytes available for signature detection');
+        logger.warn('No file bytes available for signature detection');
         return;
       }
 
@@ -477,12 +690,12 @@ export default {
         }));
         
         if (this.fileSignatures.length > 0) {
-          console.log('Detected signatures:', this.fileSignatures);
+          logger.debug('Detected signatures:', this.fileSignatures);
         } else {
-          console.log('No known file signatures detected');
+          logger.debug('No known file signatures detected');
         }
       } catch (error) {
-        console.error('Error detecting file signatures:', error);
+        logger.error('Error detecting file signatures:', error);
         this.error = `Failed to detect file signatures: ${error.message}`;
         this.fileSignatures = []; // Reset signatures on error
       }
@@ -511,77 +724,132 @@ export default {
     clearSearch() {
       this.searchPattern = '';
       this.highlightedBytes = [];
+      this.searchResults = [];
+      this.searchProgress = 0;
+      this.cancelSearch();
     },
 
     async search() {
       if (!this.searchPattern) return;
-      
+      if (this.isSearching) return;
+
       try {
         this.loading.search = true;
+        this.isSearching = true;
         this.highlightedBytes = [];
+        this.searchResults = [];
+        this.searchProgress = 0;
 
-        if (this.searchType === 'hex') {
-          await this.searchHexPattern();
-        } else {
-          await this.searchAsciiPattern();
+        // Initialize worker if needed
+        if (!searchWorker) {
+          searchWorker = new Worker(
+            new URL('./workers/SearchWorker.js', import.meta.url),
+            { type: 'module' }
+          );
         }
+
+        // Set up worker message handler
+        const searchPromise = new Promise((resolve, reject) => {
+          searchWorker.onmessage = (event) => {
+            const { type, ...data } = event.data;
+
+            switch (type) {
+              case 'searchStarted':
+                logger.debug('Search started, total bytes:', data.totalBytes);
+                break;
+
+              case 'progress':
+                this.searchProgress = data.progress;
+                break;
+
+              case 'searchComplete':
+                this.highlightedBytes = data.highlightedBytes;
+                this.searchResults = data.results;
+                this.searchProgress = 100;
+                logger.info(`Search complete: ${data.matchCount} matches found`);
+                resolve();
+                break;
+
+              case 'searchCancelled':
+                logger.info('Search cancelled');
+                resolve();
+                break;
+
+              case 'error':
+                reject(new Error(data.error));
+                break;
+            }
+          };
+
+          searchWorker.onerror = (error) => {
+            reject(error);
+          };
+        });
+
+        // Send search request to worker
+        searchWorker.postMessage({
+          type: 'search',
+          data: {
+            fileData: this.fileBytes,
+            searchType: this.searchType,
+            pattern: this.searchPattern,
+            options: {
+              caseInsensitive: false,
+              regexFlags: 'g'
+            }
+          }
+        });
+
+        await searchPromise;
+
       } catch (error) {
         this.error = 'Search error: ' + error.message;
-        console.error('Search error:', error);
+        logger.error('Search error:', error);
       } finally {
         this.loading.search = false;
+        this.isSearching = false;
+        this.searchProgress = 0;
       }
     },
 
-    searchHexPattern() {
-      const pattern = this.searchPattern.trim().split(/\s+/).map(hex => parseInt(hex, 16));
-      if (pattern.some(isNaN)) {
-        alert('Invalid hex pattern');
-        return;
-      }
-
-      for (let i = 0; i <= this.fileBytes.length - pattern.length; i++) {
-        let match = true;
-        for (let j = 0; j < pattern.length; j++) {
-          if (this.fileBytes[i + j] !== pattern[j]) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          for (let j = 0; j < pattern.length; j++) {
-            this.highlightedBytes.push(i + j);
-          }
-        }
+    cancelSearch() {
+      if (searchWorker && this.isSearching) {
+        searchWorker.postMessage({ type: 'cancel' });
+        this.isSearching = false;
+        this.searchProgress = 0;
       }
     },
 
-    searchAsciiPattern() {
-      const pattern = this.searchPattern;
-      const patternBytes = Array.from(pattern).map(char => char.charCodeAt(0));
+    navigateToMatch(match) {
+      if (!match || typeof match.offset !== 'number') return;
 
-      for (let i = 0; i <= this.fileBytes.length - patternBytes.length; i++) {
-        let match = true;
-        for (let j = 0; j < patternBytes.length; j++) {
-          if (this.fileBytes[i + j] !== patternBytes[j]) {
-            match = false;
-            break;
-          }
-        }
-        if (match) {
-          for (let j = 0; j < patternBytes.length; j++) {
-            this.highlightedBytes.push(i + j);
-          }
-        }
+      // Switch to hex view to show the match
+      if (this.activeTab !== 'hex') {
+        this.activeTab = 'hex';
       }
+
+      // DON'T clear highlightedBytes - keep all matches highlighted
+      // The highlightedBytes should already contain all match positions from the search
+
+      // Emit event for hex view to scroll to this specific match
+      this.$nextTick(() => {
+        const hexViewEvent = new CustomEvent('scrollToOffset', {
+          detail: {
+            offset: match.offset,
+            length: match.length
+          }
+        });
+        window.dispatchEvent(hexViewEvent);
+      });
     },
+
 
     // Save analysis preferences to localStorage
     saveAnalysisPreferences() {
       try {
         localStorage.setItem('analysisOptions', JSON.stringify(this.features));
       } catch (error) {
-        console.error('Error saving analysis preferences:', error);
+        logger.error('Error saving analysis preferences:', error);
       }
     },
 
@@ -590,10 +858,17 @@ export default {
       try {
         const saved = localStorage.getItem('analysisOptions');
         if (saved) {
-          this.features = JSON.parse(saved);
+          const savedFeatures = JSON.parse(saved);
+          // Merge saved features with defaults, ensuring all are defined
+          this.features = {
+            fileAnalysis: savedFeatures.fileAnalysis !== false,
+            visualView: savedFeatures.visualView !== false,
+            hexView: savedFeatures.hexView !== false,
+            stringAnalysis: savedFeatures.stringAnalysis !== false
+          };
         }
       } catch (error) {
-        console.error('Error loading analysis preferences:', error);
+        logger.error('Error loading analysis preferences:', error);
       }
     },
 
@@ -623,12 +898,137 @@ export default {
       }
       
       // Update other settings as needed
+    },
+
+    formatFileSize(bytes) {
+      const units = ['B', 'KB', 'MB', 'GB']
+      let size = bytes
+      let unitIndex = 0
+
+      while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024
+        unitIndex++
+      }
+
+      return `${size.toFixed(1)} ${units[unitIndex]}`
+    },
+
+    calculateEntropy(bytes) {
+      if (!bytes || bytes.length === 0) return 0
+
+      // Count byte frequencies
+      const frequencies = new Array(256).fill(0)
+      for (const byte of bytes) {
+        frequencies[byte]++
+      }
+
+      // Calculate Shannon entropy
+      let entropy = 0
+      const len = bytes.length
+
+      for (let i = 0; i < 256; i++) {
+        if (frequencies[i] > 0) {
+          const probability = frequencies[i] / len
+          entropy -= probability * Math.log2(probability)
+        }
+      }
+
+      return entropy
+    },
+
+    initializeTheme() {
+      // Check if theme is already saved in localStorage
+      const savedTheme = localStorage.getItem('theme')
+
+      if (!savedTheme) {
+        // No saved theme, set dark mode as default
+        const defaultTheme = 'dark'
+        document.documentElement.classList.add('dark-mode')
+        localStorage.setItem('theme', defaultTheme)
+        logger.info('Initialized with dark mode as default')
+      } else {
+        // Apply saved theme
+        document.documentElement.classList.add(`${savedTheme}-mode`)
+        logger.info(`Applied saved theme: ${savedTheme}`)
+      }
+    },
+
+    resetFile() {
+      // Clear all file-related data
+      this.fileBytes = new Uint8Array()
+      this.fileName = null
+      this.entropy = 0
+      this.fileSignatures = []
+      this.hashes = {
+        md5: '',
+        sha1: '',
+        sha256: ''
+      }
+
+      // Clean up search worker
+      if (searchWorker) {
+        searchWorker.terminate();
+        searchWorker = null;
+      }
+
+      this.highlightedBytes = []
+      this.coloredBytes = []
+      this.searchPattern = ''
+      this.error = null
+      this.progress = 0
+      this.activeTab = 'info'
+
+      // Clear chunk manager if exists
+      if (this.chunkManager) {
+        fileChunkManager.clear()
+        this.chunkManager = null
+      }
+
+      // Reset file input
+      if (this.$refs.fileInput) {
+        this.$refs.fileInput.value = ''
+      }
+
+      // Reset loading states
+      this.loading.file = false
+      this.loading.analysis = false
+      this.loading.search = false
+
+      // Enable all analysis features
+      this.features.fileAnalysis = true
+      this.features.visualView = true
+      this.features.hexView = true
+      this.features.stringAnalysis = true
+
+      // Reset format store
+      const formatStore = useFormatStore()
+      formatStore.resetForFile()
+
+      logger.info('File and analysis data cleared, all features enabled')
     }
   },
 
   // Load saved preferences when component is mounted
   mounted() {
+    // Set defaults first
+    this.features = {
+      fileAnalysis: true,
+      visualView: true,
+      hexView: true,
+      stringAnalysis: true
+    };
+
+    // Then load any saved preferences (which will override defaults if present)
     this.loadAnalysisPreferences();
+    this.initializeTheme();
+  },
+
+  // Clean up resources on unmount
+  beforeUnmount() {
+    if (searchWorker) {
+      searchWorker.terminate();
+      searchWorker = null;
+    }
   },
 
   // Save preferences when they change
@@ -646,6 +1046,204 @@ export default {
 <style>
 /* ... existing styles ... */
 
+/* Performance indicator for large files */
+.performance-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Help button styles */
+.help-section {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color);
+  height: 32px;
+}
+
+.help-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.help-btn:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+:root[class='dark-mode'] .help-btn {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+:root[class='dark-mode'] .help-btn:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+.indicator-icon {
+  font-size: 18px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Title and header styles */
+.title {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #4a5568;
+  margin-bottom: 5px;
+}
+
+.copyright {
+  text-align: center;
+  color: #4a5568;
+  margin-bottom: 20px;
+}
+
+.copyright a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.copyright a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode overrides */
+.dark-mode .title {
+  color: #f7fafc;
+}
+
+.dark-mode .subtitle {
+  color: #cbd5e0;
+}
+
+.dark-mode .copyright {
+  color: #cbd5e0;
+}
+
+.dark-mode .copyright a {
+  color: #60a5fa;
+}
+
+/* Custom file input styles */
+.custom-file-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.file-button {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.file-button:hover {
+  background-color: #2563eb;
+}
+
+.file-name {
+  color: var(--text-primary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.reset-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.reset-btn:hover {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+:root[class='dark-mode'] .reset-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Dark mode for custom file input */
+.dark-mode .file-button {
+  background-color: #60a5fa;
+  color: #1e293b;
+}
+
+.dark-mode .file-button:hover {
+  background-color: #93c5fd;
+}
+
+.dark-mode .file-name {
+  color: var(--text-primary);
+}
+
 /* Theme Variables */
 :root {
   --bg-primary: #ffffff;
@@ -654,11 +1252,14 @@ export default {
   --text-secondary: #4a5568;
   --border-color: #e2e8f0;
   --link-color: #3b82f6;
+  --tab-active-color: #48bb78; /* Green color for active tabs */
   --error-bg: #fee2e2;
   --error-text: #dc2626;
   --checkbox-bg: #ffffff;
   --input-bg: #ffffff;
   --input-text: #1a1a1a;
+  --hover-bg: #f3f4f6;
+  --text-muted: #9ca3af;
 }
 
 :root[class='dark-mode'] {
@@ -668,6 +1269,7 @@ export default {
   --text-secondary: #cbd5e0;
   --border-color: #4a5568;
   --link-color: #60a5fa;
+  --tab-active-color: #68d391; /* Green color for active tabs in dark mode */
   --error-bg: #7f1d1d;
   --error-text: #fecaca;
   --checkbox-bg: #374151;
@@ -675,6 +1277,8 @@ export default {
   --input-text: #f7fafc;
   --hex-text: #f7fafc;
   --hex-offset: #cbd5e0;
+  --hover-bg: #374151;
+  --text-muted: #6b7280;
   --hex-ascii: #60a5fa;
   --graph-text: #f7fafc;
   --graph-line: #60a5fa;
@@ -715,12 +1319,12 @@ body {
 
 .tab.active {
   background: var(--bg-primary);
-  color: var(--link-color);
+  color: var(--tab-active-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
 .container {
-  max-width: 1200px;
+  max-width: 95%; /* Use percentage for responsive width */
   margin: 0 auto;
   padding: 20px;
 }
@@ -782,7 +1386,7 @@ h1 {
 
 .tab.active {
   background: var(--bg-primary);
-  color: var(--link-color);
+  color: var(--tab-active-color);
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
 }
 
@@ -963,7 +1567,7 @@ input[type="search"] {
 
 :root[class='dark-mode'] .tab.active {
   background-color: var(--bg-primary);
-  color: var(--link-color);
+  color: var(--tab-active-color);
 }
 
 /* Add specific styles for File View */
@@ -991,6 +1595,9 @@ input[type="search"] {
 }
 
 /* Add specific styles for Hex View */
+.hex-view {
+  width: 100% !important;
+}
 :root[class='dark-mode'] .hex-view {
   color: var(--hex-text);
 }
@@ -1023,7 +1630,7 @@ input[type="search"] {
 
 :root[class='dark-mode'] .tab.active {
   background-color: var(--bg-primary);
-  color: var(--link-color);
+  color: var(--tab-active-color);
 }
 
 /* Add styles for the byte frequency graph */

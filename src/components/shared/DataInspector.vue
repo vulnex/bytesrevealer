@@ -271,7 +271,7 @@
 
 <style scoped>
 .data-inspector {
-  width: 320px;
+  width: 100%;
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -414,7 +414,8 @@ export default {
       default: 0
     },
     fileBytes: {
-      type: Uint8Array,
+      type: Object,
+      validator: (value) => value instanceof Uint8Array,
       required: true
     },
     isLocked: {

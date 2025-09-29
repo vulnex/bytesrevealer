@@ -1,0 +1,20 @@
+version: '3'
+
+services:
+  bytesrevealer-nginx:
+    image: bytesrevealer:nginx
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+    container_name: bytesrevealer-nginx
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s

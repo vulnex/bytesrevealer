@@ -13,7 +13,7 @@
 
 /* Main container styles */
 .container {
-  max-width: 1200px;
+  max-width: 95%; /* Use most of screen width */
   margin: 0 auto;
   padding: 20px;
 }

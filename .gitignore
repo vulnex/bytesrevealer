@@ -46,3 +46,6 @@ nginx.conf
 
 # System files
 Thumbs.db
+
+# Development notes and documentation
+devnotes/

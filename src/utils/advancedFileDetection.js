@@ -12,6 +12,9 @@
 
 import { FILE_SIGNATURES, detectFileTypes, isFileType } from './fileSignatures';
 import { extractMetadata } from './metadataExtractor';
+import { createLogger } from './logger';
+
+const logger = createLogger('AdvancedFileDetection');
 
 class FileAnalysisError extends Error {
   constructor(message, type = 'ANALYSIS_ERROR') {
@@ -120,7 +123,7 @@ function findPEHeaderOffset(bytes) {
     
     return -1;
   } catch (error) {
-    console.error('Error in findPEHeaderOffset:', error);
+    logger.error('Error in findPEHeaderOffset:', error);
     return -1;
   }
 }
@@ -272,7 +275,7 @@ function analyzePEStructure(bytes) {
       imports: imports
     };
   } catch (error) {
-    console.error('Error analyzing PE structure:', error);
+    logger.error('Error analyzing PE structure:', error);
     return { error: error.message };
   }
 }
@@ -316,7 +319,7 @@ function detectSpecificFileType(bytes) {
           enhanced.details = analyzeGifStructure(bytes);
         }
       } catch (error) {
-        console.error(`Error analyzing ${type.name}:`, error);
+        logger.error(`Error analyzing ${type.name}:`, error);
         enhanced.details = { error: error.message };
       }
       
@@ -325,7 +328,7 @@ function detectSpecificFileType(bytes) {
     
     return enhancedTypes;
   } catch (error) {
-    console.error('Error in detectSpecificFileType:', error);
+    logger.error('Error in detectSpecificFileType:', error);
     throw error;
   }
 }
@@ -364,7 +367,7 @@ function extractPdfVersion(bytes) {
     const match = header.match(/PDF-(\d+\.\d+)/);
     return match ? match[1] : 'Unknown';
   } catch (error) {
-    console.error('Error extracting PDF version:', error);
+    logger.error('Error extracting PDF version:', error);
     return 'Unknown';
   }
 }
@@ -375,7 +378,7 @@ function isPdfEncrypted(bytes) {
     const header = new TextDecoder().decode(bytes.slice(0, 1024));
     return header.includes('/Encrypt');
   } catch (error) {
-    console.error('Error checking PDF encryption:', error);
+    logger.error('Error checking PDF encryption:', error);
     return false;
   }
 }
@@ -390,7 +393,7 @@ function countPdfObjects(bytes) {
     }
     return count;
   } catch (error) {
-    console.error('Error counting PDF objects:', error);
+    logger.error('Error counting PDF objects:', error);
     return 0;
   }
 }
@@ -409,7 +412,7 @@ function countZipEntries(bytes) {
     }
     return count;
   } catch (error) {
-    console.error('Error counting ZIP entries:', error);
+    logger.error('Error counting ZIP entries:', error);
     return 0;
   }
 }
@@ -421,7 +424,7 @@ function isZipCompressed(bytes) {
     const compressionMethod = bytes[8] | (bytes[9] << 8);
     return compressionMethod !== 0; // 0 = no compression
   } catch (error) {
-    console.error('Error checking ZIP compression:', error);
+    logger.error('Error checking ZIP compression:', error);
     return false;
   }
 }
@@ -440,7 +443,7 @@ function extractZipComment(bytes) {
     }
     return '';
   } catch (error) {
-    console.error('Error extracting ZIP comment:', error);
+    logger.error('Error extracting ZIP comment:', error);
     return '';
   }
 }
@@ -452,7 +455,7 @@ function extractPngDimensions(bytes) {
     const height = bytes[20] << 24 | bytes[21] << 16 | bytes[22] << 8 | bytes[23];
     return `${width}x${height}`;
   } catch (error) {
-    console.error('Error extracting PNG dimensions:', error);
+    logger.error('Error extracting PNG dimensions:', error);
     return 'Unknown';
   }
 }
@@ -470,7 +473,7 @@ function extractPngColorType(bytes) {
     };
     return types[colorType] || 'Unknown';
   } catch (error) {
-    console.error('Error extracting PNG color type:', error);
+    logger.error('Error extracting PNG color type:', error);
     return 'Unknown';
   }
 }
@@ -481,7 +484,7 @@ function extractPngCompression(bytes) {
     const compression = bytes[24];
     return compression === 0 ? 'Deflate' : 'Unknown';
   } catch (error) {
-    console.error('Error extracting PNG compression:', error);
+    logger.error('Error extracting PNG compression:', error);
     return 'Unknown';
   }
 }
@@ -497,7 +500,7 @@ function analyzeElfStructure(bytes) {
       entryPoint: getElfEntryPoint(bytes)
     };
   } catch (error) {
-    console.error('Error analyzing ELF structure:', error);
+    logger.error('Error analyzing ELF structure:', error);
     return { error: 'Failed to analyze ELF structure' };
   }
 }
@@ -512,7 +515,7 @@ function analyzeJpegStructure(bytes) {
       thumbnails: checkJpegThumbnails(bytes)
     };
   } catch (error) {
-    console.error('Error analyzing JPEG structure:', error);
+    logger.error('Error analyzing JPEG structure:', error);
     return { error: 'Failed to analyze JPEG structure' };
   }
 }
@@ -527,7 +530,7 @@ function analyzeGifStructure(bytes) {
       colorDepth: getGifColorDepth(bytes)
     };
   } catch (error) {
-    console.error('Error analyzing GIF structure:', error);
+    logger.error('Error analyzing GIF structure:', error);
     return { error: 'Failed to analyze GIF structure' };
   }
 }
@@ -676,7 +679,7 @@ function getPETimestamp(bytes, peOffset) {
     
     return new Date(timestamp * 1000).toISOString();
   } catch (error) {
-    console.error('Error getting PE timestamp:', error);
+    logger.error('Error getting PE timestamp:', error);
     return 'Unknown';
   }
 }
@@ -687,7 +690,7 @@ function countPESections(bytes, peOffset) {
     
     return bytes[peOffset + 6] | (bytes[peOffset + 7] << 8);
   } catch (error) {
-    console.error('Error counting PE sections:', error);
+    logger.error('Error counting PE sections:', error);
     return 0;
   }
 }
@@ -721,7 +724,7 @@ function getPEImportCount(bytes, peOffset) {
     
     return count;
   } catch (error) {
-    console.error('Error counting PE imports:', error);
+    logger.error('Error counting PE imports:', error);
     return 0;
   }
 }
@@ -744,7 +747,7 @@ function getJpegColorSpace(bytes) {
     }
     return 'Unknown';
   } catch (error) {
-    console.error('Error getting JPEG color space:', error);
+    logger.error('Error getting JPEG color space:', error);
     return 'Unknown';
   }
 }
@@ -762,7 +765,7 @@ function getJpegCompression(bytes) {
     }
     return 'Unknown';
   } catch (error) {
-    console.error('Error getting JPEG compression:', error);
+    logger.error('Error getting JPEG compression:', error);
     return 'Unknown';
   }
 }
@@ -785,7 +788,7 @@ function checkJpegThumbnails(bytes) {
     }
     return false;
   } catch (error) {
-    console.error('Error checking JPEG thumbnails:', error);
+    logger.error('Error checking JPEG thumbnails:', error);
     return false;
   }
 }
@@ -798,7 +801,7 @@ function getGifColorDepth(bytes) {
     const bitsPerPixel = (packedField & 0x07) + 1;
     return `${bitsPerPixel} bits`;
   } catch (error) {
-    console.error('Error getting GIF color depth:', error);
+    logger.error('Error getting GIF color depth:', error);
     return 'Unknown';
   }
 }
@@ -810,7 +813,7 @@ function getGifDimensions(bytes) {
     const height = bytes[8] | (bytes[9] << 8);
     return `${width}x${height}`;
   } catch (error) {
-    console.error('Error getting GIF dimensions:', error);
+    logger.error('Error getting GIF dimensions:', error);
     return 'Unknown';
   }
 }
@@ -821,7 +824,7 @@ function countElfSections(bytes) {
     if (bytes.length < 48) return 0;
     return bytes[48] | (bytes[49] << 8);
   } catch (error) {
-    console.error('Error counting ELF sections:', error);
+    logger.error('Error counting ELF sections:', error);
     return 0;
   }
 }
@@ -853,7 +856,7 @@ function getElfEntryPoint(bytes) {
     
     return `0x${entry.toString(16).padStart(is64bit ? 16 : 8, '0')}`;
   } catch (error) {
-    console.error('Error getting ELF entry point:', error);
+    logger.error('Error getting ELF entry point:', error);
     return 'Unknown';
   }
 }
@@ -872,7 +875,7 @@ function analyzeMachOStructure(bytes) {
 
     return machODetails;
   } catch (error) {
-    console.error('Error analyzing Mach-O structure:', error);
+    logger.error('Error analyzing Mach-O structure:', error);
     return { error: error.message };
   }
 }
@@ -889,7 +892,7 @@ function getMachOType(bytes) {
     };
     return types[magic] || 'Unknown';
   } catch (error) {
-    console.error('Error getting Mach-O type:', error);
+    logger.error('Error getting Mach-O type:', error);
     return 'Unknown';
   }
 }
@@ -909,7 +912,7 @@ function getMachOArchitecture(bytes) {
     };
     return cpusubtypes[cputype] || `Unknown (${cputype.toString(16)})`;
   } catch (error) {
-    console.error('Error getting Mach-O architecture:', error);
+    logger.error('Error getting Mach-O architecture:', error);
     return 'Unknown';
   }
 }
@@ -919,7 +922,7 @@ function countMachOLoadCommands(bytes) {
     const ncmds = bytes[16] | (bytes[17] << 8) | (bytes[18] << 16) | (bytes[19] << 24);
     return ncmds;
   } catch (error) {
-    console.error('Error counting Mach-O load commands:', error);
+    logger.error('Error counting Mach-O load commands:', error);
     return 0;
   }
 }
@@ -946,7 +949,7 @@ function getMachOSegments(bytes) {
     
     return segments;
   } catch (error) {
-    console.error('Error getting Mach-O segments:', error);
+    logger.error('Error getting Mach-O segments:', error);
     return [];
   }
 }
@@ -971,7 +974,7 @@ function checkMachODynamicLinking(bytes) {
     
     return false;
   } catch (error) {
-    console.error('Error checking Mach-O dynamic linking:', error);
+    logger.error('Error checking Mach-O dynamic linking:', error);
     return false;
   }
 }
@@ -1001,7 +1004,7 @@ function getMachOMinVersion(bytes) {
     
     return 'Unknown';
   } catch (error) {
-    console.error('Error getting Mach-O minimum version:', error);
+    logger.error('Error getting Mach-O minimum version:', error);
     return 'Unknown';
   }
 }
@@ -1039,7 +1042,7 @@ function getUniversalArchitectures(bytes) {
     
     return architectures;
   } catch (error) {
-    console.error('Error getting Universal Binary architectures:', error);
+    logger.error('Error getting Universal Binary architectures:', error);
     return [];
   }
 }

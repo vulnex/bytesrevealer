@@ -66,6 +66,23 @@
       </div>
     </div>
 
+    <!-- Debug Settings -->
+    <div class="setting-section mb-6">
+      <h4 class="text-lg font-medium mb-3">Developer Options</h4>
+      <div class="space-y-3">
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            v-model="settings.debugMode"
+            @change="toggleDebugMode"
+            class="form-checkbox"
+          >
+          <span>Enable Debug Console Output</span>
+        </label>
+        <span class="hint text-sm text-gray-500">Shows detailed logging in browser console</span>
+      </div>
+    </div>
+
     <!-- Base Offset Setting -->
     <div class="setting-section mb-6">
       <h4 class="text-lg font-medium mb-3">Base Offset</h4>
@@ -118,6 +135,9 @@
 
 <script>
 import { useSettingsStore } from '../stores/settings'
+import { createLogger } from '../utils/logger'
+
+const logger = createLogger('SettingsPanel')
 
 export default {
   name: 'SettingsPanel',
@@ -125,10 +145,11 @@ export default {
     const settingsStore = useSettingsStore()
     return {
       settings: {
-        theme: 'light',
+        theme: 'dark', // Default to dark mode
         hexUppercase: false,
         bytesPerRow: '16',
-        baseOffset: settingsStore.baseOffset
+        baseOffset: settingsStore.baseOffset,
+        debugMode: localStorage.getItem('debugMode') === 'true'
       },
       offsetError: ''
     }
@@ -144,13 +165,26 @@ export default {
       document.documentElement.classList.remove('light-mode', 'dark-mode');
       document.documentElement.classList.add(`${theme}-mode`);
       localStorage.setItem('theme', theme);
-      
+
       // Update meta theme-color for mobile browsers
       const metaThemeColor = document.querySelector('meta[name="theme-color"]');
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content', 
+        metaThemeColor.setAttribute('content',
           theme === 'dark' ? '#1a202c' : '#ffffff'
         );
+      }
+    },
+    toggleDebugMode() {
+      // Save debug mode preference to localStorage
+      localStorage.setItem('debugMode', this.settings.debugMode.toString());
+
+      // Show feedback to user
+      if (this.settings.debugMode) {
+        logger.info('Debug mode enabled - console logging is now active');
+        alert('Debug mode enabled. Console logging is now active. Refresh the page to see debug messages.');
+      } else {
+        logger.info('Debug mode disabled - console logging is now inactive');
+        alert('Debug mode disabled. Console logging is now inactive. Refresh the page to hide debug messages.');
       }
     },
     saveSettings() {
@@ -158,7 +192,7 @@ export default {
         localStorage.setItem('bytesRevealerSettings', JSON.stringify(this.settings));
         this.$emit('settings-updated', this.settings);
       } catch (error) {
-        console.error('Error saving settings:', error);
+        logger.error('Error saving settings:', error);
       }
     },
     resetSettings() {
@@ -190,7 +224,7 @@ export default {
         // Apply the theme
         this.applyTheme(this.settings.theme);
       } catch (error) {
-        console.error('Error loading settings:', error);
+        logger.error('Error loading settings:', error);
       }
     },
     validateOffset(event) {

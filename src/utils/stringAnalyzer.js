@@ -12,6 +12,10 @@
  */
 
 // utils/stringAnalyzer.js
+import { createLogger } from './logger.js'
+
+const logger = createLogger('StringAnalyzer')
+
 export class StringAnalyzer {
   static escapeString(str) {
     return str
@@ -110,7 +114,7 @@ export class StringAnalyzer {
           }
         }
       } catch (error) {
-        console.warn(`UTF-8 extraction error at offset ${i}:`, error);
+        logger.warn(`UTF-8 extraction error at offset ${i}:`, error);
       }
     }
     

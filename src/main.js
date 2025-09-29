@@ -26,3 +26,33 @@ const pinia = createPinia()
 // Install Pinia before mounting
 app.use(pinia)
 app.mount('#app')
+
+// Register Service Worker for PWA capabilities
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/service-worker.js')
+      .then(registration => {
+        // console.log('Service Worker registered:', registration.scope)
+
+        // Check for updates periodically
+        setInterval(() => {
+          registration.update()
+        }, 60000) // Check every minute
+
+        // Handle updates
+        registration.addEventListener('updatefound', () => {
+          const newWorker = registration.installing
+          newWorker.addEventListener('statechange', () => {
+            if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+              // New service worker available, prompt user to refresh
+              // console.log('New version available! Refresh to update.')
+              // Could show a notification or prompt here
+            }
+          })
+        })
+      })
+      .catch(error => {
+        // console.error('Service Worker registration failed:', error)
+      })
+  })
+}

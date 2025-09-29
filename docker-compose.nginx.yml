@@ -1,0 +1,57 @@
+version: '3.7'
+
+services:
+  bytesrevealer-nginx:
+    image: bytesrevealer:nginx-latest
+    build:
+      context: .
+      dockerfile: Dockerfile.nginx
+      # Force rebuild
+      args:
+        BUILDKIT_INLINE_CACHE: 1
+    container_name: bytesrevealer-nginx
+    ports:
+      - "8080:80"
+    restart: unless-stopped
+    environment:
+      - TZ=UTC
+      - NGINX_HOST=localhost
+      - NGINX_PORT=80
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost:80/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
+    # Remove deploy section for standard docker-compose
+    # Use these if running with docker-compose (not swarm)
+    mem_limit: 128m
+    memswap_limit: 128m
+    cpus: 0.5
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+        labels: "service=bytesrevealer"
+    # Optional: Add volume for nginx logs
+    volumes:
+      - /var/log/bytesrevealer:/var/log/nginx:rw
+    networks:
+      - bytesrevealer-network
+    # Security options
+    security_opt:
+      - no-new-privileges:true
+    read_only: true
+    tmpfs:
+      - /var/run
+      - /var/cache/nginx
+      - /tmp
+
+networks:
+  bytesrevealer-network:
+    driver: bridge
+    ipam:
+      driver: default
+      config:
+        - subnet: 172.28.0.0/16

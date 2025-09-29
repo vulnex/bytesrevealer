@@ -6,7 +6,7 @@ https://www.vulnex.com/
 
 # Bytes Revealer
 
-Version: 0.2
+Version: 0.3
 
 Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.
 
@@ -19,62 +19,106 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 ### File Analysis
 - Chunked file processing for memory efficiency
 - Real-time progress tracking
-- File signature detection
+- File signature detection with advanced PE/ELF analysis
 - Hash calculations (MD5, SHA-1, SHA-256)
 - Entropy and Bytes Frequency analysis
+- Progressive loading for files up to 1.5GB
 
 ### Multiple Views
 
 #### File View
-- Basic file information and metadata
-- File signatures detection
-- Hash values
-- Entropy calculation
-- Statistical analysis
-- Detailed file signarure information
+- Comprehensive file information and metadata
+- Advanced file signatures detection
+- Hash values with multiple algorithms
+- Entropy calculation and visualization
+- Statistical analysis with byte frequency
+- Detailed file signature information
+- Nested file detection (archives, embedded files)
 
 #### Visual View
-- Binary data visualization
+- Binary data visualization with colored squares
+- Toggle between blue and hex-categorized color schemes
 - ASCII or Bytes searching
 - Data distribution view
 - Highlighted pattern matching
-- Jump-to-offset box
+- Jump-to-offset functionality
 - Data Inspector View
+- Color palette for byte annotation
 
 #### Hex View
-- Traditional hex editor interface
-- Byte-level inspection
+- Professional hex editor interface
+- Byte-level inspection with color coding
+- Context menu for copying bytes in multiple formats
 - Highlighted pattern matching
 - ASCII representation
 - ASCII or Bytes searching
-- Jump-to-offset box
+- Jump-to-offset functionality
 - Data Inspector View
+- Toggle byte coloring (🎨 button)
+- Uppercase/lowercase toggle (AA/aa button)
 
 #### String Analysis
-- ASCII and UTF-8 string extraction
-- String length analysis
+- ASCII, UTF-8, and UTF-16 string extraction
+- String length and type analysis
 - String type categorization
 - Advanced filtering and sorting
+- Regular expression search support
 - String pattern recognition
-- Export capabilities
+- Export capabilities with full string data
 
-### Export View
-- Save analysis data into JSON
+### Kaitai Struct Integration
+- Support for 100+ binary file formats
+- Automatic format detection
+- Structured binary parsing
+- Format search and loading
+- Category-based format organization
 
-### Settings View
-- Light and Dark mode
-- Set base offset
+### Export Options
+- Enhanced JSON export with timestamps
+- Comprehensive data export including:
+  - File metadata and hashes
+  - File signatures with full details
+  - String analysis summary (always included)
+  - Optional full string data
+  - Entropy and byte frequency data
+- Timestamped filenames for multiple exports
+
+### Settings
+- Dark mode (default) and Light mode
+- Base offset configuration
+- Performance optimizations
 
 ### Search Capabilities
 - Hex pattern search
 - ASCII/UTF-8 string search
 - Regular expression support
+- Case-sensitive/insensitive options
 - Highlighted search results
+- Search progress tracking
+- Cancelable search operations
 
 ### Data Inspector
-- Get information about bytes on Visual and Hex views
-- Press L to lock data on a byte
-- Basic, Number, Text, 16-bit, 32-bit, 64-bit, Integer, Float, Additional and Date/Time information
+- Comprehensive byte information on Visual and Hex views
+- Press L to lock/unlock inspector on a byte
+- Multiple data representations:
+  - Basic (hex, decimal, binary, octal)
+  - Number formats (signed/unsigned)
+  - Text encodings (ASCII, UTF-8, UTF-16)
+  - 16-bit, 32-bit, 64-bit values
+  - Integer and Float interpretations
+  - Date/Time formats
+  - Additional encoding formats
+
+### User Interface Enhancements
+- Help dialog with tabs (Changelog, User Manual, License, About)
+- Improved file input with clear button
+- Performance indicators for large files
+- Chunk loading indicators
+- Format loading indicators
+- Toast notifications for operations
+- Context menus in Hex View
+- Export dialog for byte ranges
+- Keyboard shortcuts support
 
 ## Technical Details
 
@@ -103,8 +147,6 @@ node -v
 
 ```bash
 docker-compose build --no-cache
-
-docker-compose up -d
 ```
 
 Now open your browser: http://localhost:8080/
@@ -194,11 +236,49 @@ This project is licensed under the MIT License - see the [LICENSE.md](LICENSE.md
 - Memory limits are enforced
 - File size restrictions are in place
 
+## Changelog
+
+### Version 0.3 (September 2025)
+- Added Kaitai Struct integration for 100+ binary formats
+- Implemented progressive loading for files up to 1.5GB
+- Enhanced Visual View with toggleable color schemes
+- Added context menu in Hex View for copying bytes
+- Improved JSON export with timestamps and comprehensive data
+- Added string analysis summary to all JSON exports
+- New help dialog with tabs (Changelog, User Manual, License, About)
+- Added color scheme toggle buttons in Visual and Hex views
+- Implemented chunk loading indicators
+- Enhanced dark mode (now default)
+- Improved UI with better error handling
+- Added help button with separator in header
+- Performance optimizations for large files
+- Bug fixes and stability improvements
+
+### Version 0.2 (April 2025)
+- Introduced String Analysis view
+- Added entropy calculation and visualization
+- Implemented file signature detection
+- Added hash calculations (MD5, SHA-1, SHA-256)
+- Enhanced search capabilities with regex support
+- Added data inspector for detailed byte analysis
+- Improved memory optimization
+
+### Version 0.1 (February 2025)
+- Initial release
+- Basic hex viewer functionality
+- Visual byte representation
+- File analysis with basic metadata
+- Search functionality for hex and ASCII patterns
+
 ## Future Enhancements
 
 - Additional file format support
 - More visualization options
 - Pattern recognition improvements
 - Advanced string analysis features
-- Export/import capabilities
+- Enhanced export/import capabilities
 - Collaboration features
+- WebAssembly integration for performance
+- More keyboard shortcuts
+- Bookmarks and annotations
+- Diff/compare functionality

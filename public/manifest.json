@@ -1,0 +1,21 @@
+{
+  "name": "VULNEX BytesRevealer",
+  "short_name": "BytesRevealer",
+  "description": "Professional binary file analysis and reverse engineering tool",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#1a1a1a",
+  "theme_color": "#42b983",
+  "orientation": "any",
+  "categories": ["developer", "utilities"],
+  "icons": [
+    {
+      "src": "/favicon.ico",
+      "sizes": "48x48",
+      "type": "image/x-icon"
+    }
+  ],
+  "scope": "/",
+  "lang": "en-US",
+  "dir": "ltr"
+}
