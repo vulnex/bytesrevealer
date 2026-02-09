@@ -215,53 +215,232 @@ function extractOfficeMetadata(bytes) {
 }
 
 /**
- * Extract PE (Windows Executable) metadata
+ * Extract PE (Windows Executable) metadata (self-contained, no imports from advancedFileDetection)
  */
 function extractPEMetadata(bytes) {
   const metadata = {
     format: 'PE',
-    headers: {
-      dos: null,
-      pe: null,
-      optional: null
-    },
+    header: null,
     sections: [],
     imports: [],
-    exports: [],
-    resources: [],
-    versionInfo: null,
-    certificates: []
+    exports: null,
+    security: null,
+    hasCertificate: false,
+    hasDebugInfo: false,
+    isNet: false
   };
 
-  const peOffset = findPEHeaderOffset(bytes);
-  if (peOffset === -1) return metadata;
+  try {
+    if (!bytes || bytes.length < 64) return metadata;
 
-  // Parse DOS header
-  metadata.headers.dos = parseDOSHeader(bytes);
+    // Self-contained LE helpers
+    const rd16 = (off) => {
+      if (off + 2 > bytes.length) return 0;
+      return bytes[off] | (bytes[off + 1] << 8);
+    };
 
-  // Parse PE header
-  metadata.headers.pe = parsePEHeader(bytes, peOffset);
+    const rd32 = (off) => {
+      if (off + 4 > bytes.length) return 0;
+      return ((bytes[off]) | (bytes[off + 1] << 8) |
+              (bytes[off + 2] << 16) | (bytes[off + 3] << 24)) >>> 0;
+    };
 
-  // Parse Optional header
-  metadata.headers.optional = parseOptionalHeader(bytes, peOffset + 24);
+    const rd64 = (off) => {
+      if (off + 8 > bytes.length) return 0;
+      const lo = rd32(off);
+      const hi = rd32(off + 4);
+      return lo + hi * 0x100000000;
+    };
 
-  // Parse Sections
-  metadata.sections = parsePESections(bytes, peOffset);
+    // Verify MZ signature
+    if (bytes[0] !== 0x4D || bytes[1] !== 0x5A) return metadata;
 
-  // Parse Imports
-  metadata.imports = parsePEImports(bytes, metadata.headers.optional.importTableRVA);
+    // Find PE header
+    const peOffset = rd32(0x3C);
+    if (peOffset < 0 || peOffset + 4 > bytes.length) return metadata;
+    if (bytes[peOffset] !== 0x50 || bytes[peOffset + 1] !== 0x45 ||
+        bytes[peOffset + 2] !== 0x00 || bytes[peOffset + 3] !== 0x00) return metadata;
 
-  // Parse Exports
-  metadata.exports = parsePEExports(bytes, metadata.headers.optional.exportTableRVA);
+    const coffBase = peOffset + 4;
+    const optBase = peOffset + 24;
 
-  // Parse Resources
-  metadata.resources = parsePEResources(bytes, metadata.headers.optional.resourceTableRVA);
+    // COFF header fields
+    const machine = rd16(coffBase);
+    const numberOfSections = rd16(coffBase + 2);
+    const timeDateStamp = rd32(coffBase + 4);
+    const characteristics = rd16(coffBase + 18);
+    const optionalHeaderSize = rd16(coffBase + 16);
 
-  // Parse Version Info
-  metadata.versionInfo = extractVersionInfo(metadata.resources);
+    // Optional header
+    const optMagic = rd16(optBase);
+    const is64 = optMagic === 0x20b;
+    const entryPoint = rd32(optBase + 16);
+    const imageBase = is64 ? rd64(optBase + 24) : rd32(optBase + 28);
+    const subsystem = rd16(optBase + 68);
+    const dllCharacteristics = rd16(optBase + 70);
+    const numberOfRvaAndSizes = rd32(is64 ? optBase + 108 : optBase + 92);
+    const dataDirectoryOffset = is64 ? optBase + 112 : optBase + 96;
+    const sectionHeadersOffset = optBase + optionalHeaderSize;
 
-  // Parse Certificates
-  metadata.certificates = parsePECertificates(bytes, metadata.headers.optional.certificateTableRVA);
+    const machineNames = {
+      0x14c: 'x86', 0x8664: 'x86-64', 0x1c0: 'ARM', 0xaa64: 'ARM64',
+      0x1c4: 'ARMv7 Thumb-2'
+    };
+    const subsystemNames = {
+      0: 'Unknown', 1: 'Native', 2: 'Windows GUI', 3: 'Windows CUI',
+      7: 'Posix CUI', 9: 'Windows CE GUI', 10: 'EFI Application',
+      14: 'XBOX', 16: 'Windows Boot Application'
+    };
+
+    const coffFlags = [];
+    if (characteristics & 0x0001) coffFlags.push('Relocations Stripped');
+    if (characteristics & 0x0002) coffFlags.push('Executable');
+    if (characteristics & 0x0020) coffFlags.push('Large Address Aware');
+    if (characteristics & 0x0100) coffFlags.push('32-Bit Machine');
+    if (characteristics & 0x0200) coffFlags.push('Debug Stripped');
+    if (characteristics & 0x1000) coffFlags.push('System File');
+    if (characteristics & 0x2000) coffFlags.push('DLL');
+
+    metadata.header = {
+      magic: '0x4D5A (MZ)',
+      peSignatureOffset: `0x${peOffset.toString(16)}`,
+      machine: machineNames[machine] || `Unknown (0x${machine.toString(16)})`,
+      is64bit: is64,
+      numberOfSections,
+      timeDateStamp: new Date(timeDateStamp * 1000).toISOString(),
+      characteristics: coffFlags,
+      entryPoint: `0x${entryPoint.toString(16).padStart(8, '0')}`,
+      imageBase: `0x${imageBase.toString(16).padStart(is64 ? 16 : 8, '0')}`,
+      subsystem: subsystemNames[subsystem] || `Unknown (${subsystem})`,
+      dllCharacteristics: `0x${dllCharacteristics.toString(16)}`
+    };
+
+    // Inline rvaToOffset
+    const rvaToOffset = (rva) => {
+      if (rva === 0) return -1;
+      for (let i = 0; i < numberOfSections; i++) {
+        const secOff = sectionHeadersOffset + i * 40;
+        if (secOff + 40 > bytes.length) break;
+        const va = rd32(secOff + 12);
+        const rawSize = rd32(secOff + 16);
+        const rawPtr = rd32(secOff + 20);
+        const vSize = rd32(secOff + 8);
+        const secSize = Math.max(vSize, rawSize);
+        if (rva >= va && rva < va + secSize) {
+          return rawPtr + (rva - va);
+        }
+      }
+      return -1;
+    };
+
+    // Parse sections
+    for (let i = 0; i < numberOfSections; i++) {
+      const off = sectionHeadersOffset + i * 40;
+      if (off + 40 > bytes.length) break;
+
+      let end = off;
+      while (end < off + 8 && end < bytes.length && bytes[end] !== 0) end++;
+      const name = new TextDecoder().decode(bytes.slice(off, end));
+
+      const virtualSize = rd32(off + 8);
+      const virtualAddress = rd32(off + 12);
+      const sizeOfRawData = rd32(off + 16);
+      const chars = rd32(off + 36);
+
+      const r = (chars & 0x40000000) ? 'r' : '-';
+      const w = (chars & 0x80000000) ? 'w' : '-';
+      const x = (chars & 0x20000000) ? 'x' : '-';
+
+      metadata.sections.push({
+        name,
+        virtualSize,
+        virtualAddress: `0x${virtualAddress.toString(16)}`,
+        sizeOfRawData,
+        flags: r + w + x,
+        isRWX: (chars & 0x40000000) !== 0 && (chars & 0x80000000) !== 0 && (chars & 0x20000000) !== 0
+      });
+    }
+
+    // Read data directories
+    const dirs = [];
+    const dirCount = Math.min(numberOfRvaAndSizes, 16);
+    for (let i = 0; i < dirCount; i++) {
+      const doff = dataDirectoryOffset + i * 8;
+      if (doff + 8 > bytes.length) break;
+      dirs.push({ rva: rd32(doff), size: rd32(doff + 4) });
+    }
+
+    // Parse imports (Data Directory[1])
+    if (dirs.length > 1 && dirs[1].rva !== 0) {
+      const importOffset = rvaToOffset(dirs[1].rva);
+      if (importOffset >= 0 && importOffset < bytes.length) {
+        let ioff = importOffset;
+        while (ioff + 20 <= bytes.length) {
+          const nameRVA = rd32(ioff + 12);
+          const firstThunk = rd32(ioff + 16);
+          if (nameRVA === 0 && firstThunk === 0) break;
+          if (nameRVA !== 0) {
+            const nameOff = rvaToOffset(nameRVA);
+            if (nameOff >= 0 && nameOff < bytes.length) {
+              let ne = nameOff;
+              while (ne < bytes.length && bytes[ne] !== 0 && ne - nameOff < 256) ne++;
+              const dllName = new TextDecoder().decode(bytes.slice(nameOff, ne));
+              if (dllName.length > 0) metadata.imports.push(dllName);
+            }
+          }
+          ioff += 20;
+        }
+      }
+    }
+
+    // Parse exports (Data Directory[0])
+    if (dirs.length > 0 && dirs[0].rva !== 0) {
+      const exportOffset = rvaToOffset(dirs[0].rva);
+      if (exportOffset >= 0 && exportOffset + 40 <= bytes.length) {
+        const expNameRVA = rd32(exportOffset + 12);
+        const numFuncs = rd32(exportOffset + 20);
+        const numNames = rd32(exportOffset + 24);
+        let expName = '';
+        if (expNameRVA !== 0) {
+          const noff = rvaToOffset(expNameRVA);
+          if (noff >= 0 && noff < bytes.length) {
+            let ne = noff;
+            while (ne < bytes.length && bytes[ne] !== 0 && ne - noff < 256) ne++;
+            expName = new TextDecoder().decode(bytes.slice(noff, ne));
+          }
+        }
+        metadata.exports = { dllName: expName, numberOfFunctions: numFuncs, numberOfNames: numNames };
+      }
+    }
+
+    // Certificate table (Data Directory[4]) — uses file offset, not RVA
+    if (dirs.length > 4 && dirs[4].rva !== 0 && dirs[4].size !== 0) {
+      metadata.hasCertificate = true;
+    }
+
+    // Debug directory (Data Directory[6])
+    if (dirs.length > 6 && dirs[6].rva !== 0 && dirs[6].size !== 0) {
+      metadata.hasDebugInfo = true;
+    }
+
+    // .NET CLR (Data Directory[14])
+    if (dirs.length > 14 && dirs[14].rva !== 0 && dirs[14].size !== 0) {
+      metadata.isNet = true;
+    }
+
+    // Security features from DllCharacteristics
+    metadata.security = {
+      aslr: (dllCharacteristics & 0x0040) !== 0,
+      highEntropyVA: (dllCharacteristics & 0x0020) !== 0,
+      dep: (dllCharacteristics & 0x0100) !== 0,
+      cfg: (dllCharacteristics & 0x4000) !== 0,
+      noSEH: (dllCharacteristics & 0x0400) !== 0,
+      forceIntegrity: (dllCharacteristics & 0x0080) !== 0,
+      appContainer: (dllCharacteristics & 0x1000) !== 0
+    };
+  } catch (error) {
+    metadata.error = error.message;
+  }
 
   return metadata;
 }

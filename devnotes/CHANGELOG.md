@@ -6,6 +6,102 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.4] - 2026-02-09
+
+### Added
+- **Deep PE (Windows) Binary Analysis**
+  - Little-endian PE reading utilities (`readPEUint16/32/64`) with bounds checking
+  - Full COFF + Optional Header parser (`getPEHeaderInfo`) supporting both PE32 and PE32+ (64-bit)
+  - RVA-to-file-offset mapper (`rvaToFileOffset`) via section header walking — fixes the existing `getPEImportCount` bug which used RVAs as raw file offsets
+  - Data directory parser (`getPEDataDirectories`) for all 16 PE data directory entries
+  - Section header parser (`getPESections`) with names, raw sizes, and rwx permission flags (IMAGE_SCN_MEM_READ/WRITE/EXECUTE)
+  - Security feature detection (`getPESecurityFeatures`): ASLR (DYNAMIC_BASE), High Entropy VA, DEP/NX (NX_COMPAT), Control Flow Guard, SEH usage, Force Integrity, App Container
+  - Import directory parser (`getPEImports`) resolving DLL names through proper RVA-to-offset mapping
+  - Export directory parser (`getPEExports`) returning DLL name, function count, and name count
+  - Authenticode certificate detection (`getPECertificateInfo`) from Data Directory[4] (file offset, not RVA)
+  - Debug directory detection (`getPEDebugInfo`) from Data Directory[6]
+  - .NET CLR detection (`getPEIsNet`) from Data Directory[14]
+  - `analyzePEStructure()` now returns 18 fields (up from 6): machine, is64bit, entryPoint, imageBase, sections with rwx, sectionNames, hasRWXSections, imports (DLL names), importCount, exports, security features, hasCertificate, certificateSize, hasDebugInfo, isNet
+
+- **Expanded PE Attack Graph Vulnerabilities**
+  - PE vulnerability mapper now checks 13 conditions (up from 4):
+    - No ASLR (vuln_no_aslr) → Fixed Address Exploitation
+    - No DEP/NX (vuln_no_dep) → Stack-Based Code Execution
+    - No Control Flow Guard (vuln_no_cfg) → Control Flow Hijacking
+    - SEH Chain Exploitation (vuln_seh) → SEH Chain Overwrite
+    - No Code Integrity Enforcement (vuln_no_integrity)
+    - RWX Memory Sections (vuln_rwx) → Memory Corruption Exploitation
+    - Unsigned Binary (vuln_unsigned) → Unsigned Code Execution
+    - Debug Information Present (vuln_debug_info)
+    - .NET Managed Binary (vuln_dotnet) → Managed Code Decompilation
+    - Partial ASLR (vuln_partial_aslr) for 64-bit without HIGH_ENTROPY_VA
+  - Added priv_system escalation path for Native subsystem or RWX sections
+
+- **Self-Contained PE Metadata Extractor**
+  - Replaced 9 undefined function calls in `extractPEMetadata()` with a fully self-contained implementation (~170 lines)
+  - Parses: DOS header, COFF header (machine, timestamp, characteristics), Optional header (magic, entryPoint, imageBase, subsystem, DllCharacteristics), sections with rwx flags, imports (DLL names), exports (count), certificate presence, debug info, .NET detection, security features
+  - Wired into `detectSpecificFileType()` PE branch for metadata export (matching ELF/Mach-O)
+
+### Fixed
+- **PE Parsing Correctness**
+  - Fixed `getPECharacteristics()` missing COFF flags: Relocations Stripped (0x0001), 32-Bit Machine (0x0100), Debug Stripped (0x0200), System File (0x1000)
+  - Fixed `getPEImportCount()` using RVAs as raw file offsets (new `rvaToFileOffset` resolves through section headers)
+  - Fixed `detectSpecificFileType()` PE branch missing `extractMetadata()` call (ELF and Mach-O had it)
+
+### Technical Details
+- Modified files:
+  - `src/utils/advancedFileDetection.js` - PE core utilities (4 readers + 11 parsers), enriched analyzePEStructure(), fixed getPECharacteristics(), wired metadata extraction
+  - `src/services/UsecvislibExporter.js` - Expanded _mapPEVulnerabilities() from 4 to 13 conditions with priv_system escalation
+  - `src/utils/metadataExtractor.js` - Self-contained extractPEMetadata() replacing 9 undefined stub calls
+
+---
+
+## [0.4.3] - 2026-02-09
+
+### Added
+- **Deep ELF Binary Analysis**
+  - Endianness-aware parsing utilities (`readElfUint16/32/64`) supporting both little-endian and big-endian ELF binaries
+  - Full ELF header parser (`getElfHeaderInfo`) for both 32-bit and 64-bit formats
+  - Program header walking (`getElfProgramHeaders`) with type name mapping (PT_LOAD, PT_DYNAMIC, PT_GNU_STACK, etc.)
+  - Section header parsing (`getElfSections`) with `.shstrtab` string table name resolution
+  - Shared library dependency extraction (`getElfDependencies`) via DT_NEEDED entries with VA-to-file-offset mapping
+  - Security feature detection (`getElfSecurityFeatures`): PIE, executable stack (PT_GNU_STACK), RELRO (none/partial/full), TEXTREL
+  - Interpreter path extraction (`getElfInterpreter`) from PT_INTERP
+  - Rpath/Runpath extraction (`getElfRpath`) from DT_RPATH/DT_RUNPATH
+  - Stripped binary detection (`getElfIsStripped`) via .symtab presence check
+  - Segment permission analysis (`getElfSegmentPermissions`) with RWX detection
+  - `analyzeElfStructure()` now returns 17 fields (up from 5): sectionNames, isDynamicallyLinked, interpreter, dependencies, segments, hasRWXSegments, pie, executableStack, relro, textrel, isStripped, rpath, runpath
+
+- **Expanded ELF Attack Graph Vulnerabilities**
+  - ELF vulnerability mapper now checks 9 conditions (up from 2):
+    - No PIE (vuln_no_pie) → Fixed Address Exploitation
+    - Executable Stack (vuln_exec_stack) → Stack-Based Code Execution
+    - No RELRO (vuln_no_relro) → GOT Overwrite Exploitation
+    - RWX Segments (vuln_rwx) → Memory Corruption Exploitation
+    - Stripped Binary (vuln_stripped) → Anti-Analysis indicator
+    - Rpath/Runpath Injection (vuln_rpath) → Library Path Injection
+    - Text Relocations (vuln_textrel) → Code Section Modification
+  - Added priv_root escalation path for executable stack and shared object types
+
+- **Self-Contained ELF Metadata Extractor**
+  - Replaced 7 stub function calls in `extractELFMetadata()` with a fully self-contained implementation (same pattern as Mach-O)
+  - Parses: ELF header, program headers, section headers, DT_NEEDED dependencies, interpreter path, rpath/runpath, security features (PIE, RELRO, executable stack)
+  - Wired into `detectSpecificFileType()` ELF branch for metadata export
+
+### Fixed
+- **ELF Parsing Correctness**
+  - Fixed `countElfSections()` which was hardcoded to offsets 48-49 (only correct for 64-bit little-endian)
+  - Fixed `getElfEntryPoint()` which used wrong offset (28) for 32-bit ELF (e_entry is at offset 24 for both 32/64-bit)
+  - Fixed `getElfType()` and `getElfMachine()` which were hardcoded to little-endian byte order
+
+### Technical Details
+- Modified files:
+  - `src/utils/advancedFileDetection.js` - ELF core utilities, 8 new helper functions, enriched analyzeElfStructure(), fixed existing helpers
+  - `src/services/UsecvislibExporter.js` - Expanded _mapELFVulnerabilities() from 2 to 9 conditions
+  - `src/utils/metadataExtractor.js` - Self-contained extractELFMetadata() replacing stub calls
+
+---
+
 ## [0.4.2] - 2026-02-09
 
 ### Fixed

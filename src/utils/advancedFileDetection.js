@@ -259,20 +259,52 @@ function analyzePEStructure(bytes) {
       throw new Error('Invalid PE header offset');
     }
 
-    // Get basic PE information
+    const hdr = getPEHeaderInfo(bytes);
     const characteristics = getPECharacteristics(bytes, peOffset);
     const subsystem = getPESubsystem(bytes, peOffset);
     const timestamp = getPETimestamp(bytes, peOffset);
-    const sections = countPESections(bytes, peOffset);
-    const imports = getPEImportCount(bytes, peOffset);
+
+    const pesMachines = {
+      0x14c: 'x86', 0x8664: 'x86-64', 0x1c0: 'ARM', 0xaa64: 'ARM64',
+      0x1c4: 'ARMv7 Thumb-2'
+    };
+    const machine = hdr ? (pesMachines[hdr.machine] || `Unknown (0x${hdr.machine.toString(16)})`) : 'Unknown';
+    const is64bit = hdr ? hdr.is64 : false;
+
+    const sectionList = getPESections(bytes);
+    const sectionNames = sectionList.map(s => s.name);
+    const hasRWXSections = sectionList.some(s => s.isRWX);
+
+    const importDlls = getPEImports(bytes);
+    const exports = getPEExports(bytes);
+    const security = getPESecurityFeatures(bytes);
+    const certInfo = getPECertificateInfo(bytes);
+    const debugInfo = getPEDebugInfo(bytes);
+    const isNet = getPEIsNet(bytes);
+
+    const entryPoint = hdr ? `0x${hdr.entryPoint.toString(16).padStart(8, '0')}` : 'Unknown';
+    const imageBase = hdr ? `0x${hdr.imageBase.toString(16).padStart(is64bit ? 16 : 8, '0')}` : 'Unknown';
 
     return {
       offset: `0x${peOffset.toString(16).padStart(8, '0')}`,
-      characteristics: characteristics,
-      subsystem: subsystem,
-      timestamp: timestamp,
-      sections: sections,
-      imports: imports
+      machine,
+      is64bit,
+      characteristics,
+      subsystem,
+      timestamp,
+      entryPoint,
+      imageBase,
+      sections: sectionList,
+      sectionNames,
+      hasRWXSections,
+      imports: importDlls,
+      importCount: importDlls.length,
+      exports,
+      security,
+      hasCertificate: certInfo.hasCertificate,
+      certificateSize: certInfo.certificateSize,
+      hasDebugInfo: debugInfo.hasDebugInfo,
+      isNet
     };
   } catch (error) {
     logger.error('Error analyzing PE structure:', error);
@@ -301,6 +333,7 @@ function detectSpecificFileType(bytes) {
         if (type.name.includes('Windows Executable (PE)')) {
           const peDetails = analyzePEStructure(bytes);
           enhanced.details = peDetails;
+          enhanced.metadata = extractMetadata(bytes, type.name);
         } else if (type.name.includes('Mach-O')) {
           enhanced.details = analyzeMachOStructure(bytes);
           enhanced.metadata = extractMetadata(bytes, type.name);
@@ -586,6 +619,294 @@ function readElfUint64(bytes, offset, bigEndian) {
   const hi = readElfUint32(bytes, offset + 4, bigEndian);
   if (bigEndian) return hi + lo * 0x100000000;
   return lo + hi * 0x100000000;
+}
+
+// ── PE Core Utilities (always little-endian) ──
+
+function readPEUint16(bytes, offset) {
+  if (offset + 2 > bytes.length) return 0;
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readPEUint32(bytes, offset) {
+  if (offset + 4 > bytes.length) return 0;
+  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+
+function readPEUint64(bytes, offset) {
+  if (offset + 8 > bytes.length) return 0;
+  const lo = readPEUint32(bytes, offset);
+  const hi = readPEUint32(bytes, offset + 4);
+  return lo + hi * 0x100000000;
+}
+
+function isPE64bit(bytes, peOffset) {
+  const magic = readPEUint16(bytes, peOffset + 24);
+  return magic === 0x20b; // PE32+ = 0x20b, PE32 = 0x10b
+}
+
+function getPEHeaderInfo(bytes) {
+  try {
+    const peOffset = findPEHeaderOffset(bytes);
+    if (peOffset === -1) return null;
+
+    const is64 = isPE64bit(bytes, peOffset);
+    const coffBase = peOffset + 4;
+    const optBase = peOffset + 24;
+
+    const machine = readPEUint16(bytes, coffBase);
+    const numberOfSections = readPEUint16(bytes, coffBase + 2);
+    const timeDateStamp = readPEUint32(bytes, coffBase + 4);
+    const characteristics = readPEUint16(bytes, coffBase + 18);
+
+    const optMagic = readPEUint16(bytes, optBase);
+    const entryPoint = readPEUint32(bytes, optBase + 16);
+    const imageBase = is64
+      ? readPEUint64(bytes, optBase + 24)
+      : readPEUint32(bytes, optBase + 28);
+    const sectionAlignment = readPEUint32(bytes, optBase + 32);
+    const fileAlignment = readPEUint32(bytes, optBase + 36);
+    const subsystem = readPEUint16(bytes, optBase + 68);
+    const dllCharacteristics = readPEUint16(bytes, optBase + 70);
+    const numberOfRvaAndSizes = readPEUint32(bytes, is64 ? optBase + 108 : optBase + 92);
+
+    const dataDirectoryOffset = is64 ? optBase + 112 : optBase + 96;
+    const optionalHeaderSize = readPEUint16(bytes, coffBase + 16);
+    const sectionHeadersOffset = optBase + optionalHeaderSize;
+
+    return {
+      peOffset, is64, machine, numberOfSections, timeDateStamp,
+      characteristics, entryPoint, imageBase, sectionAlignment,
+      fileAlignment, subsystem, dllCharacteristics,
+      numberOfRvaAndSizes, dataDirectoryOffset, sectionHeadersOffset
+    };
+  } catch (error) {
+    logger.error('Error in getPEHeaderInfo:', error);
+    return null;
+  }
+}
+
+function rvaToFileOffset(bytes, hdr, rva) {
+  if (rva === 0) return -1;
+  for (let i = 0; i < hdr.numberOfSections; i++) {
+    const secOff = hdr.sectionHeadersOffset + i * 40;
+    if (secOff + 40 > bytes.length) break;
+    const virtualAddress = readPEUint32(bytes, secOff + 12);
+    const sizeOfRawData = readPEUint32(bytes, secOff + 16);
+    const pointerToRawData = readPEUint32(bytes, secOff + 20);
+    const virtualSize = readPEUint32(bytes, secOff + 8);
+    const sectionSize = Math.max(virtualSize, sizeOfRawData);
+    if (rva >= virtualAddress && rva < virtualAddress + sectionSize) {
+      return pointerToRawData + (rva - virtualAddress);
+    }
+  }
+  return -1;
+}
+
+function getPEDataDirectories(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return [];
+    const dirs = [];
+    const count = Math.min(hdr.numberOfRvaAndSizes, 16);
+    for (let i = 0; i < count; i++) {
+      const off = hdr.dataDirectoryOffset + i * 8;
+      if (off + 8 > bytes.length) break;
+      dirs.push({
+        rva: readPEUint32(bytes, off),
+        size: readPEUint32(bytes, off + 4)
+      });
+    }
+    return dirs;
+  } catch (error) {
+    logger.error('Error in getPEDataDirectories:', error);
+    return [];
+  }
+}
+
+function getPESections(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return [];
+    const sections = [];
+    for (let i = 0; i < hdr.numberOfSections; i++) {
+      const off = hdr.sectionHeadersOffset + i * 40;
+      if (off + 40 > bytes.length) break;
+
+      let end = off;
+      while (end < off + 8 && end < bytes.length && bytes[end] !== 0) end++;
+      const name = new TextDecoder().decode(bytes.slice(off, end));
+
+      const virtualSize = readPEUint32(bytes, off + 8);
+      const virtualAddress = readPEUint32(bytes, off + 12);
+      const sizeOfRawData = readPEUint32(bytes, off + 16);
+      const pointerToRawData = readPEUint32(bytes, off + 20);
+      const chars = readPEUint32(bytes, off + 36);
+
+      const r = (chars & 0x40000000) ? 'r' : '-';
+      const w = (chars & 0x80000000) ? 'w' : '-';
+      const x = (chars & 0x20000000) ? 'x' : '-';
+      const flags = r + w + x;
+      const isRWX = (chars & 0x40000000) !== 0 && (chars & 0x80000000) !== 0 && (chars & 0x20000000) !== 0;
+
+      sections.push({
+        name, virtualSize, virtualAddress, sizeOfRawData,
+        pointerToRawData, characteristics: chars, flags, isRWX
+      });
+    }
+    return sections;
+  } catch (error) {
+    logger.error('Error in getPESections:', error);
+    return [];
+  }
+}
+
+// ── PE Security & Feature Parsers ──
+
+function getPESecurityFeatures(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return { aslr: false, highEntropyVA: false, dep: false, cfg: false, noSEH: false, forceIntegrity: false, appContainer: false };
+    const dc = hdr.dllCharacteristics;
+    return {
+      aslr: (dc & 0x0040) !== 0,
+      highEntropyVA: (dc & 0x0020) !== 0,
+      dep: (dc & 0x0100) !== 0,
+      cfg: (dc & 0x4000) !== 0,
+      noSEH: (dc & 0x0400) !== 0,
+      forceIntegrity: (dc & 0x0080) !== 0,
+      appContainer: (dc & 0x1000) !== 0
+    };
+  } catch (error) {
+    logger.error('Error in getPESecurityFeatures:', error);
+    return { aslr: false, highEntropyVA: false, dep: false, cfg: false, noSEH: false, forceIntegrity: false, appContainer: false };
+  }
+}
+
+function getPESectionPermissions(bytes) {
+  try {
+    const sections = getPESections(bytes);
+    const hasRWX = sections.some(s => s.isRWX);
+    return { sections, hasRWX };
+  } catch (error) {
+    logger.error('Error in getPESectionPermissions:', error);
+    return { sections: [], hasRWX: false };
+  }
+}
+
+function getPEImports(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return [];
+    const dirs = getPEDataDirectories(bytes);
+    if (dirs.length < 2 || dirs[1].rva === 0) return [];
+
+    const importRVA = dirs[1].rva;
+    const importFileOffset = rvaToFileOffset(bytes, hdr, importRVA);
+    if (importFileOffset < 0 || importFileOffset >= bytes.length) return [];
+
+    const dlls = [];
+    let offset = importFileOffset;
+    while (offset + 20 <= bytes.length) {
+      const nameRVA = readPEUint32(bytes, offset + 12);
+      const firstThunk = readPEUint32(bytes, offset + 16);
+      if (nameRVA === 0 && firstThunk === 0) break;
+
+      if (nameRVA !== 0) {
+        const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA);
+        if (nameOffset >= 0 && nameOffset < bytes.length) {
+          let end = nameOffset;
+          while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++;
+          const dllName = new TextDecoder().decode(bytes.slice(nameOffset, end));
+          if (dllName.length > 0) dlls.push(dllName);
+        }
+      }
+      offset += 20;
+    }
+    return dlls;
+  } catch (error) {
+    logger.error('Error in getPEImports:', error);
+    return [];
+  }
+}
+
+function getPEExports(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return null;
+    const dirs = getPEDataDirectories(bytes);
+    if (dirs.length < 1 || dirs[0].rva === 0) return null;
+
+    const exportRVA = dirs[0].rva;
+    const exportOffset = rvaToFileOffset(bytes, hdr, exportRVA);
+    if (exportOffset < 0 || exportOffset + 40 > bytes.length) return null;
+
+    const nameRVA = readPEUint32(bytes, exportOffset + 12);
+    const numberOfFunctions = readPEUint32(bytes, exportOffset + 20);
+    const numberOfNames = readPEUint32(bytes, exportOffset + 24);
+
+    let dllName = '';
+    if (nameRVA !== 0) {
+      const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA);
+      if (nameOffset >= 0 && nameOffset < bytes.length) {
+        let end = nameOffset;
+        while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++;
+        dllName = new TextDecoder().decode(bytes.slice(nameOffset, end));
+      }
+    }
+
+    return { dllName, numberOfFunctions, numberOfNames };
+  } catch (error) {
+    logger.error('Error in getPEExports:', error);
+    return null;
+  }
+}
+
+function getPECertificateInfo(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return { hasCertificate: false, certificateSize: 0 };
+    const dirs = getPEDataDirectories(bytes);
+    // Certificate table is Data Directory[4] and uses file offset, not RVA
+    if (dirs.length < 5 || dirs[4].rva === 0 || dirs[4].size === 0) {
+      return { hasCertificate: false, certificateSize: 0 };
+    }
+    return { hasCertificate: true, certificateSize: dirs[4].size };
+  } catch (error) {
+    logger.error('Error in getPECertificateInfo:', error);
+    return { hasCertificate: false, certificateSize: 0 };
+  }
+}
+
+function getPEDebugInfo(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return { hasDebugInfo: false };
+    const dirs = getPEDataDirectories(bytes);
+    if (dirs.length < 7 || dirs[6].rva === 0 || dirs[6].size === 0) {
+      return { hasDebugInfo: false };
+    }
+    return { hasDebugInfo: true };
+  } catch (error) {
+    logger.error('Error in getPEDebugInfo:', error);
+    return { hasDebugInfo: false };
+  }
+}
+
+function getPEIsNet(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes);
+    if (!hdr) return false;
+    const dirs = getPEDataDirectories(bytes);
+    if (dirs.length < 15 || dirs[14].rva === 0 || dirs[14].size === 0) {
+      return false;
+    }
+    return true;
+  } catch (error) {
+    logger.error('Error in getPEIsNet:', error);
+    return false;
+  }
 }
 
 function getElfHeaderInfo(bytes) {
@@ -1003,12 +1324,16 @@ function getPESubsystem(bytes, peOffset) {
 function getPECharacteristics(bytes, peOffset) {
   const characteristics = [];
   if (peOffset === -1) return [];
-  
+
   const flags = bytes[peOffset + 22] | (bytes[peOffset + 23] << 8);
+  if (flags & 0x0001) characteristics.push('Relocations Stripped');
   if (flags & 0x0002) characteristics.push('Executable');
-  if (flags & 0x2000) characteristics.push('DLL');
   if (flags & 0x0020) characteristics.push('Large Address Aware');
-  
+  if (flags & 0x0100) characteristics.push('32-Bit Machine');
+  if (flags & 0x0200) characteristics.push('Debug Stripped');
+  if (flags & 0x1000) characteristics.push('System File');
+  if (flags & 0x2000) characteristics.push('DLL');
+
   return characteristics;
 }
 

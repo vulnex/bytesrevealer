@@ -305,9 +305,11 @@ class UsecvislibExporter {
 
   _mapPEVulnerabilities(details, vulnerabilities, privileges, exploits, entropy) {
     const chars = details.characteristics || []
+    const security = details.security || {}
 
     privileges.push({ id: 'priv_exec', label: 'Binary Execution', description: 'Execute the binary on target', host: 'target_system', level: 'user' })
 
+    // 1. DLL Hijacking
     if (chars.includes('DLL')) {
       vulnerabilities.push({
         id: 'vuln_dll_hijack',
@@ -326,6 +328,7 @@ class UsecvislibExporter {
       })
     }
 
+    // 2. Timestamp anomaly
     const ts = details.timestamp
     if (ts && (ts === '1970-01-01T00:00:00.000Z' || new Date(ts).getFullYear() < 2000)) {
       vulnerabilities.push({
@@ -337,9 +340,183 @@ class UsecvislibExporter {
       })
     }
 
+    // 3. Native subsystem
     const subsystem = details.subsystem || ''
     if (subsystem.includes('Native')) {
       privileges.push({ id: 'priv_kernel', label: 'Kernel Access', description: 'Kernel-level execution', host: 'target_system', level: 'kernel' })
+    }
+
+    // 4. No ASLR
+    if (security.aslr === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_aslr',
+        label: 'No ASLR (DYNAMIC_BASE missing)',
+        description: 'Binary lacks ASLR support, loaded at predictable address enabling reliable exploitation.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_fixed_addr',
+        label: 'Fixed Address Exploitation',
+        description: 'Exploit predictable load address due to missing ASLR.',
+        vulnerability: 'vuln_no_aslr',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 5. No DEP/NX
+    if (security.dep === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_dep',
+        label: 'No DEP/NX (NX_COMPAT missing)',
+        description: 'Binary lacks DEP/NX support, allowing code execution on data pages.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_stack_exec',
+        label: 'Stack-Based Code Execution',
+        description: 'Execute shellcode on stack due to missing DEP/NX protection.',
+        vulnerability: 'vuln_no_dep',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 6. No CFG
+    if (security.cfg === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_cfg',
+        label: 'No Control Flow Guard',
+        description: 'Binary lacks Control Flow Guard, allowing indirect call target manipulation.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_cfg_bypass',
+        label: 'Control Flow Hijacking',
+        description: 'Hijack control flow via indirect call target corruption.',
+        vulnerability: 'vuln_no_cfg',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 7. SEH exploitation (when noSEH is false, SEH is used)
+    if (!security.noSEH) {
+      vulnerabilities.push({
+        id: 'vuln_seh',
+        label: 'SEH Chain Exploitation',
+        description: 'Binary uses Structured Exception Handling, potentially vulnerable to SEH overwrite attacks.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_seh_overwrite',
+        label: 'SEH Chain Overwrite',
+        description: 'Overwrite SEH chain to redirect exception handling for code execution.',
+        vulnerability: 'vuln_seh',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 8. No code integrity enforcement
+    if (security.forceIntegrity === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_integrity',
+        label: 'No Code Integrity Enforcement',
+        description: 'Binary does not enforce code integrity checks at load time.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:L/A:N',
+        affected_host: 'target_system'
+      })
+    }
+
+    // 9. RWX sections
+    if (details.hasRWXSections) {
+      vulnerabilities.push({
+        id: 'vuln_rwx',
+        label: 'RWX Memory Sections',
+        description: 'Binary contains sections with read-write-execute permissions, enabling code injection.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_memory_corruption',
+        label: 'Memory Corruption Exploitation',
+        description: 'Exploit RWX memory sections for arbitrary code execution.',
+        vulnerability: 'vuln_rwx',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 10. Unsigned binary
+    if (details.hasCertificate === false) {
+      vulnerabilities.push({
+        id: 'vuln_unsigned',
+        label: 'Unsigned Binary',
+        description: 'Binary lacks Authenticode signature, allowing modification without detection.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_unsigned_exec',
+        label: 'Unsigned Code Execution',
+        description: 'Execute modified unsigned binary without signature verification.',
+        vulnerability: 'vuln_unsigned',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 11. Debug info present
+    if (details.hasDebugInfo) {
+      vulnerabilities.push({
+        id: 'vuln_debug_info',
+        label: 'Debug Information Present',
+        description: 'Binary contains debug information, aiding reverse engineering and vulnerability discovery.',
+        cvss_vector: 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N',
+        affected_host: 'binary'
+      })
+    }
+
+    // 12. .NET managed binary
+    if (details.isNet) {
+      vulnerabilities.push({
+        id: 'vuln_dotnet',
+        label: '.NET Managed Binary',
+        description: 'Binary is a .NET assembly, easily decompilable to source code.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:H/I:N/A:N',
+        affected_host: 'binary'
+      })
+      exploits.push({
+        id: 'exp_decompile',
+        label: 'Managed Code Decompilation',
+        description: 'Decompile .NET assembly to recover source code and embedded secrets.',
+        vulnerability: 'vuln_dotnet',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // 13. Partial ASLR (64-bit without high entropy VA)
+    if (details.is64bit && !security.highEntropyVA) {
+      vulnerabilities.push({
+        id: 'vuln_partial_aslr',
+        label: 'Partial ASLR (no High Entropy VA)',
+        description: '64-bit binary without HIGH_ENTROPY_VA limits ASLR randomization to 32-bit address space.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N',
+        affected_host: 'target_system'
+      })
+    }
+
+    // Privilege escalation paths
+    if (subsystem.includes('Native') || details.hasRWXSections) {
+      if (!privileges.some(p => p.id === 'priv_system')) {
+        privileges.push({ id: 'priv_system', label: 'SYSTEM Access', description: 'Escalated privileges via native subsystem or RWX memory exploitation', host: 'target_system', level: 'system' })
+      }
     }
 
     if (!chars.includes('DLL')) {
