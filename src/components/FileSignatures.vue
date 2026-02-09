@@ -147,8 +147,24 @@ export default {
     },
 
     formatValue(value) {
+      if (value === null || value === undefined) return '';
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
       if (Array.isArray(value)) {
+        if (value.length === 0) return '(none)';
+        if (typeof value[0] === 'object') {
+          return value.map(item => {
+            if (item.name && item.flags) return `${item.name} [${item.flags}]`;
+            if (item.name) return item.name;
+            return JSON.stringify(item);
+          }).join(', ');
+        }
         return value.join(', ');
+      }
+      if (typeof value === 'object') {
+        const parts = Object.entries(value)
+          .filter(([, v]) => v !== null && v !== undefined)
+          .map(([k, v]) => `${k}: ${typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}`);
+        return parts.join(', ');
       }
       return String(value);
     },
@@ -159,7 +175,19 @@ export default {
       for (const [key, value] of Object.entries(metadata)) {
         if (value === null || value === undefined) continue;
 
-        if (typeof value === 'object' && !Array.isArray(value)) {
+        if (Array.isArray(value)) {
+          if (value.length === 0) {
+            result[`${prefix}${key}`] = '(none)';
+          } else if (typeof value[0] === 'object') {
+            value.forEach((item, i) => {
+              const itemPrefix = item.name ? `${prefix}${key}.${item.name}.` : `${prefix}${key}[${i}].`;
+              const nested = this.flattenMetadata(item, itemPrefix);
+              Object.assign(result, nested);
+            });
+          } else {
+            result[`${prefix}${key}`] = value;
+          }
+        } else if (typeof value === 'object') {
           const nested = this.flattenMetadata(value, `${prefix}${key}.`);
           Object.assign(result, nested);
         } else {
