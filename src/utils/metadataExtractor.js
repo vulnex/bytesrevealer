@@ -267,7 +267,7 @@ function extractPEMetadata(bytes) {
 }
 
 /**
- * Extract ELF metadata
+ * Extract ELF metadata (self-contained, no imports from advancedFileDetection)
  */
 function extractELFMetadata(bytes) {
   const metadata = {
@@ -275,32 +275,286 @@ function extractELFMetadata(bytes) {
     header: null,
     programHeaders: [],
     sectionHeaders: [],
-    dynamics: [],
-    symbols: [],
-    strings: [],
-    notes: []
+    dependencies: [],
+    interpreter: null,
+    security: null,
+    rpath: null,
+    runpath: null
   };
 
-  // Parse ELF header
-  metadata.header = parseELFHeader(bytes);
+  try {
+    if (!bytes || bytes.length < 52) return metadata;
 
-  // Parse Program headers
-  metadata.programHeaders = parseELFProgramHeaders(bytes, metadata.header);
+    // Self-contained helpers
+    const isBE = bytes[5] === 2;
+    const is64 = bytes[4] === 2;
 
-  // Parse Section headers
-  metadata.sectionHeaders = parseELFSectionHeaders(bytes, metadata.header);
+    const rd16 = (off, be) => {
+      if (off + 2 > bytes.length) return 0;
+      if (be) return (bytes[off] << 8) | bytes[off + 1];
+      return bytes[off] | (bytes[off + 1] << 8);
+    };
 
-  // Parse Dynamic section
-  metadata.dynamics = parseELFDynamic(bytes, metadata.header);
+    const rd32 = (off, be) => {
+      if (off + 4 > bytes.length) return 0;
+      if (be) {
+        return ((bytes[off] << 24) | (bytes[off + 1] << 16) |
+                (bytes[off + 2] << 8) | bytes[off + 3]) >>> 0;
+      }
+      return ((bytes[off]) | (bytes[off + 1] << 8) |
+              (bytes[off + 2] << 16) | (bytes[off + 3] << 24)) >>> 0;
+    };
 
-  // Parse Symbol tables
-  metadata.symbols = parseELFSymbols(bytes, metadata.header);
+    const rd64 = (off, be) => {
+      if (off + 8 > bytes.length) return 0;
+      const lo = rd32(off, be);
+      const hi = rd32(off + 4, be);
+      if (be) return hi + lo * 0x100000000;
+      return lo + hi * 0x100000000;
+    };
 
-  // Parse String tables
-  metadata.strings = parseELFStrings(bytes, metadata.header);
+    // Parse ELF header fields
+    const eType = rd16(16, isBE);
+    const eMachine = rd16(18, isBE);
+    const eVersion = rd32(20, isBE);
+    let eEntry, phoff, shoff, eFlags, phentsize, phnum, shentsize, shnum, shstrndx;
 
-  // Parse Notes
-  metadata.notes = parseELFNotes(bytes, metadata.header);
+    if (is64) {
+      if (bytes.length < 64) return metadata;
+      eEntry = rd64(24, isBE);
+      phoff = rd64(32, isBE);
+      shoff = rd64(40, isBE);
+      eFlags = rd32(48, isBE);
+      phentsize = rd16(54, isBE);
+      phnum = rd16(56, isBE);
+      shentsize = rd16(58, isBE);
+      shnum = rd16(60, isBE);
+      shstrndx = rd16(62, isBE);
+    } else {
+      eEntry = rd32(24, isBE);
+      phoff = rd32(28, isBE);
+      shoff = rd32(32, isBE);
+      eFlags = rd32(36, isBE);
+      phentsize = rd16(42, isBE);
+      phnum = rd16(44, isBE);
+      shentsize = rd16(46, isBE);
+      shnum = rd16(48, isBE);
+      shstrndx = rd16(50, isBE);
+    }
+
+    const typeNames = { 1: 'Relocatable', 2: 'Executable', 3: 'Shared object', 4: 'Core dump' };
+    const machineNames = { 0x03: 'x86', 0x3E: 'x86-64', 0x28: 'ARM', 0xB7: 'AArch64' };
+
+    metadata.header = {
+      magic: '0x7F454C46',
+      class: is64 ? '64-bit' : '32-bit',
+      endianness: isBE ? 'Big-endian' : 'Little-endian',
+      type: typeNames[eType] || `Unknown (${eType})`,
+      machine: machineNames[eMachine] || `Unknown (0x${eMachine.toString(16)})`,
+      version: eVersion,
+      entry: `0x${eEntry.toString(16).padStart(is64 ? 16 : 8, '0')}`,
+      flags: `0x${eFlags.toString(16)}`
+    };
+
+    // Parse program headers
+    const ptNames = {
+      0: 'PT_NULL', 1: 'PT_LOAD', 2: 'PT_DYNAMIC', 3: 'PT_INTERP',
+      4: 'PT_NOTE', 5: 'PT_SHLIB', 6: 'PT_PHDR', 7: 'PT_TLS',
+      0x6474E550: 'PT_GNU_EH_FRAME', 0x6474E551: 'PT_GNU_STACK',
+      0x6474E552: 'PT_GNU_RELRO', 0x6474E553: 'PT_GNU_PROPERTY'
+    };
+
+    const phdrs = [];
+    if (phoff > 0 && phnum > 0) {
+      for (let i = 0; i < phnum; i++) {
+        const off = phoff + i * phentsize;
+        if (off + phentsize > bytes.length) break;
+
+        let pType, pFlags, pOffset, pFilesz;
+        if (is64) {
+          pType = rd32(off, isBE);
+          pFlags = rd32(off + 4, isBE);
+          pOffset = rd64(off + 8, isBE);
+          pFilesz = rd64(off + 32, isBE);
+        } else {
+          pType = rd32(off, isBE);
+          pOffset = rd32(off + 4, isBE);
+          pFilesz = rd32(off + 16, isBE);
+          pFlags = rd32(off + 24, isBE);
+        }
+
+        const r = (pFlags & 4) ? 'r' : '-';
+        const w = (pFlags & 2) ? 'w' : '-';
+        const x = (pFlags & 1) ? 'x' : '-';
+
+        phdrs.push({ typeValue: pType, flags: pFlags, offset: pOffset, filesz: pFilesz });
+        metadata.programHeaders.push({
+          type: ptNames[pType] || `0x${pType.toString(16)}`,
+          flags: r + w + x,
+          offset: pOffset,
+          size: pFilesz
+        });
+      }
+    }
+
+    // Read section name string table
+    let strtabData = null;
+    if (shstrndx > 0 && shstrndx < shnum && shoff > 0) {
+      const strtabHdrOff = shoff + shstrndx * shentsize;
+      if (strtabHdrOff + shentsize <= bytes.length) {
+        let stOff, stSize;
+        if (is64) {
+          stOff = rd64(strtabHdrOff + 24, isBE);
+          stSize = rd64(strtabHdrOff + 32, isBE);
+        } else {
+          stOff = rd32(strtabHdrOff + 16, isBE);
+          stSize = rd32(strtabHdrOff + 20, isBE);
+        }
+        if (stOff + stSize <= bytes.length) {
+          strtabData = bytes.slice(stOff, stOff + stSize);
+        }
+      }
+    }
+
+    const readSecName = (idx) => {
+      if (!strtabData || idx >= strtabData.length) return '';
+      let end = idx;
+      while (end < strtabData.length && strtabData[end] !== 0) end++;
+      return new TextDecoder().decode(strtabData.slice(idx, end));
+    };
+
+    // Parse section headers
+    if (shoff > 0 && shnum > 0) {
+      for (let i = 0; i < shnum; i++) {
+        const off = shoff + i * shentsize;
+        if (off + shentsize > bytes.length) break;
+
+        const shName = rd32(off, isBE);
+        const shType = rd32(off + 4, isBE);
+        let shSize;
+        if (is64) {
+          shSize = rd64(off + 32, isBE);
+        } else {
+          shSize = rd32(off + 20, isBE);
+        }
+
+        const name = readSecName(shName);
+        if (name) {
+          metadata.sectionHeaders.push({ name, type: shType, size: shSize });
+        }
+      }
+    }
+
+    // Find PT_INTERP → interpreter path
+    const interpPhdr = phdrs.find(p => p.typeValue === 3);
+    if (interpPhdr && interpPhdr.offset + interpPhdr.filesz <= bytes.length) {
+      let end = interpPhdr.offset;
+      const limit = Math.min(interpPhdr.offset + interpPhdr.filesz, bytes.length);
+      while (end < limit && bytes[end] !== 0) end++;
+      metadata.interpreter = new TextDecoder().decode(bytes.slice(interpPhdr.offset, end));
+    }
+
+    // Parse .dynamic section for dependencies, rpath, runpath, security info
+    const dynPhdr = phdrs.find(p => p.typeValue === 2);
+    if (dynPhdr && dynPhdr.offset + dynPhdr.filesz <= bytes.length) {
+      const dynEntries = [];
+      const entrySize = is64 ? 16 : 8;
+      let doff = dynPhdr.offset;
+      const dend = dynPhdr.offset + dynPhdr.filesz;
+
+      while (doff + entrySize <= dend && doff + entrySize <= bytes.length) {
+        let tag, val;
+        if (is64) {
+          tag = rd64(doff, isBE);
+          val = rd64(doff + 8, isBE);
+        } else {
+          tag = rd32(doff, isBE);
+          val = rd32(doff + 4, isBE);
+        }
+        if (tag === 0) break;
+        dynEntries.push({ tag, val });
+        doff += entrySize;
+      }
+
+      // Find DT_STRTAB and resolve it through PT_LOAD segments
+      const strtabEntry = dynEntries.find(e => e.tag === 5);
+      const strszEntry = dynEntries.find(e => e.tag === 10);
+      let dynStrtab = null;
+
+      if (strtabEntry) {
+        const strtabVA = strtabEntry.val;
+        const strsz = strszEntry ? strszEntry.val : 4096;
+
+        // Map VA to file offset through PT_LOAD segments
+        let fileOffset = null;
+        for (let i = 0; i < phnum; i++) {
+          const poff = phoff + i * phentsize;
+          if (poff + phentsize > bytes.length) break;
+          const pt = rd32(poff, isBE);
+          if (pt !== 1) continue; // PT_LOAD only
+          let vaddr, segOffset, segFilesz;
+          if (is64) {
+            segOffset = rd64(poff + 8, isBE);
+            vaddr = rd64(poff + 16, isBE);
+            segFilesz = rd64(poff + 32, isBE);
+          } else {
+            segOffset = rd32(poff + 4, isBE);
+            vaddr = rd32(poff + 8, isBE);
+            segFilesz = rd32(poff + 16, isBE);
+          }
+          if (strtabVA >= vaddr && strtabVA < vaddr + segFilesz) {
+            fileOffset = segOffset + (strtabVA - vaddr);
+            break;
+          }
+        }
+
+        if (fileOffset !== null && fileOffset < bytes.length) {
+          const tabEnd = Math.min(fileOffset + strsz, bytes.length);
+          dynStrtab = bytes.slice(fileOffset, tabEnd);
+        }
+      }
+
+      const readStr = (idx) => {
+        if (!dynStrtab || idx >= dynStrtab.length) return null;
+        let end = idx;
+        while (end < dynStrtab.length && dynStrtab[end] !== 0) end++;
+        return new TextDecoder().decode(dynStrtab.slice(idx, end));
+      };
+
+      // Extract dependencies (DT_NEEDED = 1)
+      for (const e of dynEntries) {
+        if (e.tag === 1) {
+          const name = readStr(e.val);
+          if (name) metadata.dependencies.push(name);
+        }
+      }
+
+      // Extract rpath (DT_RPATH = 15) and runpath (DT_RUNPATH = 29)
+      for (const e of dynEntries) {
+        if (e.tag === 15) metadata.rpath = readStr(e.val);
+        if (e.tag === 29) metadata.runpath = readStr(e.val);
+      }
+
+      // Security features
+      const hasGnuStack = phdrs.some(p => p.typeValue === 0x6474E551);
+      const gnuStack = phdrs.find(p => p.typeValue === 0x6474E551);
+      const execStack = gnuStack ? (gnuStack.flags & 1) !== 0 : false;
+      const pie = eType === 3 && phdrs.some(p => p.typeValue === 3);
+      const hasRelro = phdrs.some(p => p.typeValue === 0x6474E552);
+      const hasBindNow = dynEntries.some(e => e.tag === 24);
+      const flagsE = dynEntries.find(e => e.tag === 30);
+      const dfBindNow = flagsE ? (flagsE.val & 0x8) !== 0 : false;
+      const relro = hasRelro ? ((hasBindNow || dfBindNow) ? 'full' : 'partial') : 'none';
+
+      metadata.security = {
+        pie,
+        executableStack: execStack,
+        relro
+      };
+    }
+  } catch (error) {
+    metadata.error = error.message;
+  }
 
   return metadata;
 }

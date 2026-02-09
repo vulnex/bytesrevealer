@@ -314,6 +314,7 @@ function detectSpecificFileType(bytes) {
           enhanced.details = analyzePngStructure(bytes);
         } else if (type.name === 'ELF Binary') {
           enhanced.details = analyzeElfStructure(bytes);
+          enhanced.metadata = extractMetadata(bytes, type.name);
         } else if (type.name === 'JPEG Image') {
           enhanced.details = analyzeJpegStructure(bytes);
         } else if (type.name === 'GIF Image') {
@@ -493,12 +494,34 @@ function extractPngCompression(bytes) {
 // Add these new analyzer functions
 function analyzeElfStructure(bytes) {
   try {
+    const sectionList = getElfSections(bytes);
+    const sectionNames = sectionList.map(s => s.name).filter(n => n.length > 0);
+    const interpreter = getElfInterpreter(bytes);
+    const dependencies = getElfDependencies(bytes);
+    const { segments, hasRWX } = getElfSegmentPermissions(bytes);
+    const security = getElfSecurityFeatures(bytes);
+    const { rpath, runpath } = getElfRpath(bytes);
+    const isStripped = getElfIsStripped(bytes);
+
     return {
       class: getElfClass(bytes),
       type: getElfType(bytes),
       machine: getElfMachine(bytes),
       sections: countElfSections(bytes),
-      entryPoint: getElfEntryPoint(bytes)
+      entryPoint: getElfEntryPoint(bytes),
+      sectionNames,
+      isDynamicallyLinked: interpreter !== null,
+      interpreter,
+      dependencies,
+      segments,
+      hasRWXSegments: hasRWX,
+      pie: security.pie,
+      executableStack: security.executableStack,
+      relro: security.relro,
+      textrel: security.textrel,
+      isStripped,
+      rpath,
+      runpath
     };
   } catch (error) {
     logger.error('Error analyzing ELF structure:', error);
@@ -536,7 +559,387 @@ function analyzeGifStructure(bytes) {
   }
 }
 
-// Helper functions for ELF analysis
+// ── ELF Core Utilities ──
+
+function isElfBigEndian(bytes) { return bytes[5] === 2; }
+function isElf64bit(bytes) { return bytes[4] === 2; }
+
+function readElfUint16(bytes, offset, bigEndian) {
+  if (offset + 2 > bytes.length) return 0;
+  if (bigEndian) return (bytes[offset] << 8) | bytes[offset + 1];
+  return bytes[offset] | (bytes[offset + 1] << 8);
+}
+
+function readElfUint32(bytes, offset, bigEndian) {
+  if (offset + 4 > bytes.length) return 0;
+  if (bigEndian) {
+    return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
+            (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+  }
+  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+
+function readElfUint64(bytes, offset, bigEndian) {
+  if (offset + 8 > bytes.length) return 0;
+  const lo = readElfUint32(bytes, offset, bigEndian);
+  const hi = readElfUint32(bytes, offset + 4, bigEndian);
+  if (bigEndian) return hi + lo * 0x100000000;
+  return lo + hi * 0x100000000;
+}
+
+function getElfHeaderInfo(bytes) {
+  const is64 = isElf64bit(bytes);
+  const bigEndian = isElfBigEndian(bytes);
+  if (is64) {
+    if (bytes.length < 64) return null;
+    return {
+      is64, bigEndian,
+      type: readElfUint16(bytes, 16, bigEndian),
+      machine: readElfUint16(bytes, 18, bigEndian),
+      entry: readElfUint64(bytes, 24, bigEndian),
+      phoff: readElfUint64(bytes, 32, bigEndian),
+      shoff: readElfUint64(bytes, 40, bigEndian),
+      flags: readElfUint32(bytes, 48, bigEndian),
+      phentsize: readElfUint16(bytes, 54, bigEndian),
+      phnum: readElfUint16(bytes, 56, bigEndian),
+      shentsize: readElfUint16(bytes, 58, bigEndian),
+      shnum: readElfUint16(bytes, 60, bigEndian),
+      shstrndx: readElfUint16(bytes, 62, bigEndian)
+    };
+  }
+  if (bytes.length < 52) return null;
+  return {
+    is64, bigEndian,
+    type: readElfUint16(bytes, 16, bigEndian),
+    machine: readElfUint16(bytes, 18, bigEndian),
+    entry: readElfUint32(bytes, 24, bigEndian),
+    phoff: readElfUint32(bytes, 28, bigEndian),
+    shoff: readElfUint32(bytes, 32, bigEndian),
+    flags: readElfUint32(bytes, 36, bigEndian),
+    phentsize: readElfUint16(bytes, 42, bigEndian),
+    phnum: readElfUint16(bytes, 44, bigEndian),
+    shentsize: readElfUint16(bytes, 46, bigEndian),
+    shnum: readElfUint16(bytes, 48, bigEndian),
+    shstrndx: readElfUint16(bytes, 50, bigEndian)
+  };
+}
+
+// ── ELF Program Header Helpers ──
+
+const ELF_PT_NAMES = {
+  0: 'PT_NULL', 1: 'PT_LOAD', 2: 'PT_DYNAMIC', 3: 'PT_INTERP',
+  4: 'PT_NOTE', 5: 'PT_SHLIB', 6: 'PT_PHDR', 7: 'PT_TLS',
+  0x6474E550: 'PT_GNU_EH_FRAME', 0x6474E551: 'PT_GNU_STACK',
+  0x6474E552: 'PT_GNU_RELRO', 0x6474E553: 'PT_GNU_PROPERTY'
+};
+
+function getElfProgramHeaders(bytes) {
+  try {
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr || hdr.phoff === 0 || hdr.phnum === 0) return [];
+
+    const headers = [];
+    for (let i = 0; i < hdr.phnum; i++) {
+      const off = hdr.phoff + i * hdr.phentsize;
+      if (off + hdr.phentsize > bytes.length) break;
+
+      let pType, pFlags, pOffset, pFilesz, pMemsz;
+      if (hdr.is64) {
+        pType = readElfUint32(bytes, off, hdr.bigEndian);
+        pFlags = readElfUint32(bytes, off + 4, hdr.bigEndian);
+        pOffset = readElfUint64(bytes, off + 8, hdr.bigEndian);
+        pFilesz = readElfUint64(bytes, off + 32, hdr.bigEndian);
+        pMemsz = readElfUint64(bytes, off + 40, hdr.bigEndian);
+      } else {
+        pType = readElfUint32(bytes, off, hdr.bigEndian);
+        pOffset = readElfUint32(bytes, off + 4, hdr.bigEndian);
+        pFilesz = readElfUint32(bytes, off + 16, hdr.bigEndian);
+        pMemsz = readElfUint32(bytes, off + 20, hdr.bigEndian);
+        pFlags = readElfUint32(bytes, off + 24, hdr.bigEndian);
+      }
+
+      headers.push({
+        type: ELF_PT_NAMES[pType] || `0x${pType.toString(16)}`,
+        typeValue: pType,
+        flags: pFlags,
+        offset: pOffset,
+        filesz: pFilesz,
+        memsz: pMemsz
+      });
+    }
+    return headers;
+  } catch (error) {
+    logger.error('Error getting ELF program headers:', error);
+    return [];
+  }
+}
+
+function getElfSections(bytes) {
+  try {
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr || hdr.shoff === 0 || hdr.shnum === 0) return [];
+
+    // Read section name string table (.shstrtab)
+    let strtabData = null;
+    if (hdr.shstrndx > 0 && hdr.shstrndx < hdr.shnum) {
+      const strtabOff = hdr.shoff + hdr.shstrndx * hdr.shentsize;
+      if (strtabOff + hdr.shentsize <= bytes.length) {
+        let shOffset, shSize;
+        if (hdr.is64) {
+          shOffset = readElfUint64(bytes, strtabOff + 24, hdr.bigEndian);
+          shSize = readElfUint64(bytes, strtabOff + 32, hdr.bigEndian);
+        } else {
+          shOffset = readElfUint32(bytes, strtabOff + 16, hdr.bigEndian);
+          shSize = readElfUint32(bytes, strtabOff + 20, hdr.bigEndian);
+        }
+        if (shOffset + shSize <= bytes.length) {
+          strtabData = bytes.slice(shOffset, shOffset + shSize);
+        }
+      }
+    }
+
+    const readSectionName = (nameIdx) => {
+      if (!strtabData || nameIdx >= strtabData.length) return '';
+      let end = nameIdx;
+      while (end < strtabData.length && strtabData[end] !== 0) end++;
+      return new TextDecoder().decode(strtabData.slice(nameIdx, end));
+    };
+
+    const sections = [];
+    for (let i = 0; i < hdr.shnum; i++) {
+      const off = hdr.shoff + i * hdr.shentsize;
+      if (off + hdr.shentsize > bytes.length) break;
+
+      const shName = readElfUint32(bytes, off, hdr.bigEndian);
+      const shType = readElfUint32(bytes, off + 4, hdr.bigEndian);
+      let shFlags, shAddr, shSize;
+      if (hdr.is64) {
+        shFlags = readElfUint64(bytes, off + 8, hdr.bigEndian);
+        shAddr = readElfUint64(bytes, off + 16, hdr.bigEndian);
+        shSize = readElfUint64(bytes, off + 32, hdr.bigEndian);
+      } else {
+        shFlags = readElfUint32(bytes, off + 8, hdr.bigEndian);
+        shAddr = readElfUint32(bytes, off + 12, hdr.bigEndian);
+        shSize = readElfUint32(bytes, off + 20, hdr.bigEndian);
+      }
+
+      sections.push({
+        name: readSectionName(shName),
+        type: shType,
+        flags: shFlags,
+        addr: shAddr,
+        size: shSize
+      });
+    }
+    return sections;
+  } catch (error) {
+    logger.error('Error getting ELF sections:', error);
+    return [];
+  }
+}
+
+function getElfDynamicEntries(bytes) {
+  try {
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr) return { entries: [], strtab: null };
+
+    // Find PT_DYNAMIC program header
+    const phdrs = getElfProgramHeaders(bytes);
+    const dynPhdr = phdrs.find(p => p.typeValue === 2); // PT_DYNAMIC
+    if (!dynPhdr || dynPhdr.offset + dynPhdr.filesz > bytes.length) return { entries: [], strtab: null };
+
+    // Read all dynamic entries
+    const entries = [];
+    const entrySize = hdr.is64 ? 16 : 8;
+    let off = dynPhdr.offset;
+    const end = dynPhdr.offset + dynPhdr.filesz;
+
+    while (off + entrySize <= end && off + entrySize <= bytes.length) {
+      let tag, val;
+      if (hdr.is64) {
+        tag = readElfUint64(bytes, off, hdr.bigEndian);
+        val = readElfUint64(bytes, off + 8, hdr.bigEndian);
+      } else {
+        tag = readElfUint32(bytes, off, hdr.bigEndian);
+        val = readElfUint32(bytes, off + 4, hdr.bigEndian);
+      }
+      if (tag === 0) break; // DT_NULL
+      entries.push({ tag, val });
+      off += entrySize;
+    }
+
+    // Find DT_STRTAB (tag 5) offset and DT_STRSZ (tag 10) for string resolution
+    const strtabEntry = entries.find(e => e.tag === 5);
+    const strszEntry = entries.find(e => e.tag === 10);
+    let strtab = null;
+
+    if (strtabEntry) {
+      // DT_STRTAB is a virtual address; we need to find which PT_LOAD segment maps it
+      const strtabVA = strtabEntry.val;
+      const strsz = strszEntry ? strszEntry.val : 4096; // fallback size
+      const loadSeg = phdrs.find(p => p.typeValue === 1 && strtabVA >= p.offset &&
+                                       strtabVA < p.offset + p.filesz);
+      // Try direct file offset first (works when VA == file offset, common for non-PIE)
+      // Then try mapping through PT_LOAD segments
+      let fileOffset = null;
+      for (const seg of phdrs) {
+        if (seg.typeValue !== 1) continue; // PT_LOAD only
+        // VA range for this segment: [seg.vaddr, seg.vaddr + seg.filesz)
+        // We need the vaddr, which we parse fresh here
+        const segOff = hdr.phoff + phdrs.indexOf(seg) * hdr.phentsize;
+        let vaddr;
+        if (hdr.is64) {
+          vaddr = readElfUint64(bytes, segOff + 16, hdr.bigEndian);
+        } else {
+          vaddr = readElfUint32(bytes, segOff + 8, hdr.bigEndian);
+        }
+        if (strtabVA >= vaddr && strtabVA < vaddr + seg.filesz) {
+          fileOffset = seg.offset + (strtabVA - vaddr);
+          break;
+        }
+      }
+
+      if (fileOffset !== null && fileOffset < bytes.length) {
+        const tabEnd = Math.min(fileOffset + strsz, bytes.length);
+        strtab = bytes.slice(fileOffset, tabEnd);
+      }
+    }
+
+    return { entries, strtab };
+  } catch (error) {
+    logger.error('Error getting ELF dynamic entries:', error);
+    return { entries: [], strtab: null };
+  }
+}
+
+function readDynString(strtab, nameIdx) {
+  if (!strtab || nameIdx >= strtab.length) return null;
+  let end = nameIdx;
+  while (end < strtab.length && strtab[end] !== 0) end++;
+  return new TextDecoder().decode(strtab.slice(nameIdx, end));
+}
+
+function getElfDependencies(bytes) {
+  try {
+    const { entries, strtab } = getElfDynamicEntries(bytes);
+    const deps = [];
+    for (const e of entries) {
+      if (e.tag === 1) { // DT_NEEDED
+        const name = readDynString(strtab, e.val);
+        if (name) deps.push(name);
+      }
+    }
+    return deps;
+  } catch (error) {
+    logger.error('Error getting ELF dependencies:', error);
+    return [];
+  }
+}
+
+function getElfSecurityFeatures(bytes) {
+  try {
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr) return { pie: false, executableStack: false, relro: 'none', textrel: false };
+
+    const phdrs = getElfProgramHeaders(bytes);
+    const { entries } = getElfDynamicEntries(bytes);
+
+    // PIE: e_type === ET_DYN (3) AND has PT_INTERP
+    const pie = hdr.type === 3 && phdrs.some(p => p.typeValue === 3);
+
+    // Executable stack: PT_GNU_STACK with PF_X (bit 0) set
+    const gnuStack = phdrs.find(p => p.typeValue === 0x6474E551);
+    const executableStack = gnuStack ? (gnuStack.flags & 1) !== 0 : false;
+
+    // RELRO: PT_GNU_RELRO present → partial; also DT_BIND_NOW → full
+    const hasRelro = phdrs.some(p => p.typeValue === 0x6474E552);
+    const hasBindNow = entries.some(e => e.tag === 24); // DT_BIND_NOW
+    // Also check DT_FLAGS (tag 30) for DF_BIND_NOW (0x8)
+    const flagsEntry = entries.find(e => e.tag === 30);
+    const dfBindNow = flagsEntry ? (flagsEntry.val & 0x8) !== 0 : false;
+    const relro = hasRelro ? ((hasBindNow || dfBindNow) ? 'full' : 'partial') : 'none';
+
+    // TEXTREL: DT_TEXTREL (tag 22) present
+    const textrel = entries.some(e => e.tag === 22);
+
+    return { pie, executableStack, relro, textrel };
+  } catch (error) {
+    logger.error('Error getting ELF security features:', error);
+    return { pie: false, executableStack: false, relro: 'none', textrel: false };
+  }
+}
+
+function getElfRpath(bytes) {
+  try {
+    const { entries, strtab } = getElfDynamicEntries(bytes);
+    let rpath = null;
+    let runpath = null;
+    for (const e of entries) {
+      if (e.tag === 15) { // DT_RPATH
+        rpath = readDynString(strtab, e.val);
+      } else if (e.tag === 29) { // DT_RUNPATH
+        runpath = readDynString(strtab, e.val);
+      }
+    }
+    return { rpath, runpath };
+  } catch (error) {
+    logger.error('Error getting ELF rpath:', error);
+    return { rpath: null, runpath: null };
+  }
+}
+
+function getElfIsStripped(bytes) {
+  try {
+    const sections = getElfSections(bytes);
+    return !sections.some(s => s.name === '.symtab');
+  } catch (error) {
+    logger.error('Error checking if ELF is stripped:', error);
+    return false;
+  }
+}
+
+function getElfInterpreter(bytes) {
+  try {
+    const phdrs = getElfProgramHeaders(bytes);
+    const interp = phdrs.find(p => p.typeValue === 3); // PT_INTERP
+    if (!interp || interp.offset + interp.filesz > bytes.length) return null;
+
+    let end = interp.offset;
+    const limit = Math.min(interp.offset + interp.filesz, bytes.length);
+    while (end < limit && bytes[end] !== 0) end++;
+    return new TextDecoder().decode(bytes.slice(interp.offset, end));
+  } catch (error) {
+    logger.error('Error getting ELF interpreter:', error);
+    return null;
+  }
+}
+
+function getElfSegmentPermissions(bytes) {
+  try {
+    const phdrs = getElfProgramHeaders(bytes);
+    const segments = [];
+    let hasRWX = false;
+
+    for (const p of phdrs) {
+      if (p.typeValue !== 1) continue; // PT_LOAD only
+      const r = (p.flags & 4) ? 'r' : '-';
+      const w = (p.flags & 2) ? 'w' : '-';
+      const x = (p.flags & 1) ? 'x' : '-';
+      const flagsStr = r + w + x;
+      if ((p.flags & 7) === 7) hasRWX = true;
+      segments.push({ type: 'PT_LOAD', flags: flagsStr, memsz: p.memsz });
+    }
+
+    return { segments, hasRWX };
+  } catch (error) {
+    logger.error('Error getting ELF segment permissions:', error);
+    return { segments: [], hasRWX: false };
+  }
+}
+
+// ── ELF Basic Field Helpers (fixed for endianness) ──
+
 function getElfClass(bytes) {
   const elfClass = bytes[4];
   return elfClass === 1 ? '32-bit' : elfClass === 2 ? '64-bit' : 'Unknown';
@@ -549,7 +952,8 @@ function getElfType(bytes) {
     3: 'Shared object',
     4: 'Core dump'
   };
-  const type = bytes[16] | (bytes[17] << 8);
+  const bigEndian = isElfBigEndian(bytes);
+  const type = readElfUint16(bytes, 16, bigEndian);
   return types[type] || 'Unknown';
 }
 
@@ -560,7 +964,8 @@ function getElfMachine(bytes) {
     0x28: 'ARM',
     0xB7: 'AArch64'
   };
-  const machine = bytes[18] | (bytes[19] << 8);
+  const bigEndian = isElfBigEndian(bytes);
+  const machine = readElfUint16(bytes, 18, bigEndian);
   return machines[machine] || `Unknown (0x${machine.toString(16)})`;
 }
 
@@ -819,11 +1224,11 @@ function getGifDimensions(bytes) {
   }
 }
 
-// Add these missing ELF-related functions
 function countElfSections(bytes) {
   try {
-    if (bytes.length < 48) return 0;
-    return bytes[48] | (bytes[49] << 8);
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr) return 0;
+    return hdr.shnum;
   } catch (error) {
     logger.error('Error counting ELF sections:', error);
     return 0;
@@ -832,30 +1237,10 @@ function countElfSections(bytes) {
 
 function getElfEntryPoint(bytes) {
   try {
-    if (bytes.length < 27) return 'Unknown';
-    const is64bit = bytes[4] === 2;
-    const entryOffset = is64bit ? 24 : 28;
-    
-    if (bytes.length < entryOffset + 8) return 'Unknown';
-    
-    let entry = 0;
-    if (is64bit) {
-      entry = bytes[entryOffset] |
-              (bytes[entryOffset + 1] << 8) |
-              (bytes[entryOffset + 2] << 16) |
-              (bytes[entryOffset + 3] << 24) |
-              (bytes[entryOffset + 4] << 32) |
-              (bytes[entryOffset + 5] << 40) |
-              (bytes[entryOffset + 6] << 48) |
-              (bytes[entryOffset + 7] << 56);
-    } else {
-      entry = bytes[entryOffset] |
-              (bytes[entryOffset + 1] << 8) |
-              (bytes[entryOffset + 2] << 16) |
-              (bytes[entryOffset + 3] << 24);
-    }
-    
-    return `0x${entry.toString(16).padStart(is64bit ? 16 : 8, '0')}`;
+    const hdr = getElfHeaderInfo(bytes);
+    if (!hdr) return 'Unknown';
+    const padLen = hdr.is64 ? 16 : 8;
+    return `0x${hdr.entry.toString(16).padStart(padLen, '0')}`;
   } catch (error) {
     logger.error('Error getting ELF entry point:', error);
     return 'Unknown';

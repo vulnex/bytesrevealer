@@ -366,7 +366,6 @@ class UsecvislibExporter {
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
-      privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Root-level access via SUID', host: 'target_system', level: 'root' })
       exploits.push({
         id: 'exp_exec',
         label: 'Binary Execution',
@@ -400,6 +399,143 @@ class UsecvislibExporter {
         precondition: 'binary',
         postcondition: 'priv_exec'
       })
+    }
+
+    // No PIE — fixed load address
+    if (details.pie === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_pie',
+        label: 'No ASLR (PIE disabled)',
+        description: 'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_fixed_addr',
+        label: 'Fixed Address Exploitation',
+        description: 'Exploit fixed load address due to missing PIE.',
+        vulnerability: 'vuln_no_pie',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // Executable stack
+    if (details.executableStack) {
+      vulnerabilities.push({
+        id: 'vuln_exec_stack',
+        label: 'Executable Stack',
+        description: 'PT_GNU_STACK has execute permission, enabling stack-based code execution.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_stack_exec',
+        label: 'Stack-Based Code Execution',
+        description: 'Execute shellcode on stack due to executable stack permission.',
+        vulnerability: 'vuln_exec_stack',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // No RELRO — GOT overwrite
+    if (details.relro === 'none') {
+      vulnerabilities.push({
+        id: 'vuln_no_relro',
+        label: 'No RELRO Protection',
+        description: 'Binary lacks RELRO, allowing GOT overwrite attacks.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_got_overwrite',
+        label: 'GOT Overwrite Exploitation',
+        description: 'Overwrite Global Offset Table entries to redirect control flow.',
+        vulnerability: 'vuln_no_relro',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // RWX memory segments
+    if (details.hasRWXSegments) {
+      vulnerabilities.push({
+        id: 'vuln_rwx',
+        label: 'RWX Memory Segments',
+        description: 'Binary contains segments with read-write-execute permissions, enabling code injection.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_memory_corruption',
+        label: 'Memory Corruption Exploitation',
+        description: 'Exploit RWX memory segments for arbitrary code execution.',
+        vulnerability: 'vuln_rwx',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // Stripped binary
+    if (details.isStripped) {
+      vulnerabilities.push({
+        id: 'vuln_stripped',
+        label: 'Stripped Binary',
+        description: 'Symbol table removed, hindering reverse engineering and forensic analysis.',
+        cvss_vector: 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N',
+        affected_host: 'binary'
+      })
+    }
+
+    // Rpath / Runpath injection
+    if (details.rpath || details.runpath) {
+      const paths = [details.rpath, details.runpath].filter(Boolean).join(', ')
+      vulnerabilities.push({
+        id: 'vuln_rpath',
+        label: 'Rpath/Runpath Injection Risk',
+        description: `Binary specifies library search paths (${paths}), potentially exploitable for library injection.`,
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_rpath_inject',
+        label: 'Library Path Injection',
+        description: 'Inject malicious library via rpath/runpath controlled directory.',
+        vulnerability: 'vuln_rpath',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // Text relocations
+    if (details.textrel) {
+      vulnerabilities.push({
+        id: 'vuln_textrel',
+        label: 'Text Relocations Present',
+        description: 'Binary requires text relocations, making code sections writable at runtime.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_textrel',
+        label: 'Code Section Modification',
+        description: 'Modify writable code sections due to text relocations.',
+        vulnerability: 'vuln_textrel',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // Privilege escalation path for executable stack or shared object
+    if (details.executableStack || elfType === 'Shared object') {
+      if (!privileges.some(p => p.id === 'priv_root')) {
+        privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Escalated privileges via stack execution or library injection', host: 'target_system', level: 'root' })
+      }
+    }
+    // Also add priv_root for SUID path if not yet added
+    if (elfType === 'Executable' && !privileges.some(p => p.id === 'priv_root')) {
+      privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Root-level access via SUID', host: 'target_system', level: 'root' })
     }
   }
 
