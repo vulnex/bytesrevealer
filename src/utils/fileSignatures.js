@@ -18,7 +18,7 @@ export const FILE_SIGNATURES = [
   { pattern: [0x1F, 0x8B, 0x08], name: 'GZIP Archive', extension: 'gz' },
   { pattern: [0x42, 0x5A, 0x68], name: 'BZIP2 Archive', extension: 'bz2' },
   { pattern: [0x37, 0x7A, 0xBC, 0xAF, 0x27, 0x1C], name: '7-Zip Archive', extension: '7z' },
-  
+
   // Image Formats
   { pattern: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A], name: 'PNG Image', extension: 'png' },
   { pattern: [0xFF, 0xD8, 0xFF], name: 'JPEG Image', extension: 'jpg' },
@@ -26,18 +26,21 @@ export const FILE_SIGNATURES = [
   { pattern: [0x47, 0x49, 0x46, 0x38, 0x39, 0x61], name: 'GIF Image (89a)', extension: 'gif' },
   { pattern: [0x42, 0x4D], name: 'BMP Image', extension: 'bmp' },
   { pattern: [0x00, 0x00, 0x01, 0x00], name: 'ICO Image', extension: 'ico' },
-  
+
   // Document Formats
   { pattern: [0x25, 0x50, 0x44, 0x46], name: 'PDF Document', extension: 'pdf' },
   { pattern: [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1], name: 'Microsoft Office Document', extension: 'doc/xls/ppt' },
   { pattern: [0x50, 0x4B, 0x03, 0x04, 0x14, 0x00, 0x06, 0x00], name: 'Office Open XML Document', extension: 'docx/xlsx/pptx' },
-  
+
   // Executable and Binary Formats
   { pattern: [0x4D, 0x5A], name: 'Windows Executable (PE)', extension: 'exe/dll' },
   { pattern: [0x7F, 0x45, 0x4C, 0x46], name: 'ELF Binary', extension: 'elf' },
-  { pattern: [0xCA, 0xFE, 0xBA, 0xBE], name: 'Java Class File', extension: 'class' },
-  { pattern: [0xFE, 0xED, 0xFA, 0xCE], name: 'Mach-O Binary (32-bit)', extension: 'macho' },
-  { pattern: [0xFE, 0xED, 0xFA, 0xCF], name: 'Mach-O Binary (64-bit)', extension: 'macho' },
+  // NOTE: CA FE BA BE is handled specially in detectFileTypes() to disambiguate
+  // between Mach-O Universal Binary and Java Class File
+  { pattern: [0xFE, 0xED, 0xFA, 0xCE], name: 'Mach-O Binary (32-bit BE)', extension: 'macho' },
+  { pattern: [0xFE, 0xED, 0xFA, 0xCF], name: 'Mach-O Binary (64-bit BE)', extension: 'macho' },
+  { pattern: [0xCE, 0xFA, 0xED, 0xFE], name: 'Mach-O Binary (32-bit)', extension: 'macho' },
+  { pattern: [0xCF, 0xFA, 0xED, 0xFE], name: 'Mach-O Binary (64-bit)', extension: 'macho' },
   
   // Audio/Video Formats
   { pattern: [0x49, 0x44, 0x33], name: 'MP3 Audio (with ID3)', extension: 'mp3' },
@@ -72,13 +75,50 @@ export const FILE_SIGNATURES = [
 ];
 
 /**
+ * Disambiguate CA FE BA BE: Mach-O fat/universal binary vs Java class file.
+ * Both share the same 4-byte magic. Fat binaries have a small nfat_arch count
+ * followed by valid CPU type entries; Java class files have version numbers.
+ * @param {Uint8Array} bytes - The file bytes to analyze
+ * @returns {boolean} - True if this is a Mach-O fat binary
+ */
+export function isMachOFatBinary(bytes) {
+  if (!bytes || bytes.length < 28) return false;
+
+  // Read nfat_arch as big-endian uint32 (fat header is always big-endian)
+  const nfat_arch = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
+
+  // Fat binaries typically have 1-20 architectures
+  if (nfat_arch < 1 || nfat_arch > 20) return false;
+
+  // Verify file is large enough: fat_header (8) + nfat_arch * fat_arch (20 each)
+  if (bytes.length < 8 + nfat_arch * 20) return false;
+
+  // Check first fat_arch entry's cputype (bytes 8-11, big-endian)
+  const cputype = ((bytes[8] << 24) | (bytes[9] << 16) | (bytes[10] << 8) | bytes[11]) >>> 0;
+
+  const KNOWN_CPU_TYPES = new Set([
+    0x00000001, // VAX
+    0x00000006, // MC680x0
+    0x00000007, // x86
+    0x01000007, // x86_64
+    0x0000000C, // ARM
+    0x0100000C, // ARM64
+    0x0200000C, // ARM64_32
+    0x00000012, // PowerPC
+    0x01000012, // PowerPC64
+  ]);
+
+  return KNOWN_CPU_TYPES.has(cputype);
+}
+
+/**
  * Get detailed information about a file type based on its signature
  * @param {Uint8Array} bytes - The file bytes to analyze
  * @returns {Array} - Array of matched file signatures
  */
 export function detectFileTypes(bytes) {
   const matches = [];
-  
+
   FILE_SIGNATURES.forEach(sig => {
     if (bytes.length >= sig.pattern.length) {
       let match = true;
@@ -98,7 +138,28 @@ export function detectFileTypes(bytes) {
       }
     }
   });
-  
+
+  // Handle CA FE BA BE disambiguation (Mach-O Universal Binary vs Java Class File)
+  if (bytes.length >= 4 &&
+      bytes[0] === 0xCA && bytes[1] === 0xFE &&
+      bytes[2] === 0xBA && bytes[3] === 0xBE) {
+    if (isMachOFatBinary(bytes)) {
+      matches.push({
+        name: 'Mach-O Universal Binary',
+        extension: 'macho',
+        confidence: 'High',
+        offset: 0
+      });
+    } else {
+      matches.push({
+        name: 'Java Class File',
+        extension: 'class',
+        confidence: 'High',
+        offset: 0
+      });
+    }
+  }
+
   return matches;
 }
 

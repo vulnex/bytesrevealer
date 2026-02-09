@@ -15,6 +15,7 @@ import { ref, computed } from 'vue'
 import CryptoJS from 'crypto-js'
 import { createLogger } from './logger'
 import { fileTypeFromBuffer } from 'file-type'
+import { isMachOFatBinary } from './fileSignatures'
 
 const logger = createLogger('FileHandler')
 
@@ -268,6 +269,24 @@ export async function detectFileType(input) {
       throw new Error('Input must be a File or Uint8Array');
     }
 
+    // Pre-check for CA FE BA BE to disambiguate Mach-O fat binary vs Java class.
+    // Must run before the file-type library which misidentifies fat binaries as Java class.
+    if (bytes.length >= 28 &&
+        bytes[0] === 0xCA && bytes[1] === 0xFE &&
+        bytes[2] === 0xBA && bytes[3] === 0xBE) {
+      if (isMachOFatBinary(bytes)) {
+        const nfat_arch = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
+        logger.debug('Detected Mach-O Universal Binary with', nfat_arch, 'architectures');
+        return {
+          detected: true,
+          ext: 'macho',
+          mime: 'application/x-mach-binary',
+          description: `Mach-O Universal Binary (${nfat_arch} architectures)`,
+          confidence: 'high'
+        };
+      }
+    }
+
     // Detect file type using file-type library
     let fileType;
     try {
@@ -451,17 +470,30 @@ function detectCommonFormats(bytes) {
     };
   }
 
-  // Check for Mach-O (macOS executable)
+  // Check for Mach-O (macOS executable) - using byte comparisons to avoid signed int32 issues
   if (bytes.length >= 4) {
-    const magic = (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
-    // Mach-O magic numbers
-    if (magic === 0xFEEDFACE || magic === 0xFEEDFACF ||
-        magic === 0xCEFAEDFE || magic === 0xCFFAEDFE) {
+    const b0 = bytes[0], b1 = bytes[1], b2 = bytes[2], b3 = bytes[3];
+
+    // Mach-O big-endian: FE ED FA CE (32-bit) / FE ED FA CF (64-bit)
+    // Mach-O little-endian: CE FA ED FE (32-bit) / CF FA ED FE (64-bit)
+    if ((b0 === 0xFE && b1 === 0xED && b2 === 0xFA && (b3 === 0xCE || b3 === 0xCF)) ||
+        (b3 === 0xFE && b2 === 0xED && b1 === 0xFA && (b0 === 0xCE || b0 === 0xCF))) {
       return {
         detected: true,
         ext: 'macho',
         mime: 'application/x-mach-binary',
         description: 'Mach-O Binary',
+        confidence: 'high'
+      };
+    }
+
+    // Mach-O Universal/Fat Binary: CA FE BA BE
+    if (b0 === 0xCA && b1 === 0xFE && b2 === 0xBA && b3 === 0xBE && isMachOFatBinary(bytes)) {
+      return {
+        detected: true,
+        ext: 'macho',
+        mime: 'application/x-mach-binary',
+        description: 'Mach-O Universal Binary',
         confidence: 'high'
       };
     }
@@ -589,6 +621,7 @@ function getFileTypeDescription(ext) {
     exe: 'Windows Executable',
     dll: 'Dynamic Link Library',
     so: 'Shared Object',
+    macho: 'Mach-O Binary',
     deb: 'Debian Package',
     rpm: 'RPM Package',
     dmg: 'macOS Disk Image',

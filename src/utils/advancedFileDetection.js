@@ -10,7 +10,7 @@
  * https://www.vulnex.com
  */
 
-import { FILE_SIGNATURES, detectFileTypes, isFileType } from './fileSignatures';
+import { FILE_SIGNATURES, detectFileTypes, isFileType, isMachOFatBinary } from './fileSignatures';
 import { extractMetadata } from './metadataExtractor';
 import { createLogger } from './logger';
 
@@ -301,7 +301,7 @@ function detectSpecificFileType(bytes) {
         if (type.name.includes('Windows Executable (PE)')) {
           const peDetails = analyzePEStructure(bytes);
           enhanced.details = peDetails;
-        } else if (type.name === 'Mach-O Executable') {
+        } else if (type.name.includes('Mach-O')) {
           enhanced.details = analyzeMachOStructure(bytes);
         } else if (type.name === 'PDF Document') {
           enhanced.details = analyzePdfStructure(bytes);
@@ -861,10 +861,75 @@ function getElfEntryPoint(bytes) {
   }
 }
 
+// Mach-O endianness helpers
+function isMachOBigEndian(bytes) {
+  return bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA &&
+         (bytes[3] === 0xCE || bytes[3] === 0xCF);
+}
+
+function isMachOUniversal(bytes) {
+  return bytes.length >= 4 &&
+         bytes[0] === 0xCA && bytes[1] === 0xFE &&
+         bytes[2] === 0xBA && bytes[3] === 0xBE &&
+         isMachOFatBinary(bytes);
+}
+
+function readMachOUint32(bytes, offset, bigEndian) {
+  if (bigEndian) {
+    return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
+            (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+  }
+  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
+          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+}
+
+function isMachO64bit(bytes) {
+  // 64-bit big-endian: FE ED FA CF, 64-bit little-endian: CF FA ED FE
+  return (bytes[0] === 0xFE && bytes[3] === 0xCF) ||
+         (bytes[0] === 0xCF && bytes[3] === 0xFE);
+}
+
+function getMachOHeaderSize(bytes) {
+  return isMachO64bit(bytes) ? 32 : 28;
+}
+
 // Add Mach-O analysis functions
 function analyzeMachOStructure(bytes) {
   try {
-    const machODetails = {
+    const isUniversal = isMachOUniversal(bytes);
+
+    if (isUniversal) {
+      const architectures = getUniversalArchitectures(bytes);
+      const nfat_arch = readMachOUint32(bytes, 4, true);
+
+      // Parse the first architecture slice for detailed analysis
+      let sliceDetails = {};
+      if (bytes.length >= 28) {
+        const firstSliceOffset = readMachOUint32(bytes, 16, true);
+        const firstSliceSize = readMachOUint32(bytes, 20, true);
+        if (firstSliceOffset > 0 && firstSliceOffset < bytes.length) {
+          const sliceEnd = Math.min(firstSliceOffset + firstSliceSize, bytes.length);
+          const sliceBytes = bytes.slice(firstSliceOffset, sliceEnd);
+          if (sliceBytes.length > 32) {
+            sliceDetails = {
+              loadCommands: countMachOLoadCommands(sliceBytes),
+              segments: getMachOSegments(sliceBytes),
+              isDynamicallyLinked: checkMachODynamicLinking(sliceBytes),
+              minimumVersion: getMachOMinVersion(sliceBytes)
+            };
+          }
+        }
+      }
+
+      return {
+        type: 'Universal Binary',
+        architectureCount: nfat_arch,
+        architectures: architectures,
+        ...sliceDetails
+      };
+    }
+
+    return {
       type: getMachOType(bytes),
       architecture: getMachOArchitecture(bytes),
       loadCommands: countMachOLoadCommands(bytes),
@@ -872,8 +937,6 @@ function analyzeMachOStructure(bytes) {
       isDynamicallyLinked: checkMachODynamicLinking(bytes),
       minimumVersion: getMachOMinVersion(bytes)
     };
-
-    return machODetails;
   } catch (error) {
     logger.error('Error analyzing Mach-O structure:', error);
     return { error: error.message };
@@ -882,15 +945,12 @@ function analyzeMachOStructure(bytes) {
 
 function getMachOType(bytes) {
   try {
-    const magic = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
-    const types = {
-      0xFEEDFACF: '64-bit Executable',
-      0xFEEDFACE: '32-bit Executable',
-      0xCAFEBABE: 'Universal Binary',
-      0xCFFAEDFE: '64-bit Big-Endian',
-      0xCEFAEDFE: '32-bit Big-Endian'
-    };
-    return types[magic] || 'Unknown';
+    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 'Universal Binary';
+    if (bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA && bytes[3] === 0xCF) return '64-bit Executable (Big-Endian)';
+    if (bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA && bytes[3] === 0xCE) return '32-bit Executable (Big-Endian)';
+    if (bytes[0] === 0xCF && bytes[1] === 0xFA && bytes[2] === 0xED && bytes[3] === 0xFE) return '64-bit Executable';
+    if (bytes[0] === 0xCE && bytes[1] === 0xFA && bytes[2] === 0xED && bytes[3] === 0xFE) return '32-bit Executable';
+    return 'Unknown';
   } catch (error) {
     logger.error('Error getting Mach-O type:', error);
     return 'Unknown';
@@ -903,14 +963,15 @@ function getMachOArchitecture(bytes) {
       return getUniversalArchitectures(bytes);
     }
 
-    const cputype = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
-    const cpusubtypes = {
+    const bigEndian = isMachOBigEndian(bytes);
+    const cputype = readMachOUint32(bytes, 4, bigEndian);
+    const cpuNames = {
       0x7: 'x86',
-      0x1000007: 'x86_64',
+      0x01000007: 'x86_64',
       0xC: 'ARM',
-      0x100000C: 'ARM64'
+      0x0100000C: 'ARM64'
     };
-    return cpusubtypes[cputype] || `Unknown (${cputype.toString(16)})`;
+    return cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`;
   } catch (error) {
     logger.error('Error getting Mach-O architecture:', error);
     return 'Unknown';
@@ -919,8 +980,9 @@ function getMachOArchitecture(bytes) {
 
 function countMachOLoadCommands(bytes) {
   try {
-    const ncmds = bytes[16] | (bytes[17] << 8) | (bytes[18] << 16) | (bytes[19] << 24);
-    return ncmds;
+    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 0;
+    const bigEndian = isMachOBigEndian(bytes);
+    return readMachOUint32(bytes, 16, bigEndian);
   } catch (error) {
     logger.error('Error counting Mach-O load commands:', error);
     return 0;
@@ -929,24 +991,26 @@ function countMachOLoadCommands(bytes) {
 
 function getMachOSegments(bytes) {
   try {
+    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return [];
+    const bigEndian = isMachOBigEndian(bytes);
+    const headerSize = getMachOHeaderSize(bytes);
     const segments = [];
-    let offset = 32; // Skip Mach header
+    let offset = headerSize;
     const ncmds = countMachOLoadCommands(bytes);
-    
-    for (let i = 0; i < ncmds; i++) {
-      const cmd = bytes[offset] | (bytes[offset + 1] << 8) | 
-                 (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
-      const cmdsize = bytes[offset + 4] | (bytes[offset + 5] << 8) | 
-                     (bytes[offset + 6] << 16) | (bytes[offset + 7] << 24);
-      
-      if (cmd === 0x19) { // LC_SEGMENT_64
+
+    for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
+      const cmd = readMachOUint32(bytes, offset, bigEndian);
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
+      if (cmdsize === 0) break;
+
+      if (cmd === 0x19 || cmd === 0x01) { // LC_SEGMENT_64 or LC_SEGMENT
         const segname = new TextDecoder().decode(bytes.slice(offset + 8, offset + 24)).replace(/\0/g, '');
         segments.push(segname);
       }
-      
+
       offset += cmdsize;
     }
-    
+
     return segments;
   } catch (error) {
     logger.error('Error getting Mach-O segments:', error);
@@ -956,22 +1020,24 @@ function getMachOSegments(bytes) {
 
 function checkMachODynamicLinking(bytes) {
   try {
-    let offset = 32; // Skip Mach header
+    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return false;
+    const bigEndian = isMachOBigEndian(bytes);
+    const headerSize = getMachOHeaderSize(bytes);
+    let offset = headerSize;
     const ncmds = countMachOLoadCommands(bytes);
-    
-    for (let i = 0; i < ncmds; i++) {
-      const cmd = bytes[offset] | (bytes[offset + 1] << 8) | 
-                 (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
-      const cmdsize = bytes[offset + 4] | (bytes[offset + 5] << 8) | 
-                     (bytes[offset + 6] << 16) | (bytes[offset + 7] << 24);
-      
+
+    for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
+      const cmd = readMachOUint32(bytes, offset, bigEndian);
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
+      if (cmdsize === 0) break;
+
       if (cmd === 0x0C || cmd === 0x0D) { // LC_LOAD_DYLIB or LC_LOAD_WEAK_DYLIB
         return true;
       }
-      
+
       offset += cmdsize;
     }
-    
+
     return false;
   } catch (error) {
     logger.error('Error checking Mach-O dynamic linking:', error);
@@ -981,27 +1047,29 @@ function checkMachODynamicLinking(bytes) {
 
 function getMachOMinVersion(bytes) {
   try {
-    let offset = 32; // Skip Mach header
+    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 'Unknown';
+    const bigEndian = isMachOBigEndian(bytes);
+    const headerSize = getMachOHeaderSize(bytes);
+    let offset = headerSize;
     const ncmds = countMachOLoadCommands(bytes);
-    
-    for (let i = 0; i < ncmds; i++) {
-      const cmd = bytes[offset] | (bytes[offset + 1] << 8) | 
-                 (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
-      const cmdsize = bytes[offset + 4] | (bytes[offset + 5] << 8) | 
-                     (bytes[offset + 6] << 16) | (bytes[offset + 7] << 24);
-      
-      if (cmd === 0x24) { // LC_VERSION_MIN_MACOSX
-        const version = bytes[offset + 8] | (bytes[offset + 9] << 8) | 
-                       (bytes[offset + 10] << 16) | (bytes[offset + 11] << 24);
+
+    for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
+      const cmd = readMachOUint32(bytes, offset, bigEndian);
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
+      if (cmdsize === 0) break;
+
+      // LC_VERSION_MIN_MACOSX (0x24) or LC_BUILD_VERSION (0x32)
+      if (cmd === 0x24) {
+        const version = readMachOUint32(bytes, offset + 8, bigEndian);
         const major = (version >> 16) & 0xFF;
         const minor = (version >> 8) & 0xFF;
         const patch = version & 0xFF;
         return `${major}.${minor}.${patch}`;
       }
-      
+
       offset += cmdsize;
     }
-    
+
     return 'Unknown';
   } catch (error) {
     logger.error('Error getting Mach-O minimum version:', error);
@@ -1009,37 +1077,31 @@ function getMachOMinVersion(bytes) {
   }
 }
 
-function isMachOUniversal(bytes) {
-  try {
-    const magic = bytes[0] | (bytes[1] << 8) | (bytes[2] << 16) | (bytes[3] << 24);
-    return magic === 0xCAFEBABE;
-  } catch (error) {
-    return false;
-  }
-}
-
 function getUniversalArchitectures(bytes) {
   try {
     if (!isMachOUniversal(bytes)) return [];
-    
-    const nfat_arch = bytes[4] | (bytes[5] << 8) | (bytes[6] << 16) | (bytes[7] << 24);
+
+    // Fat header is always big-endian
+    const nfat_arch = readMachOUint32(bytes, 4, true);
     const architectures = [];
-    
+
     for (let i = 0; i < nfat_arch; i++) {
-      const offset = 8 + (i * 20); // fat_header size + (i * fat_arch size)
-      const cputype = bytes[offset] | (bytes[offset + 1] << 8) | 
-                     (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24);
-      
-      const cpusubtypes = {
-        0x7: 'x86',
-        0x1000007: 'x86_64',
-        0xC: 'ARM',
-        0x100000C: 'ARM64'
+      const offset = 8 + (i * 20);
+      const cputype = readMachOUint32(bytes, offset, true);
+
+      const cpuNames = {
+        0x00000007: 'x86',
+        0x01000007: 'x86_64',
+        0x0000000C: 'ARM',
+        0x0100000C: 'ARM64',
+        0x0200000C: 'ARM64_32',
+        0x00000012: 'PowerPC',
+        0x01000012: 'PowerPC64'
       };
-      
-      architectures.push(cpusubtypes[cputype] || `Unknown (${cputype.toString(16)})`);
+
+      architectures.push(cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`);
     }
-    
+
     return architectures;
   } catch (error) {
     logger.error('Error getting Universal Binary architectures:', error);
