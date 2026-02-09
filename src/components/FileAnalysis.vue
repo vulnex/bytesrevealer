@@ -12,7 +12,7 @@
  */
 
 <template>
-  <div class="analysis-panel" v-if="fileBytes.length > 0">
+  <div class="analysis-panel" v-if="fileBytes.length > 0 || hasSessionData">
     <!-- Add loading indicator -->
     <div v-if="isAnalyzing" class="analysis-loading">
       <span class="loading-spinner"></span>
@@ -51,44 +51,60 @@
         <div class="stats-grid">
           <div class="stat-item">
             <label>File Size:</label>
-            <span>{{ formatFileSize(fileBytes.length) }}</span>
+            <span>{{ formatFileSize(displayFileSize) }}</span>
           </div>
           <div class="stat-item">
             <label>Entropy:</label>
             <span>{{ entropy.toFixed(2) }} / 8.0</span>
           </div>
-          <div class="stat-item">
-            <label>ASCII %:</label>
-            <span>{{ asciiPercentage.toFixed(1) }}%</span>
-          </div>
-          <div class="stat-item">
-            <label>Null bytes:</label>
-            <span>{{ nullByteCount }} ({{ ((nullByteCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
-          </div>
-          <div class="stat-item">
-            <label>Unique bytes:</label>
-            <span>{{ uniqueBytes }} / 256</span>
-          </div>
-          <div class="stat-item">
-            <label>Most common byte:</label>
-            <span>0x{{ mostCommonByte.value.toString(16).padStart(2, '0').toUpperCase() }} ({{ mostCommonByte.count }}x)</span>
-          </div>
-          <div class="stat-item">
-            <label>Printable chars:</label>
-            <span>{{ printableCount }} ({{ ((printableCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
-          </div>
-          <div class="stat-item">
-            <label>Control chars:</label>
-            <span>{{ controlCount }} ({{ ((controlCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
-          </div>
+          <!-- Only show byte-dependent stats when we have actual file bytes -->
+          <template v-if="hasActualBytes">
+            <div class="stat-item">
+              <label>ASCII %:</label>
+              <span>{{ asciiPercentage.toFixed(1) }}%</span>
+            </div>
+            <div class="stat-item">
+              <label>Null bytes:</label>
+              <span>{{ nullByteCount }} ({{ ((nullByteCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+            </div>
+            <div class="stat-item">
+              <label>Unique bytes:</label>
+              <span>{{ uniqueBytes }} / 256</span>
+            </div>
+            <div class="stat-item">
+              <label>Most common byte:</label>
+              <span>0x{{ mostCommonByte.value.toString(16).padStart(2, '0').toUpperCase() }} ({{ mostCommonByte.count }}x)</span>
+            </div>
+            <div class="stat-item">
+              <label>Printable chars:</label>
+              <span>{{ printableCount }} ({{ ((printableCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+            </div>
+            <div class="stat-item">
+              <label>Control chars:</label>
+              <span>{{ controlCount }} ({{ ((controlCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+            </div>
+          </template>
+          <!-- Show placeholder for session data without bytes -->
+          <template v-else>
+            <div class="stat-item session-placeholder">
+              <label>Byte Statistics:</label>
+              <span class="placeholder-text">Upload file to view detailed byte analysis</span>
+            </div>
+          </template>
         </div>
       </div>
 
-      <EntropyGraph 
-        :fileBytes="fileBytes" 
+      <!-- Only show entropy graph when we have actual bytes -->
+      <EntropyGraph
+        v-if="hasActualBytes"
+        :fileBytes="fileBytes"
         :activeGraphTab="activeGraphTab"
         @update:activeGraphTab="$emit('update:activeGraphTab', $event)"
       />
+      <div v-else class="entropy-placeholder">
+        <h3>Entropy & Byte Distribution</h3>
+        <p class="placeholder-text">Upload the original file to view entropy graph and byte distribution analysis.</p>
+      </div>
       
       <FileSignatures 
         :signatures="fileSignatures"
@@ -140,6 +156,14 @@ export default {
     activeGraphTab: {
       type: String,
       required: true
+    },
+    hasSessionData: {
+      type: Boolean,
+      default: false
+    },
+    sessionFileSize: {
+      type: Number,
+      default: 0
     }
   },
   data() {
@@ -154,7 +178,22 @@ export default {
     }
   },
   computed: {
+    // Check if we have actual file bytes (not just session metadata)
+    hasActualBytes() {
+      return this.fileBytes && this.fileBytes.length > 0;
+    },
+
+    // Get file size from bytes or session data
+    displayFileSize() {
+      if (this.hasActualBytes) {
+        return this.fileBytes.length;
+      }
+      return this.sessionFileSize || 0;
+    },
+
     nullByteCount() {
+      // Return 0 if no bytes
+      if (!this.hasActualBytes) return 0;
       // For large files, use sampled data or return estimate
       if (this.fileBytes.length > 50 * 1024 * 1024) {
         return 0; // Skip for large files
@@ -311,6 +350,36 @@ export default {
   background-color: var(--bg-secondary);
   padding: 20px;
   border-radius: 8px;
+}
+
+/* Session placeholder styles */
+.placeholder-text {
+  color: var(--text-secondary);
+  font-style: italic;
+  opacity: 0.8;
+}
+
+.session-placeholder {
+  grid-column: 1 / -1;
+}
+
+.entropy-placeholder {
+  background: var(--bg-primary);
+  padding: 24px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  text-align: center;
+  border: 2px dashed var(--border-color);
+}
+
+.entropy-placeholder h3 {
+  color: var(--text-primary);
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+}
+
+.entropy-placeholder .placeholder-text {
+  margin: 0;
 }
 
 /* File Type Detection section */

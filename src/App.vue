@@ -1,21 +1,21 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
  *
  * File: App.vue
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
- * Last Modified: 2025-09-29
- * Version: 0.3
+ * Last Modified: 2026-01-03
+ * Version: 0.4
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  * https://www.vulnex.com
  */
 
 <template>
   <div class="container">
-    <h1 class="title">VULNEX -Bytes Revealer (v0.3)-</h1>
+    <h1 class="title">VULNEX -Bytes Revealer (v0.4)-</h1>
     <p class="subtitle">- Uncover the Secrets of Binary Files -</p>
-    <p class="copyright">2025 &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a></p>
+    <p class="copyright">2025-{{ currentYear }} &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a></p>
     
 <!-- Analysis Options -->
 <div class="analysis-options bg-white p-4 rounded-lg shadow mb-4">
@@ -156,51 +156,57 @@
         @click="activeTab = 'info'"
         >Information</button>
 
-      <button 
-        v-if="fileBytes.length && features.fileAnalysis"
-        class="tab" 
+      <button
+        v-if="(fileBytes.length || hasSessionData) && features.fileAnalysis"
+        class="tab"
         :class="{ active: activeTab === 'file' }"
         @click="activeTab = 'file'"
         :disabled="loading.analysis"
       >File View</button>
-      
-      <button 
+
+      <button
         v-if="fileBytes.length && features.visualView"
-        class="tab" 
+        class="tab"
         :class="{ active: activeTab === 'visual' }"
         @click="activeTab = 'visual'"
         :disabled="loading.analysis"
       >Visual View</button>
-      
-      <button 
+
+      <button
         v-if="fileBytes.length && features.hexView"
-        class="tab" 
+        class="tab"
         :class="{ active: activeTab === 'hex' }"
         @click="activeTab = 'hex'"
         :disabled="loading.analysis"
       >Hex View</button>
-      
-      <button 
+
+      <button
         v-if="fileBytes.length && features.stringAnalysis"
-        class="tab" 
+        class="tab"
         :class="{ active: activeTab === 'strings' }"
         @click="activeTab = 'strings'"
         :disabled="loading.analysis"
       >String Analysis</button>
-      
-      <button 
-        v-if="fileBytes.length && (features.fileAnalysis || features.stringAnalysis)"
-        class="tab" 
+
+      <button
+        v-if="(fileBytes.length || hasSessionData) && (features.fileAnalysis || features.stringAnalysis)"
+        class="tab"
         :class="{ active: activeTab === 'export' }"
         @click="activeTab = 'export'"
       >Export</button>
       
-      <button 
-        class="tab" 
+      <button
+        class="tab"
         :class="{ active: activeTab === 'settings' }"
         @click="activeTab = 'settings'"
       >Settings</button>
-      
+
+      <button
+        class="tab"
+        :class="{ active: activeTab === 'sessions' }"
+        @click="activeTab = 'sessions'"
+      >Sessions</button>
+
     </div>
 
     <!-- Content Views -->
@@ -216,7 +222,21 @@
       />
 
       <!-- File Analysis View -->
-      <template v-if="features.fileAnalysis && fileBytes.length">
+      <template v-if="features.fileAnalysis && (fileBytes.length || hasSessionData)">
+        <!-- Session restore banner -->
+        <div v-if="hasSessionData && !fileBytes.length && activeTab === 'file'" class="session-restore-banner">
+          <div class="banner-content">
+            <span class="banner-icon">📂</span>
+            <div class="banner-text">
+              <strong>Session Restored: {{ pendingSessionFile?.name || 'Unknown file' }}</strong>
+              <p>Showing cached analysis data. Upload the original file to enable Hex View, Visual View, and String Analysis.</p>
+            </div>
+          </div>
+          <div class="banner-file-info" v-if="pendingSessionFile">
+            <span>Expected: {{ pendingSessionFile.name }} ({{ formatFileSize(pendingSessionFile.size) }})</span>
+            <span v-if="pendingSessionFile.sha256" class="hash-preview">SHA-256: {{ pendingSessionFile.sha256.substring(0, 16) }}...</span>
+          </div>
+        </div>
         <FileAnalysis
           v-show="activeTab === 'file'"
           :fileBytes="fileBytes"
@@ -224,6 +244,8 @@
           :fileSignatures="fileSignatures"
           :hashes="hashes"
           :detectedFileType="detectedFileType"
+          :hasSessionData="hasSessionData"
+          :sessionFileSize="pendingSessionFile?.size || 0"
           v-model:activeGraphTab="activeGraphTab"
         />
       </template>
@@ -266,7 +288,7 @@
 
       <!-- New Information Tab Content -->
       <div v-if="activeTab === 'info'" class="p-4 bg-gray-100 rounded-lg">
-        <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.3</h2>
+        <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.4</h2>
 
         <p class="mt-3"><strong>About:</strong> Bytes Revealer is a comprehensive binary analysis and reverse engineering tool designed for security researchers, forensic analysts, malware analysts, and developers. It provides powerful features for examining, searching, and understanding binary files of any type.</p>
 
@@ -305,7 +327,7 @@
 
         <p class="mt-3"><strong>Need Help?</strong> Click the help button (?) next to the file selector for the user manual, changelog, and more information.</p>
 
-        <p class="mt-3 text-sm text-gray-600">Version 0.3 | © 2025 VULNEX | <a href="https://github.com/vulnex/bytesrevealer" target="_blank" class="text-blue-600 underline">GitHub</a> | <a href="https://bytesrevealer.online" target="_blank" class="text-blue-600 underline">Website</a></p>
+        <p class="mt-3 text-sm text-gray-600">Version 0.4 | © 2025-{{ currentYear }} VULNEX | <a href="https://github.com/vulnex/bytesrevealer" target="_blank" class="text-blue-600 underline">GitHub</a> | <a href="https://bytesrevealer.online" target="_blank" class="text-blue-600 underline">Website</a></p>
       </div>
 
       <!-- Export Options View -->
@@ -318,6 +340,16 @@
       <SettingsPanel
         v-if="activeTab === 'settings'"
         @settings-updated="handleSettingsUpdate"
+      />
+
+      <!-- Sessions Panel View -->
+      <SessionControls
+        v-if="activeTab === 'sessions'"
+        :appState="currentAppState"
+        :hasFileLoaded="fileBytes.length > 0"
+        @session-loaded="handleSessionLoaded"
+        @session-saved="handleSessionSaved"
+        @error="handleError"
       />
 
     </div>
@@ -350,6 +382,8 @@ import ExportOptions from './components/ExportOptions.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
 import HelpDialog from './components/HelpDialog.vue'
+import SessionControls from './components/SessionControls.vue'
+import { useSessionStore } from './stores/session'
 import {
   processFileInChunks,
   analyzeFileInChunks,
@@ -392,11 +426,13 @@ export default {
     ExportOptions,
     SettingsPanel,
     FormatLoadingIndicator,
-    HelpDialog
+    HelpDialog,
+    SessionControls
   },
 
   data() {
     return {
+      currentYear: new Date().getFullYear(),
       fileBytes: new Uint8Array(),
       fileName: null,
       activeTab: 'info',
@@ -433,7 +469,47 @@ export default {
       currentColor: null,
       isSelecting: false,
       FILE_LIMITS,
-      chunkManager: null
+      chunkManager: null,
+      notes: '',
+      bookmarks: [],
+      tags: [],
+      // Session restore state
+      hasSessionData: false,
+      pendingSessionFile: null  // File info from session waiting to be uploaded
+    }
+  },
+
+  computed: {
+    // Gather current app state for session saving
+    currentAppState() {
+      const formatStore = useFormatStore()
+      const settingsStore = useSettingsStore()
+
+      return {
+        fileName: this.fileName,
+        fileBytes: this.fileBytes,
+        activeTab: this.activeTab,
+        activeGraphTab: this.activeGraphTab,
+        features: this.features,
+        searchPattern: this.searchPattern,
+        searchType: this.searchType,
+        highlightedBytes: this.highlightedBytes,
+        coloredBytes: this.coloredBytes,
+        entropy: this.entropy,
+        hashes: this.hashes,
+        fileSignatures: this.fileSignatures,
+        detectedFileType: this.detectedFileType,
+        baseOffset: settingsStore.baseOffset,
+        formatStore: {
+          selectedFormatId: formatStore.selectedFormatId,
+          isAutoDetected: formatStore.isAutoDetected,
+          confidence: formatStore.confidence,
+          kaitaiStructures: formatStore.kaitaiStructures
+        },
+        notes: this.notes,
+        bookmarks: this.bookmarks,
+        tags: this.tags
+      }
     }
   },
 
@@ -446,8 +522,21 @@ export default {
     this.loading.file = true;
     this.error = null;
     this.resetProgress();
-    this.coloredBytes = []; // Reset colored bytes
-    this.fileName = file.name; // Store the filename
+
+    // Check if we're loading the same file from a session
+    const isSessionFileReload = this.hasSessionData &&
+      this.pendingSessionFile?.name === file.name;
+
+    // Only reset colored bytes if this is NOT a session file reload
+    if (!isSessionFileReload) {
+      this.coloredBytes = [];
+    }
+
+    this.fileName = file.name;
+
+    // Clear session pending state (we now have real file data)
+    this.hasSessionData = false;
+    this.pendingSessionFile = null;
 
     // Reset format store for new file
     const formatStore = useFormatStore()
@@ -878,13 +967,87 @@ export default {
     
     handleSettingsUpdate(newSettings) {
       const settingsStore = useSettingsStore()
-      
+
       // Update base offset
       if (typeof newSettings.baseOffset === 'number') {
         settingsStore.setBaseOffset(newSettings.baseOffset)
       }
-      
+
       // Handle other settings...
+    },
+
+    // Session management handlers
+    handleSessionLoaded(session) {
+      logger.info('Loading session:', session.name)
+
+      // Mark that we have session data (for showing cached analysis)
+      this.hasSessionData = true
+      this.pendingSessionFile = session.file || null
+
+      // Store file name from session for display purposes
+      if (session.file?.name) {
+        this.fileName = session.file.name
+      }
+
+      // Clear any previous error - we'll show the banner instead
+      this.error = null
+
+      // Restore application state from session
+      if (session.state) {
+        // Auto-switch to File View to show cached data (if file analysis is enabled)
+        this.activeTab = this.features.fileAnalysis ? 'file' : 'info'
+        this.activeGraphTab = session.state.activeGraphTab || 'entropy'
+        this.features = { ...this.features, ...session.state.features }
+        this.searchPattern = session.state.searchPattern || ''
+        this.searchType = session.state.searchType || 'hex'
+        this.highlightedBytes = session.state.highlightedBytes || []
+        this.coloredBytes = session.state.coloredBytes || []
+
+        // Restore base offset
+        if (typeof session.state.baseOffset === 'number') {
+          const settingsStore = useSettingsStore()
+          settingsStore.setBaseOffset(session.state.baseOffset)
+        }
+      }
+
+      // Restore analysis results (for display, until file is re-uploaded)
+      if (session.analysis) {
+        this.entropy = session.analysis.entropy || 0
+        this.hashes = session.analysis.hashes || { md5: '', sha1: '', sha256: '' }
+        this.fileSignatures = session.analysis.fileSignatures || []
+        this.detectedFileType = session.analysis.detectedFileType || null
+      }
+
+      // Restore format state
+      if (session.format) {
+        const formatStore = useFormatStore()
+        if (session.format.selectedFormatId) {
+          formatStore.selectedFormatId = session.format.selectedFormatId
+          formatStore.isAutoDetected = session.format.isAutoDetected || false
+          formatStore.confidence = session.format.confidence || 0
+        }
+        if (session.format.kaitaiStructures) {
+          formatStore.setStructures(session.format.kaitaiStructures)
+        }
+      }
+
+      // Restore annotations
+      if (session.annotations) {
+        this.notes = session.annotations.notes || ''
+        this.bookmarks = session.annotations.bookmarks || []
+        this.tags = session.annotations.tags || []
+      }
+
+      // Mark session store as dirty = false since we just loaded
+      const sessionStore = useSessionStore()
+      sessionStore.isDirty = false
+
+      logger.info('Session loaded successfully:', session.name)
+    },
+
+    handleSessionSaved(session) {
+      logger.info('Session saved:', session.name)
+      // Could show a toast notification here
     },
     
     applySettings(settings) {
@@ -965,6 +1128,13 @@ export default {
         sha256: ''
       }
 
+      // Clear session restore state
+      this.hasSessionData = false
+      this.pendingSessionFile = null
+      this.notes = ''
+      this.bookmarks = []
+      this.tags = []
+
       // Clean up search worker
       if (searchWorker) {
         searchWorker.terminate();
@@ -1038,6 +1208,41 @@ export default {
         this.saveAnalysisPreferences();
       },
       deep: true
+    },
+
+    // Mark session as dirty when user annotations change
+    coloredBytes: {
+      handler() {
+        const sessionStore = useSessionStore()
+        if (sessionStore.hasCurrentSession) {
+          sessionStore.markDirty()
+        }
+      },
+      deep: true
+    },
+
+    notes() {
+      const sessionStore = useSessionStore()
+      if (sessionStore.hasCurrentSession) {
+        sessionStore.markDirty()
+      }
+    },
+
+    bookmarks: {
+      handler() {
+        const sessionStore = useSessionStore()
+        if (sessionStore.hasCurrentSession) {
+          sessionStore.markDirty()
+        }
+      },
+      deep: true
+    },
+
+    searchPattern() {
+      const sessionStore = useSessionStore()
+      if (sessionStore.hasCurrentSession) {
+        sessionStore.markDirty()
+      }
     }
   }
 }
@@ -1059,6 +1264,59 @@ export default {
   font-size: 14px;
   font-weight: 500;
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Session restore banner */
+.session-restore-banner {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.session-restore-banner .banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.session-restore-banner .banner-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.session-restore-banner .banner-text strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.session-restore-banner .banner-text p {
+  font-size: 14px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.session-restore-banner .banner-file-info {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-family: monospace;
+  opacity: 0.85;
+}
+
+.session-restore-banner .hash-preview {
+  opacity: 0.7;
+}
+
+/* Dark mode session banner */
+:root[class='dark-mode'] .session-restore-banner {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
 }
 
 /* Help button styles */
