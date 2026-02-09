@@ -431,6 +431,138 @@ class UsecvislibExporter {
         postcondition: 'priv_exec'
       })
     }
+
+    if (!details.hasCodeSignature) {
+      vulnerabilities.push({
+        id: 'vuln_no_codesign',
+        label: 'Missing Code Signature',
+        description: 'Binary lacks code signature, allowing modification without detection.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_unsigned_exec',
+        label: 'Unsigned Code Execution',
+        description: 'Execute modified unsigned binary without Gatekeeper detection.',
+        vulnerability: 'vuln_no_codesign',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    if (details.isEncrypted) {
+      vulnerabilities.push({
+        id: 'vuln_encrypted',
+        label: 'Encrypted Binary',
+        description: 'Binary uses encryption (cryptid set), indicating protected or App Store binary.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N',
+        affected_host: 'binary'
+      })
+      exploits.push({
+        id: 'exp_encryption_bypass',
+        label: 'Encryption Analysis Bypass',
+        description: 'Decrypt binary at runtime to analyze protected code.',
+        vulnerability: 'vuln_encrypted',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    if (details.type === 'Universal Binary') {
+      vulnerabilities.push({
+        id: 'vuln_universal',
+        label: 'Multi-Architecture Binary',
+        description: 'Universal binary contains multiple architecture slices, expanding attack surface.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N',
+        affected_host: 'binary'
+      })
+      exploits.push({
+        id: 'exp_cross_arch',
+        label: 'Cross-Architecture Exploitation',
+        description: 'Target weaker architecture slice in universal binary.',
+        vulnerability: 'vuln_universal',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    if (details.hasRWXSegments) {
+      vulnerabilities.push({
+        id: 'vuln_rwx',
+        label: 'RWX Memory Segments',
+        description: 'Binary contains segments with read-write-execute permissions, enabling code injection.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_memory_corruption',
+        label: 'Memory Corruption Exploitation',
+        description: 'Exploit RWX memory segments for arbitrary code execution.',
+        vulnerability: 'vuln_rwx',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    if (details.allowStackExecution) {
+      vulnerabilities.push({
+        id: 'vuln_stack_exec',
+        label: 'Executable Stack',
+        description: 'Binary allows stack execution (MH_ALLOW_STACK_EXECUTION), enabling stack-based attacks.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_stack_exec',
+        label: 'Stack-Based Code Execution',
+        description: 'Execute shellcode on stack due to executable stack permission.',
+        vulnerability: 'vuln_stack_exec',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    if (details.pie === false) {
+      vulnerabilities.push({
+        id: 'vuln_no_pie',
+        label: 'No ASLR (PIE disabled)',
+        description: 'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_fixed_addr',
+        label: 'Fixed Address Exploitation',
+        description: 'Exploit fixed load address due to missing PIE flag.',
+        vulnerability: 'vuln_no_pie',
+        precondition: 'priv_exec',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    const weakDylibs = details.weakDylibs || []
+    if (weakDylibs.length > 0) {
+      vulnerabilities.push({
+        id: 'vuln_weak_dylib',
+        label: 'Weak Dylib References',
+        description: `Binary references ${weakDylibs.length} weak dylib(s) that may not be present, enabling injection.`,
+        cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:R/S:U/C:H/I:H/A:N',
+        affected_host: 'target_system'
+      })
+      exploits.push({
+        id: 'exp_weak_dylib',
+        label: 'Weak Dylib Injection',
+        description: 'Inject malicious dylib in place of missing weak dependency.',
+        vulnerability: 'vuln_weak_dylib',
+        precondition: 'binary',
+        postcondition: 'priv_exec'
+      })
+    }
+
+    // Add root privilege escalation path for dylibs and stack execution
+    if (details.fileType === 'Dynamic Library' || details.allowStackExecution) {
+      privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Escalated privileges via dylib injection or stack execution', host: 'target_system', level: 'root' })
+    }
   }
 
   _mapEntropyVulnerabilities(entropy, vulnerabilities, exploits) {
