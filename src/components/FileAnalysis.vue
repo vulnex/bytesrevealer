@@ -106,11 +106,15 @@
         <p class="placeholder-text">Upload the original file to view entropy graph and byte distribution analysis.</p>
       </div>
       
-      <FileSignatures 
+      <FileSignatures
         :signatures="fileSignatures"
         class="mb-4"
       />
-      
+
+      <BinaryAnalysis
+        :fileSignatures="fileSignatures"
+      />
+
       <HashSection :hashes="hashes" />
     </div>
   </div>
@@ -119,6 +123,7 @@
 <script>
 import EntropyGraph from './EntropyGraph.vue'
 import FileSignatures from './FileSignatures.vue'
+import BinaryAnalysis from './BinaryAnalysis.vue'
 import HashSection from './HashSection.vue'
 import { createLogger } from '../utils/logger'
 
@@ -129,6 +134,7 @@ export default {
   components: {
     EntropyGraph,
     FileSignatures,
+    BinaryAnalysis,
     HashSection
   },
   props: {
