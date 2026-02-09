@@ -42,17 +42,35 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
   - Parses: DOS header, COFF header (machine, timestamp, characteristics), Optional header (magic, entryPoint, imageBase, subsystem, DllCharacteristics), sections with rwx flags, imports (DLL names), exports (count), certificate presence, debug info, .NET detection, security features
   - Wired into `detectSpecificFileType()` PE branch for metadata export (matching ELF/Mach-O)
 
+- **Binary Analysis UI Section**
+  - New `BinaryAnalysis.vue` component providing a dedicated, structured view for PE/ELF/Mach-O analysis results
+  - Header info grid: machine, architecture, subsystem, entry point, image base, timestamp, signing status, debug info
+  - Color-coded security feature badges: green (enabled), red (disabled/missing), orange (warnings), blue (informational)
+  - Sections table with name, virtual size, raw size, and permission flags (RWX rows highlighted in red)
+  - Import DLL names displayed as tags; export function/name counts
+  - ELF dependencies and Mach-O dylibs shown in dedicated Dependencies section
+  - Placed after File Signatures in the File Analysis tab for immediate visibility
+
+- **Improved File Signature Rendering**
+  - `formatValue()` now handles booleans (Yes/No), arrays of objects (name with flags), and plain objects (key-value pairs) instead of showing `[object Object]`
+  - `flattenMetadata()` now recursively flattens arrays of objects by name/index for structured metadata display
+
 ### Fixed
 - **PE Parsing Correctness**
   - Fixed `getPECharacteristics()` missing COFF flags: Relocations Stripped (0x0001), 32-Bit Machine (0x0100), Debug Stripped (0x0200), System File (0x1000)
   - Fixed `getPEImportCount()` using RVAs as raw file offsets (new `rvaToFileOffset` resolves through section headers)
   - Fixed `detectSpecificFileType()` PE branch missing `extractMetadata()` call (ELF and Mach-O had it)
+  - Fixed `FileSignatures.vue` rendering nested objects/arrays as `[object Object]`
 
 ### Technical Details
+- New files:
+  - `src/components/BinaryAnalysis.vue` - Dedicated binary analysis UI component
 - Modified files:
   - `src/utils/advancedFileDetection.js` - PE core utilities (4 readers + 11 parsers), enriched analyzePEStructure(), fixed getPECharacteristics(), wired metadata extraction
   - `src/services/UsecvislibExporter.js` - Expanded _mapPEVulnerabilities() from 4 to 13 conditions with priv_system escalation
   - `src/utils/metadataExtractor.js` - Self-contained extractPEMetadata() replacing 9 undefined stub calls
+  - `src/components/FileAnalysis.vue` - Wired BinaryAnalysis component after FileSignatures
+  - `src/components/FileSignatures.vue` - Fixed formatValue() and flattenMetadata() for complex types
 
 ---
 
