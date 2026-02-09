@@ -16,7 +16,7 @@ import { calculateOptimizedEntropy } from '../utils/entropyOptimized'
 
 const logger = createLogger('UsecvislibExporter')
 
-const EXECUTABLE_TYPES = ['Windows Executable (PE)', 'ELF Binary', 'Mach-O Executable']
+const EXECUTABLE_TYPES = ['Windows Executable (PE)', 'ELF Binary', 'Mach-O']
 
 class UsecvislibExporter {
   constructor() {

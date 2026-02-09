@@ -297,6 +297,27 @@ export async function detectFileType(input) {
     }
 
     if (fileType) {
+      // Override: file-type library misidentifies Mach-O fat binaries (CAFEBABE) as Java class
+      if (fileType.ext === 'class' && bytes.length >= 28 &&
+          bytes[0] === 0xCA && bytes[1] === 0xFE &&
+          bytes[2] === 0xBA && bytes[3] === 0xBE) {
+        // Inline Mach-O fat binary check to avoid any import timing issues
+        const nfat = ((bytes[4] << 24) | (bytes[5] << 16) | (bytes[6] << 8) | bytes[7]) >>> 0;
+        if (nfat >= 1 && nfat <= 20 && bytes.length >= 8 + nfat * 20) {
+          const cpu = ((bytes[8] << 24) | (bytes[9] << 16) | (bytes[10] << 8) | bytes[11]) >>> 0;
+          if ([1, 6, 7, 0x01000007, 12, 0x0100000C, 0x0200000C, 18, 0x01000012].includes(cpu)) {
+            logger.debug('Overriding file-type class detection: Mach-O Universal Binary with', nfat, 'architectures');
+            return {
+              detected: true,
+              ext: 'macho',
+              mime: 'application/x-mach-binary',
+              description: `Mach-O Universal Binary (${nfat} architectures)`,
+              confidence: 'high'
+            };
+          }
+        }
+      }
+
       logger.debug('Detected file type:', fileType);
       return {
         detected: true,
