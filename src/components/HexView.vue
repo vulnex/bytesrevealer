@@ -147,13 +147,20 @@
         >
           Data Inspector
         </button>
-        <button 
+        <button
           v-if="kaitaiRuntime"
           class="tab"
           :class="{ active: activeTab === 'kaitai' }"
           @click="activeTab = 'kaitai'"
         >
           File Format
+        </button>
+        <button
+          class="tab"
+          :class="{ active: activeTab === 'bookmarks' }"
+          @click="activeTab = 'bookmarks'"
+        >
+          Bookmarks
         </button>
       </div>
       
@@ -185,6 +192,19 @@
             @format-changed="handleFormatChanged"
           />
         </div>
+
+        <!-- Bookmarks Tab -->
+        <div v-show="activeTab === 'bookmarks'" class="tab-pane">
+          <BookmarksPanel
+            :bookmarks="bookmarks"
+            :annotations="annotations"
+            @navigate-to-offset="navigateToOffset"
+            @update-bookmark="(b) => $emit('update-bookmark', b)"
+            @remove-bookmark="(id) => $emit('remove-bookmark', id)"
+            @update-annotation="(a) => $emit('update-annotation', a)"
+            @remove-annotation="(id) => $emit('remove-annotation', id)"
+          />
+        </div>
       </div>
     </div>
 
@@ -199,10 +219,15 @@
       :visible="contextMenu.visible"
       :position="contextMenu.position"
       :selected-bytes="contextMenu.selectedBytes"
+      :selection-start="selectionStart"
+      :selection-end="selectionEnd"
+      :clicked-offset="contextMenu.clickedOffset"
       @close="closeContextMenu"
       @copy="handleCopyResult"
       @export="openExportDialog"
       @export-range="openExportRangeDialog"
+      @add-bookmark="handleAddBookmark"
+      @add-annotation="handleAddAnnotation"
     />
 
     <!-- Export Dialog -->
@@ -247,6 +272,7 @@ import HexContextMenu from './HexContextMenu.vue'
 import ExportBytesDialog from './ExportBytesDialog.vue'
 import ExportBytesRangeDialog from './ExportBytesRangeDialog.vue'
 import ToastNotification from './ToastNotification.vue'
+import BookmarksPanel from './BookmarksPanel.vue'
 import { createLogger } from '../utils/logger'
 
 // Lazy load Kaitai components to reduce bundle size
@@ -266,7 +292,8 @@ export default {
     HexContextMenu,
     ExportBytesDialog,
     ExportBytesRangeDialog,
-    ToastNotification
+    ToastNotification,
+    BookmarksPanel
   },
   computed: {
     // Create a Set for O(1) highlight lookups
@@ -275,6 +302,14 @@ export default {
         return new Set()
       }
       return new Set(this.highlightedBytes)
+    },
+    // O(1) bookmark lookup by offset
+    bookmarkMap() {
+      const map = new Map()
+      for (const b of this.bookmarks) {
+        map.set(b.offset, b)
+      }
+      return map
     }
   },
   props: {
@@ -298,6 +333,14 @@ export default {
     chunkManager: {
       type: Object,
       default: null
+    },
+    bookmarks: {
+      type: Array,
+      default: () => []
+    },
+    annotations: {
+      type: Array,
+      default: () => []
     }
   },
 
@@ -898,17 +941,45 @@ export default {
         }
       }
 
+      // Determine the clicked byte offset for bookmarks
+      let clickedOffset = null
+      const clickedElement = event.target.closest('[data-byte-index]')
+      if (clickedElement) {
+        clickedOffset = parseInt(clickedElement.dataset.byteIndex) - baseOffset.value
+      }
+
       // Show context menu with selected bytes
       logger.info(`Opening context menu with ${selectedBytes.length} bytes selected`)
       contextMenu.value = {
         visible: true,
         position: { x: event.clientX, y: event.clientY },
-        selectedBytes: selectedBytes
+        selectedBytes: selectedBytes,
+        clickedOffset: clickedOffset
       }
     }
 
     const closeContextMenu = () => {
       contextMenu.value.visible = false
+    }
+
+    const handleAddBookmark = (offset) => {
+      emit('add-bookmark', offset)
+      toast.value = {
+        show: true,
+        message: `Bookmark added at offset 0x${offset.toString(16).toUpperCase()}`,
+        type: 'success'
+      }
+      setTimeout(() => { toast.value.show = false }, 100)
+    }
+
+    const handleAddAnnotation = ({ startOffset, endOffset }) => {
+      emit('add-annotation', { startOffset, endOffset })
+      toast.value = {
+        show: true,
+        message: `Annotation added for range 0x${startOffset.toString(16).toUpperCase()}-0x${endOffset.toString(16).toUpperCase()}`,
+        type: 'success'
+      }
+      setTimeout(() => { toast.value.show = false }, 100)
     }
 
     const handleCopyResult = (result) => {
@@ -1083,6 +1154,8 @@ export default {
       handleContextMenu,
       closeContextMenu,
       handleCopyResult,
+      handleAddBookmark,
+      handleAddAnnotation,
       // Export dialog
       exportDialog,
       openExportDialog,
@@ -1188,19 +1261,38 @@ export default {
     getByteStyles(displayOffset) {
       const actualOffset = displayOffset - this.baseOffset
 
-      // Only apply colored backgrounds if not highlighted
-      // This allows CSS classes to handle highlighting and hovering
-      const colorRange = this.coloredBytes.find(range =>
-        actualOffset >= range.start && actualOffset <= range.end
-      )
-
       // Don't apply inline styles if the byte is highlighted or hovered
       // Let CSS classes handle those states
       if (this.isHighlighted(displayOffset) || this.hoveredByte === actualOffset) {
         return {}
       }
 
-      return colorRange ? { backgroundColor: colorRange.color } : {}
+      const styles = {}
+
+      // 1. Annotation: translucent background + bottom border
+      const annotation = this.annotations.find(a =>
+        actualOffset >= a.startOffset && actualOffset <= a.endOffset
+      )
+      if (annotation) {
+        styles.backgroundColor = annotation.color + '40'
+        styles.borderBottom = `2px solid ${annotation.color}`
+      }
+
+      // 2. ColoredBytes: solid background (overrides annotation bg)
+      const colorRange = this.coloredBytes.find(range =>
+        actualOffset >= range.start && actualOffset <= range.end
+      )
+      if (colorRange) {
+        styles.backgroundColor = colorRange.color
+      }
+
+      // 3. Bookmark: top border indicator (always visible)
+      const bookmark = this.bookmarkMap.get(actualOffset)
+      if (bookmark) {
+        styles.borderTop = `2px solid ${bookmark.color}`
+      }
+
+      return styles
     },
 
     startSelection(event) {

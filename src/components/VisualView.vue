@@ -172,6 +172,24 @@ export default {
     chunkManager: {
       type: Object,
       default: null
+    },
+    bookmarks: {
+      type: Array,
+      default: () => []
+    },
+    annotations: {
+      type: Array,
+      default: () => []
+    }
+  },
+
+  computed: {
+    bookmarkMap() {
+      const map = new Map()
+      for (const b of this.bookmarks) {
+        map.set(b.offset, b)
+      }
+      return map
     }
   },
 
@@ -462,10 +480,32 @@ export default {
 
     getByteStyles(displayOffset) {
       const actualOffset = displayOffset - this.baseOffset
-      const colorRange = this.coloredBytes.find(range => 
+      const styles = {}
+
+      // 1. Annotation: translucent background + bottom border
+      const annotation = this.annotations.find(a =>
+        actualOffset >= a.startOffset && actualOffset <= a.endOffset
+      )
+      if (annotation) {
+        styles.backgroundColor = annotation.color + '40'
+        styles.borderBottom = `2px solid ${annotation.color}`
+      }
+
+      // 2. ColoredBytes: solid background (overrides annotation bg)
+      const colorRange = this.coloredBytes.find(range =>
         actualOffset >= range.start && actualOffset <= range.end
       )
-      return colorRange ? { backgroundColor: colorRange.color } : {}
+      if (colorRange) {
+        styles.backgroundColor = colorRange.color
+      }
+
+      // 3. Bookmark: top border indicator
+      const bookmark = this.bookmarkMap.get(actualOffset)
+      if (bookmark) {
+        styles.borderTop = `2px solid ${bookmark.color}`
+      }
+
+      return styles
     },
 
     startSelection(event) {

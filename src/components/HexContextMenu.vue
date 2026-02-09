@@ -127,6 +127,22 @@
       <span class="menu-icon">📐</span>
       <span class="menu-text">Export Bytes From To...</span>
     </div>
+
+    <div class="menu-divider"></div>
+
+    <div class="menu-item" @click="addBookmarkAtOffset">
+      <span class="menu-icon">📌</span>
+      <span class="menu-text">Add Bookmark Here</span>
+    </div>
+
+    <div
+      v-if="selectionStart !== null && selectionEnd !== null && selectionStart !== selectionEnd"
+      class="menu-item"
+      @click="addAnnotationForSelection"
+    >
+      <span class="menu-icon">📝</span>
+      <span class="menu-text">Annotate Selection</span>
+    </div>
   </div>
 </template>
 
@@ -148,9 +164,21 @@ export default {
     selectedBytes: {
       type: Uint8Array,
       default: () => new Uint8Array()
+    },
+    selectionStart: {
+      type: Number,
+      default: null
+    },
+    selectionEnd: {
+      type: Number,
+      default: null
+    },
+    clickedOffset: {
+      type: Number,
+      default: null
     }
   },
-  emits: ['close', 'copy', 'export', 'export-range'],
+  emits: ['close', 'copy', 'export', 'export-range', 'add-bookmark', 'add-annotation'],
   setup(props, { emit }) {
     const menuRef = ref(null)
     const showSubmenu = ref(null)
@@ -280,6 +308,23 @@ export default {
       emit('close')
     }
 
+    const addBookmarkAtOffset = () => {
+      const offset = props.clickedOffset !== null
+        ? props.clickedOffset
+        : (props.selectionStart !== null ? Math.min(props.selectionStart, props.selectionEnd ?? props.selectionStart) : 0)
+      emit('add-bookmark', offset)
+      emit('close')
+    }
+
+    const addAnnotationForSelection = () => {
+      if (props.selectionStart !== null && props.selectionEnd !== null) {
+        const start = Math.min(props.selectionStart, props.selectionEnd)
+        const end = Math.max(props.selectionStart, props.selectionEnd)
+        emit('add-annotation', { startOffset: start, endOffset: end })
+        emit('close')
+      }
+    }
+
     const handleClickOutside = (event) => {
       if (props.visible && menuRef.value && !menuRef.value.contains(event.target)) {
         emit('close')
@@ -315,7 +360,9 @@ export default {
       copyAs,
       copyAsText,
       openExportDialog,
-      openExportRangeDialog
+      openExportRangeDialog,
+      addBookmarkAtOffset,
+      addAnnotationForSelection
     }
   }
 }

@@ -258,6 +258,8 @@
             :highlightedBytes="highlightedBytes"
             :coloredBytes="coloredBytes"
             :chunkManager="chunkManager"
+            :bookmarks="bookmarks"
+            :annotations="annotations"
             @byte-selection="handleByteSelection"
           />
         </div>
@@ -272,7 +274,15 @@
             :highlightedBytes="highlightedBytes"
             :coloredBytes="coloredBytes"
             :chunkManager="chunkManager"
+            :bookmarks="bookmarks"
+            :annotations="annotations"
             @byte-selection="handleByteSelection"
+            @add-bookmark="addBookmark"
+            @add-annotation="addAnnotation"
+            @update-bookmark="updateBookmark"
+            @remove-bookmark="removeBookmark"
+            @update-annotation="updateAnnotation"
+            @remove-annotation="removeAnnotation"
           />
         </div>
       </template>
@@ -472,6 +482,7 @@ export default {
       chunkManager: null,
       notes: '',
       bookmarks: [],
+      annotations: [],
       tags: [],
       // Session restore state
       hasSessionData: false,
@@ -508,6 +519,7 @@ export default {
         },
         notes: this.notes,
         bookmarks: this.bookmarks,
+        annotations: this.annotations,
         tags: this.tags
       }
     }
@@ -810,6 +822,47 @@ export default {
       }
     },
 
+    // Bookmark & Annotation CRUD methods
+    addBookmark(offset) {
+      this.bookmarks.push({
+        id: `bm_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        offset,
+        label: `Bookmark @ 0x${offset.toString(16).toUpperCase()}`,
+        color: '#4fc3f7',
+        created: new Date().toISOString()
+      })
+    },
+
+    updateBookmark(updated) {
+      const idx = this.bookmarks.findIndex(b => b.id === updated.id)
+      if (idx !== -1) this.bookmarks.splice(idx, 1, updated)
+    },
+
+    removeBookmark(id) {
+      this.bookmarks = this.bookmarks.filter(b => b.id !== id)
+    },
+
+    addAnnotation({ startOffset, endOffset }) {
+      this.annotations.push({
+        id: `an_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
+        startOffset,
+        endOffset,
+        label: `Annotation @ 0x${startOffset.toString(16).toUpperCase()}-0x${endOffset.toString(16).toUpperCase()}`,
+        note: '',
+        color: '#81c784',
+        created: new Date().toISOString()
+      })
+    },
+
+    updateAnnotation(updated) {
+      const idx = this.annotations.findIndex(a => a.id === updated.id)
+      if (idx !== -1) this.annotations.splice(idx, 1, updated)
+    },
+
+    removeAnnotation(id) {
+      this.annotations = this.annotations.filter(a => a.id !== id)
+    },
+
     clearSearch() {
       this.searchPattern = '';
       this.highlightedBytes = [];
@@ -1035,6 +1088,7 @@ export default {
       if (session.annotations) {
         this.notes = session.annotations.notes || ''
         this.bookmarks = session.annotations.bookmarks || []
+        this.annotations = session.annotations.annotations || []
         this.tags = session.annotations.tags || []
       }
 
@@ -1133,6 +1187,7 @@ export default {
       this.pendingSessionFile = null
       this.notes = ''
       this.bookmarks = []
+      this.annotations = []
       this.tags = []
 
       // Clean up search worker
@@ -1229,6 +1284,16 @@ export default {
     },
 
     bookmarks: {
+      handler() {
+        const sessionStore = useSessionStore()
+        if (sessionStore.hasCurrentSession) {
+          sessionStore.markDirty()
+        }
+      },
+      deep: true
+    },
+
+    annotations: {
       handler() {
         const sessionStore = useSessionStore()
         if (sessionStore.hasCurrentSession) {

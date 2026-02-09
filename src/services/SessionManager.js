@@ -248,6 +248,7 @@ class SessionManager {
       annotations: {
         notes: appState.notes || '',
         bookmarks: [...(appState.bookmarks || [])],
+        annotations: [...(appState.annotations || [])],
         tags: [...(appState.tags || [])]
       }
     }
@@ -318,6 +319,9 @@ class SessionManager {
       }
       if (!appState.bookmarks?.length && existing.annotations?.bookmarks?.length) {
         updated.annotations.bookmarks = existing.annotations.bookmarks
+      }
+      if (!appState.annotations?.length && existing.annotations?.annotations?.length) {
+        updated.annotations.annotations = existing.annotations.annotations
       }
       if (!appState.tags?.length && existing.annotations?.tags?.length) {
         updated.annotations.tags = existing.annotations.tags
