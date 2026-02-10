@@ -64,6 +64,17 @@
       >
       <span>String Analysis</span>
     </label>
+
+    <label class="flex items-center space-x-2">
+      <input
+        type="checkbox"
+        v-model="features.yaraScanning"
+        :disabled="loading.file || loading.analysis"
+        class="form-checkbox"
+        checked
+      >
+      <span>YARA Scanning</span>
+    </label>
   </div>
 </div>
 
@@ -189,6 +200,14 @@
       >String Analysis</button>
 
       <button
+        v-if="fileBytes.length && features.yaraScanning"
+        class="tab"
+        :class="{ active: activeTab === 'yara' }"
+        @click="activeTab = 'yara'"
+        :disabled="loading.analysis"
+      >YARA</button>
+
+      <button
         v-if="(fileBytes.length || hasSessionData) && (features.fileAnalysis || features.stringAnalysis)"
         class="tab"
         :class="{ active: activeTab === 'export' }"
@@ -296,6 +315,15 @@
         />
       </template>
 
+      <!-- YARA Panel -->
+      <template v-if="features.yaraScanning && fileBytes.length">
+        <YaraPanel
+          v-show="activeTab === 'yara'"
+          :fileBytes="fileBytes"
+          @navigate-to-offset="navigateToYaraMatch"
+        />
+      </template>
+
       <!-- New Information Tab Content -->
       <div v-if="activeTab === 'info'" class="p-4 bg-gray-100 rounded-lg">
         <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.4</h2>
@@ -393,7 +421,9 @@ import SettingsPanel from './components/SettingsPanel.vue'
 import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
 import HelpDialog from './components/HelpDialog.vue'
 import SessionControls from './components/SessionControls.vue'
+import YaraPanel from './components/YaraPanel.vue'
 import { useSessionStore } from './stores/session'
+import { useYaraStore } from './stores/yara'
 import {
   processFileInChunks,
   analyzeFileInChunks,
@@ -437,7 +467,8 @@ export default {
     SettingsPanel,
     FormatLoadingIndicator,
     HelpDialog,
-    SessionControls
+    SessionControls,
+    YaraPanel
   },
 
   data() {
@@ -473,7 +504,8 @@ export default {
         fileAnalysis: true,
         visualView: true,
         hexView: true,
-        stringAnalysis: true
+        stringAnalysis: true,
+        yaraScanning: true
       },
       coloredBytes: [],
       currentColor: null,
@@ -520,7 +552,8 @@ export default {
         notes: this.notes,
         bookmarks: this.bookmarks,
         annotations: this.annotations,
-        tags: this.tags
+        tags: this.tags,
+        yaraState: useYaraStore().serializableState
       }
     }
   },
@@ -985,6 +1018,23 @@ export default {
       });
     },
 
+    navigateToYaraMatch({ offset, length }) {
+      if (typeof offset !== 'number') return
+
+      // Switch to hex view
+      if (this.activeTab !== 'hex') {
+        this.activeTab = 'hex'
+      }
+
+      // Scroll to offset in hex view
+      this.$nextTick(() => {
+        const hexViewEvent = new CustomEvent('scrollToOffset', {
+          detail: { offset, length }
+        })
+        window.dispatchEvent(hexViewEvent)
+      })
+    },
+
 
     // Save analysis preferences to localStorage
     saveAnalysisPreferences() {
@@ -1006,7 +1056,8 @@ export default {
             fileAnalysis: savedFeatures.fileAnalysis !== false,
             visualView: savedFeatures.visualView !== false,
             hexView: savedFeatures.hexView !== false,
-            stringAnalysis: savedFeatures.stringAnalysis !== false
+            stringAnalysis: savedFeatures.stringAnalysis !== false,
+            yaraScanning: savedFeatures.yaraScanning !== false
           };
         }
       } catch (error) {
@@ -1090,6 +1141,11 @@ export default {
         this.bookmarks = session.annotations.bookmarks || []
         this.annotations = session.annotations.annotations || []
         this.tags = session.annotations.tags || []
+      }
+
+      // Restore YARA state
+      if (session.yara) {
+        useYaraStore().restoreFromSession(session.yara)
       }
 
       // Mark session store as dirty = false since we just loaded
@@ -1224,6 +1280,10 @@ export default {
       this.features.visualView = true
       this.features.hexView = true
       this.features.stringAnalysis = true
+      this.features.yaraScanning = true
+
+      // Reset YARA store
+      useYaraStore().reset()
 
       // Reset format store
       const formatStore = useFormatStore()
@@ -1240,7 +1300,8 @@ export default {
       fileAnalysis: true,
       visualView: true,
       hexView: true,
-      stringAnalysis: true
+      stringAnalysis: true,
+      yaraScanning: true
     };
 
     // Then load any saved preferences (which will override defaults if present)

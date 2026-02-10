@@ -36,6 +36,8 @@ export default defineConfig({
       output: {
         // Manual chunks for better code splitting
         manualChunks(id) {
+          // libyara-wasm in its own chunk (~1.1MB WASM, loaded on demand)
+          if (id.includes('libyara-wasm')) return 'libyara-wasm'
           // Split Kaitai category formats into separate chunks
           if (id.includes('ksy/categories/')) {
             const match = id.match(/categories\/([^/]+)\.js/)

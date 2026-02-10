@@ -972,6 +972,7 @@ export default {
 /* Tab styles exactly matching main navigation */
 .tabs {
   display: flex;
+  flex-wrap: wrap;
   gap: 1px;
   background-color: var(--bg-secondary);
   padding: 4px;
@@ -980,7 +981,7 @@ export default {
 }
 
 .tab {
-  padding: 8px 16px;
+  padding: 8px 12px;
   border: none;
   border-radius: 6px;
   cursor: pointer;
@@ -988,6 +989,8 @@ export default {
   background: transparent;
   color: var(--text-secondary);
   transition: all 0.2s ease;
+  white-space: nowrap;
+  font-size: 0.85rem;
 }
 
 .tab:hover:not(.active):not(:disabled) {

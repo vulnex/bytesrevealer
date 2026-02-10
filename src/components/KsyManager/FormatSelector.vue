@@ -197,7 +197,7 @@ export default {
       // No auto-detection - wait for user to select a format
       logger.debug('Auto-detection disabled - waiting for user to select a format')
       formatStore.clearFormat()
-      confidence.value = null
+      formatStore.confidence = null
     }
     
     const handleSimpleDetection = () => {
@@ -282,7 +282,7 @@ export default {
         
         // Set the current format immediately (clone to avoid reactivity warnings)
         formatStore.setFormat({ ...format })
-        confidence.value = null
+        formatStore.confidence = null
         
         // Try to get compiled version if possible
         let formatToEmit = format

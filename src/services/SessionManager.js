@@ -250,7 +250,10 @@ class SessionManager {
         bookmarks: [...(appState.bookmarks || [])],
         annotations: [...(appState.annotations || [])],
         tags: [...(appState.tags || [])]
-      }
+      },
+
+      // YARA scan state
+      yara: appState.yaraState || null
     }
   }
 

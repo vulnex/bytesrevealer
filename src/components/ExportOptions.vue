@@ -81,6 +81,18 @@
           <span>Extracted Strings</span>
         </label>
       </div>
+
+      <!-- YARA Matches -->
+      <div class="section">
+        <label class="flex items-center space-x-2">
+          <input
+            type="checkbox"
+            v-model="exportOptions.yaraMatches"
+            class="form-checkbox"
+          >
+          <span>YARA Matches</span>
+        </label>
+      </div>
     </div>
 
     <div class="mt-6 flex space-x-4">
@@ -256,7 +268,8 @@ export default {
         fileInfo_entropy: true,
         signatures: true,
         structure: true,
-        strings: false
+        strings: false,
+        yaraMatches: false
       },
       usecvisOptions: {
         binVisJson: false,
@@ -358,6 +371,27 @@ export default {
         // Include full strings data if selected
         if (this.exportOptions.strings) {
           exportData.strings = await this.extractStrings();
+        }
+
+        // Include YARA matches if selected
+        if (this.exportOptions.yaraMatches) {
+          try {
+            const { useYaraStore } = await import('../stores/yara');
+            const yaraStore = useYaraStore();
+            if (yaraStore.hasResults) {
+              exportData.yaraMatches = {
+                rules: yaraStore.currentRules,
+                selectedRuleSet: yaraStore.selectedRuleSet,
+                scanTimestamp: yaraStore.lastScanTimestamp,
+                scanDuration: yaraStore.lastScanDuration,
+                matchedRules: yaraStore.matchedRules,
+                compileErrors: yaraStore.compileErrors,
+                totalMatches: yaraStore.totalMatches
+              };
+            }
+          } catch (err) {
+            logger.warn('Could not export YARA matches:', err);
+          }
         }
 
         // Generate filename with timestamp
@@ -484,7 +518,8 @@ export default {
         fileInfo_entropy: true,
         signatures: true,
         structure: true,
-        strings: false
+        strings: false,
+        yaraMatches: false
       };
       this.usecvisOptions = {
         binVisJson: false,

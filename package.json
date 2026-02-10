@@ -21,6 +21,7 @@
     "idb": "7.1.1",
     "jszip": "3.10.1",
     "kaitai-struct": "0.11.0",
+    "libyara-wasm": "1.2.1",
     "pinia": "2.1.7",
     "vue": "3.4.15",
     "yaml": "2.3.4"
