@@ -6,7 +6,81 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.4.5] - 2026-02-09
+## [0.4] - 2026-02-10 (Cleanup & HexView Decomposition)
+
+### Fixed
+- **Attack Graph Export Bug** — Service worker was registered in dev mode, intercepting dynamic imports of `UsecvislibExporter.js` and `KaitaiRuntime.js` and returning cached HTML instead of JS modules. Added `import.meta.env.PROD` guard to service worker registration in `src/main.js`.
+
+### Changed
+- **HexView.vue Decomposition** — Extracted ~660 lines from the 1,571-line component into 5 composables:
+  - `src/composables/useByteInspector.js` — Hover state, inspector lock, keyboard handler
+  - `src/composables/useByteSelection.js` — Mouse drag selection, selection state
+  - `src/composables/useHexVirtualScroll.js` — Virtual scrolling, visible rows, scroll handling
+  - `src/composables/useHexExport.js` — Context menu, export dialogs, toast notifications
+  - `src/composables/useKaitaiIntegration.js` — Kaitai struct parsing, format detection, structure navigation
+  - Template and styles unchanged; formatting methods and navigation stay in Options API
+- **Production Console Logging** — Added `console.log` and `console.info` to terser `pure_funcs` in `vite.config.js` so they are stripped in production builds; `console.warn` and `console.error` preserved for runtime diagnostics
+
+### Removed
+- **Dead Code** — Deleted unused legacy Vuex store (`src/store/index.js`, `src/store/modules/settings.js`) and unused `FileChunkManagerV2` (`src/utils/FileChunkManagerV2.js`)
+
+### Technical Details
+- New files:
+  - `src/composables/useByteInspector.js`
+  - `src/composables/useByteSelection.js`
+  - `src/composables/useHexVirtualScroll.js`
+  - `src/composables/useHexExport.js`
+  - `src/composables/useKaitaiIntegration.js`
+- Modified files:
+  - `src/main.js` — Service worker PROD guard
+  - `src/components/HexView.vue` — Rewired setup() to use composables
+  - `vite.config.js` — Extended pure_funcs list
+- Deleted files:
+  - `src/store/index.js`, `src/store/modules/settings.js`, `src/utils/FileChunkManagerV2.js`
+- All 221 existing tests pass; production build succeeds cleanly
+
+---
+
+## [0.4] - 2026-02-10 (Vitest Testing Infrastructure)
+
+### Added
+- **Vitest Testing Infrastructure**
+  - Installed `vitest`, `happy-dom`, and `@vitest/coverage-v8` as dev dependencies
+  - Created `vitest.config.js` merging with existing `vite.config.js` to inherit `@` alias, iconv-lite/zlib polyfills, and Vue plugin
+  - Created `src/__tests__/setup.js` with `localStorage` safety guard for happy-dom environment
+  - Added `test`, `test:watch`, `test:coverage` npm scripts
+  - Added `coverage/` to `.gitignore`
+
+- **221 Test Cases Across 12 Co-located Test Files**
+  - Priority 1 — Pure functions (no mocking):
+    - `src/services/ByteFormatter.test.js` (57 tests) — All format functions (JS, Python, C, Java, Go, Rust, ASM, data formats), `format()` dispatch, `getAvailableFormats()`, multi-line splitting, custom variable names
+    - `src/utils/fileSignatures.test.js` (20 tests) — `detectFileTypes()` with PNG/PDF/ZIP/PE/ELF/Mach-O magic bytes, CAFEBABE disambiguation, `isMachOFatBinary()`, `isFileType()`
+    - `src/utils/entropyOptimized.test.js` (14 tests) — Shannon entropy: all-zeros=0.0, uniform=8.0, two-value=1.0; result structure; custom blockSize; `generateEntropyVisualization()`
+    - `src/utils/stringAnalyzer.test.js` (14 tests) — `escapeString()` HTML/control chars; `extractStrings()` ASCII extraction, minLength/maxLength, offset recording
+    - `src/utils/fileHandler.test.js` (10 tests) — `formatFileSize()`, `validateFileSize()`, `FILE_LIMITS` constants
+  - Priority 2 — Stores & services (Pinia setup / light mocking):
+    - `src/stores/session.test.js` (24 tests) — All actions, getters (sortedSessions, currentSession), dirty tracking, auto-save toggle
+    - `src/stores/settings.test.js` (9 tests) — `setBaseOffset()` validation/clamping, `currentOffset` getter
+    - `src/stores/format.test.js` (15 tests) — Format lifecycle, auto-detection, caching Set operations, loading state
+    - `src/services/SessionManager.test.js` (23 tests) — Pure methods: `generateId()`, `sanitizeForStorage()`, `createSessionData()`, `extractMetadata()`, `verifyFile()`
+    - `src/utils/logger.test.js` (8 tests) — Logger creation, method delegation, debug mode toggle via localStorage
+  - Priority 3 — Binary parsing (inline fixtures):
+    - `src/utils/advancedFileDetection.test.js` (14 tests) — `findPEHeaderOffset()`, `analyzePEStructure()` 32/64-bit, `analyzeElfStructure()`, `analyzeMachOStructure()`, `detectSpecificFileType()`, `detectNestedFiles()`
+    - `src/utils/metadataExtractor.test.js` (13 tests) — `extractMetadata()` dispatch, PNG IHDR parsing, PE/ELF/Mach-O header extraction, JPEG format detection
+
+### Technical Details
+- All 3 Pinia stores achieve 100% statement coverage
+- `fileSignatures.js` achieves 100% line coverage
+- `entropyOptimized.js` achieves 98% line coverage
+- Tests use inline `Uint8Array` fixtures (no external binary files)
+- New files:
+  - `vitest.config.js` - Vitest configuration merging with Vite config
+  - `src/__tests__/setup.js` - Global test setup
+  - 12 co-located `*.test.js` files next to their source modules
+
+---
+
+## [0.4] - 2026-02-09 (Bookmarks & Annotations)
 
 ### Added
 - **Bookmarks & Annotations**
@@ -307,6 +381,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 See [enhancement-action-plan.md](./enhancement-action-plan.md) for upcoming features:
 
 - ~~**USecVisLib Integration** - Export to BinVis visualization formats~~ (Done in 0.4.1)
-- ~~**Bookmarks & Annotations** - Mark and annotate byte offsets/ranges~~ (Done in 0.4.5)
+- ~~**Bookmarks & Annotations** - Mark and annotate byte offsets/ranges~~ (Done in 0.4)
 - **YARA Support** - Browser-based YARA rule scanning via libyara-wasm
 - **Disassembly Support** - Basic disassembly via Capstone.js for common architectures
