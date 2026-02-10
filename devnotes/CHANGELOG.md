@@ -6,6 +6,37 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4.5] - 2026-02-09
+
+### Added
+- **Bookmarks & Annotations**
+  - Right-click context menu items: "Add Bookmark Here" (single offset) and "Annotate Selection" (byte range with note)
+  - New `BookmarksPanel.vue` component in the Hex View right panel with "Bookmarks" tab
+  - Two collapsible sections (Bookmarks, Annotations) with filter input and sort dropdown (by offset/name/date)
+  - Inline edit dialog for label, note (annotations only), and color (8-color palette)
+  - Click-to-navigate: clicking an item scrolls the hex view to that offset
+  - Visual indicators in both Hex View and Visual View:
+    - Bookmarked byte: 2px solid top-border in bookmark color
+    - Annotated range: translucent background + 2px solid bottom-border in annotation color
+    - ColoredBytes (paint tool) override annotation background; bookmark borders always visible
+  - O(1) bookmark offset lookup via `bookmarkMap` computed property
+  - Full session persistence: bookmarks and annotations saved/restored via SessionManager
+  - Dirty-tracking watcher for annotations to trigger session auto-save
+  - Toast notifications on bookmark/annotation creation
+  - Data model: Bookmark `{ id, offset, label, color, created }`, Annotation `{ id, startOffset, endOffset, label, note, color, created }`
+
+### Technical Details
+- New files:
+  - `src/components/BookmarksPanel.vue` - Bookmarks & Annotations panel with filter/sort/edit/delete
+- Modified files:
+  - `src/App.vue` - annotations data, 6 CRUD methods, props/events wiring, session restore/reset, dirty watcher
+  - `src/components/HexContextMenu.vue` - selectionStart/selectionEnd/clickedOffset props, add-bookmark/add-annotation emits and menu items
+  - `src/components/HexView.vue` - bookmarks/annotations props, BookmarksPanel tab, updated getByteStyles(), clickedOffset capture, event forwarding
+  - `src/components/VisualView.vue` - bookmarks/annotations props, bookmarkMap computed, updated getByteStyles()
+  - `src/services/SessionManager.js` - annotations array in session data and updateSession preservation
+
+---
+
 ## [0.4.4] - 2026-02-09
 
 ### Added
@@ -276,5 +307,6 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 See [enhancement-action-plan.md](./enhancement-action-plan.md) for upcoming features:
 
 - ~~**USecVisLib Integration** - Export to BinVis visualization formats~~ (Done in 0.4.1)
+- ~~**Bookmarks & Annotations** - Mark and annotate byte offsets/ranges~~ (Done in 0.4.5)
 - **YARA Support** - Browser-based YARA rule scanning via libyara-wasm
 - **Disassembly Support** - Basic disassembly via Capstone.js for common architectures

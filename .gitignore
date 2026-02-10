@@ -47,5 +47,8 @@ nginx.conf
 # System files
 Thumbs.db
 
+# Test coverage
+coverage/
+
 # Development notes and documentation
 devnotes/
