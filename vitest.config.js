@@ -8,7 +8,7 @@ export default mergeConfig(viteConfig, defineConfig({
     setupFiles: ['src/__tests__/setup.js'],
     coverage: {
       provider: 'v8',
-      include: ['src/utils/**', 'src/services/**', 'src/stores/**'],
+      include: ['src/utils/**', 'src/services/**', 'src/stores/**', 'src/composables/**'],
       exclude: ['**/*.test.js', 'src/__tests__/**']
     }
   }
