@@ -28,7 +28,7 @@ app.use(pinia)
 app.mount('#app')
 
 // Register Service Worker for PWA capabilities
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('/service-worker.js')
       .then(registration => {
