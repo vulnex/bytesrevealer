@@ -88,11 +88,22 @@ export function extractResults(rawResult) {
  * Handle messages from main thread
  */
 self.onmessage = async function (event) {
+  // Validate message structure
+  if (!event.data || typeof event.data.type !== 'string') {
+    self.postMessage({ type: 'error', error: 'Invalid message format' })
+    return
+  }
+
   const { type, data } = event.data
 
   switch (type) {
     case 'scan':
       try {
+        // Validate scan message data
+        if (!data || !data.fileData || !data.rules) {
+          self.postMessage({ type: 'error', error: 'Invalid scan message: missing fileData or rules' })
+          return
+        }
         self.postMessage({ type: 'progress', progress: 5 })
 
         const startTime = performance.now()

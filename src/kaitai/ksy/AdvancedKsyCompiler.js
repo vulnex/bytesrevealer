@@ -707,21 +707,25 @@ class AdvancedKsyCompiler {
       }
       
       /**
-       * Evaluate expression
+       * Evaluate expression safely without using eval/new Function.
+       * Uses a recursive descent parser that ONLY supports safe KSY
+       * expression operations: integer literals, arithmetic, bitwise,
+       * comparisons, boolean, ternary, field references, true/false,
+       * and parentheses grouping.
        */
       _evaluateExpression(expr, context) {
         if (typeof expr !== 'string') return expr
-        
+
         // Direct field reference
         if (context && context[expr] !== undefined) {
           return context[expr]
         }
-        
+
         // Parent field reference
         if (context && context._parent && context._parent[expr] !== undefined) {
           return context._parent[expr]
         }
-        
+
         // Root field reference
         if (expr.startsWith('_root.')) {
           const field = expr.substring(6)
@@ -729,18 +733,18 @@ class AdvancedKsyCompiler {
             return this._root[field]
           }
         }
-        
+
         // IO properties
         if (expr === '_io.size') return this.buffer.length
         if (expr === '_io.pos') return this.offset
         if (expr === '_io.eof') return this.offset >= this.buffer.length
-        
+
         // Special values
         if (expr === 'eos') return this.buffer.length - this.offset
-        
-        // Try to evaluate as simple expression
+
+        // Try to evaluate as simple expression using safe parser
         try {
-          // Create safe evaluation context
+          // Build evaluation context for resolving field references
           const evalContext = {
             ...context,
             _root: this._root,
@@ -751,23 +755,328 @@ class AdvancedKsyCompiler {
               eof: this.offset >= this.buffer.length
             }
           }
-          
-          // Replace field references
-          let processed = expr
-          for (const [key, value] of Object.entries(evalContext)) {
-            if (typeof value === 'number' || typeof value === 'string' || typeof value === 'boolean') {
-              const regex = new RegExp(`\\b${key}\\b`, 'g')
-              processed = processed.replace(regex, JSON.stringify(value))
-            }
-          }
-          
-          // Evaluate expression
-          const func = new Function('return ' + processed)
-          return func()
+
+          return this._safeEvaluate(expr, evalContext)
         } catch (error) {
           // Return expression as-is if evaluation fails
           return expr
         }
+      }
+
+      /**
+       * Safe expression evaluator: tokenizer + recursive descent parser.
+       * Supports only Kaitai Struct expression subset:
+       *   - Integer literals (decimal, hex 0x...)
+       *   - Arithmetic: + - * / %
+       *   - Bitwise: & | ^ << >>
+       *   - Comparisons: == != < > <= >=
+       *   - Boolean: && || ! not
+       *   - Ternary: ? :
+       *   - true, false
+       *   - Parentheses grouping
+       *   - Dotted field references (resolved from context)
+       *   - String literals (single and double quoted)
+       *
+       * SECURITY: Does NOT use eval, new Function, or any dynamic code execution.
+       */
+      _safeEvaluate(expr, context) {
+        // --- Tokenizer ---
+        const tokens = []
+        let i = 0
+        const src = expr.trim()
+
+        while (i < src.length) {
+          // Skip whitespace
+          if (/\s/.test(src[i])) { i++; continue }
+
+          // String literals (single or double quoted)
+          if (src[i] === '"' || src[i] === "'") {
+            const quote = src[i]
+            let str = ''
+            i++ // skip opening quote
+            while (i < src.length && src[i] !== quote) {
+              if (src[i] === '\\' && i + 1 < src.length) {
+                i++ // skip backslash, take next char
+              }
+              str += src[i]
+              i++
+            }
+            i++ // skip closing quote
+            tokens.push({ type: 'string', value: str })
+            continue
+          }
+
+          // Numbers: hex (0x...) or decimal
+          if (/[0-9]/.test(src[i]) || (src[i] === '0' && i + 1 < src.length && src[i + 1] === 'x')) {
+            let num = ''
+            if (src[i] === '0' && i + 1 < src.length && (src[i + 1] === 'x' || src[i + 1] === 'X')) {
+              num = '0x'
+              i += 2
+              while (i < src.length && /[0-9a-fA-F]/.test(src[i])) {
+                num += src[i]; i++
+              }
+            } else {
+              while (i < src.length && /[0-9.]/.test(src[i])) {
+                num += src[i]; i++
+              }
+            }
+            tokens.push({ type: 'number', value: Number(num) })
+            continue
+          }
+
+          // Two-character operators
+          const two = src.substring(i, i + 2)
+          if (['==', '!=', '<=', '>=', '<<', '>>', '&&', '||'].includes(two)) {
+            tokens.push({ type: 'op', value: two })
+            i += 2
+            continue
+          }
+
+          // Single-character operators and punctuation
+          if ('+-*/%&|^~!<>?:()'.includes(src[i])) {
+            tokens.push({ type: 'op', value: src[i] })
+            i++
+            continue
+          }
+
+          // Identifiers and keywords (including dotted paths like _io.size)
+          if (/[a-zA-Z_]/.test(src[i])) {
+            let ident = ''
+            while (i < src.length && /[a-zA-Z0-9_.]/.test(src[i])) {
+              ident += src[i]; i++
+            }
+            // Keywords
+            if (ident === 'true') {
+              tokens.push({ type: 'boolean', value: true })
+            } else if (ident === 'false') {
+              tokens.push({ type: 'boolean', value: false })
+            } else if (ident === 'not') {
+              tokens.push({ type: 'op', value: 'not' })
+            } else {
+              tokens.push({ type: 'ident', value: ident })
+            }
+            continue
+          }
+
+          // Unknown character — abort safe parse
+          throw new Error(`Unexpected character: ${src[i]}`)
+        }
+
+        // --- Recursive descent parser ---
+        let pos = 0
+
+        const peek = () => tokens[pos] || null
+        const advance = () => tokens[pos++]
+        const expect = (type, value) => {
+          const t = advance()
+          if (!t || t.type !== type || (value !== undefined && t.value !== value)) {
+            throw new Error(`Expected ${type} ${value ?? ''} but got ${t ? t.type + ' ' + t.value : 'EOF'}`)
+          }
+          return t
+        }
+
+        // Resolve an identifier against the evaluation context
+        const resolveIdent = (name) => {
+          // Handle dotted paths like _io.size, _root.header.size
+          const parts = name.split('.')
+          let obj = context
+          for (const part of parts) {
+            if (obj == null || typeof obj !== 'object') return name
+            if (part in obj) {
+              obj = obj[part]
+            } else {
+              // Not found in context, return original name as string
+              return name
+            }
+          }
+          return obj
+        }
+
+        // Grammar (lowest to highest precedence):
+        //   ternary     -> logicalOr ('?' ternary ':' ternary)?
+        //   logicalOr   -> logicalAnd ('||' logicalAnd)*
+        //   logicalAnd  -> bitwiseOr ('&&' bitwiseOr)*
+        //   bitwiseOr   -> bitwiseXor ('|' bitwiseXor)*
+        //   bitwiseXor  -> bitwiseAnd ('^' bitwiseAnd)*
+        //   bitwiseAnd  -> equality ('&' equality)*
+        //   equality    -> comparison (('==' | '!=') comparison)*
+        //   comparison  -> shift (('<' | '>' | '<=' | '>=') shift)*
+        //   shift       -> additive (('<<' | '>>') additive)*
+        //   additive    -> multiplicative (('+' | '-') multiplicative)*
+        //   multiplicative -> unary (('*' | '/' | '%') unary)*
+        //   unary       -> ('!' | 'not' | '-' | '~') unary | primary
+        //   primary     -> NUMBER | STRING | BOOLEAN | IDENT | '(' ternary ')'
+
+        const parseTernary = () => {
+          let node = parseLogicalOr()
+          const t = peek()
+          if (t && t.type === 'op' && t.value === '?') {
+            advance() // consume '?'
+            const consequent = parseTernary()
+            expect('op', ':')
+            const alternate = parseTernary()
+            return node ? consequent : alternate
+          }
+          return node
+        }
+
+        const parseLogicalOr = () => {
+          let left = parseLogicalAnd()
+          while (peek() && peek().type === 'op' && peek().value === '||') {
+            advance()
+            const right = parseLogicalAnd()
+            left = left || right
+          }
+          return left
+        }
+
+        const parseLogicalAnd = () => {
+          let left = parseBitwiseOr()
+          while (peek() && peek().type === 'op' && peek().value === '&&') {
+            advance()
+            const right = parseBitwiseOr()
+            left = left && right
+          }
+          return left
+        }
+
+        const parseBitwiseOr = () => {
+          let left = parseBitwiseXor()
+          while (peek() && peek().type === 'op' && peek().value === '|' &&
+                 !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '|')) {
+            // Single '|' (not '||' which is already consumed as a two-char token)
+            advance(); left = left | parseBitwiseXor()
+          }
+          return left
+        }
+
+        const parseBitwiseXor = () => {
+          let left = parseBitwiseAnd()
+          while (peek() && peek().type === 'op' && peek().value === '^') {
+            advance(); left = left ^ parseBitwiseAnd()
+          }
+          return left
+        }
+
+        const parseBitwiseAnd = () => {
+          let left = parseEquality()
+          while (peek() && peek().type === 'op' && peek().value === '&' &&
+                 !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '&')) {
+            // Single '&' (not '&&' which is already consumed as a two-char token)
+            advance(); left = left & parseEquality()
+          }
+          return left
+        }
+
+        const parseEquality = () => {
+          let left = parseComparison()
+          while (peek() && peek().type === 'op' && (peek().value === '==' || peek().value === '!=')) {
+            const op = advance().value
+            const right = parseComparison()
+            left = op === '==' ? left == right : left != right
+          }
+          return left
+        }
+
+        const parseComparison = () => {
+          let left = parseShift()
+          while (peek() && peek().type === 'op' && ['<', '>', '<=', '>='].includes(peek().value)) {
+            const op = advance().value
+            const right = parseShift()
+            switch (op) {
+              case '<':  left = left < right; break
+              case '>':  left = left > right; break
+              case '<=': left = left <= right; break
+              case '>=': left = left >= right; break
+            }
+          }
+          return left
+        }
+
+        const parseShift = () => {
+          let left = parseAdditive()
+          while (peek() && peek().type === 'op' && (peek().value === '<<' || peek().value === '>>')) {
+            const op = advance().value
+            const right = parseAdditive()
+            left = op === '<<' ? left << right : left >> right
+          }
+          return left
+        }
+
+        const parseAdditive = () => {
+          let left = parseMultiplicative()
+          while (peek() && peek().type === 'op' && (peek().value === '+' || peek().value === '-')) {
+            const op = advance().value
+            const right = parseMultiplicative()
+            left = op === '+' ? left + right : left - right
+          }
+          return left
+        }
+
+        const parseMultiplicative = () => {
+          let left = parseUnary()
+          while (peek() && peek().type === 'op' && (peek().value === '*' || peek().value === '/' || peek().value === '%')) {
+            const op = advance().value
+            const right = parseUnary()
+            switch (op) {
+              case '*': left = left * right; break
+              case '/': left = right !== 0 ? Math.trunc(left / right) : 0; break
+              case '%': left = right !== 0 ? left % right : 0; break
+            }
+          }
+          return left
+        }
+
+        const parseUnary = () => {
+          const t = peek()
+          if (t && t.type === 'op') {
+            if (t.value === '!' || t.value === 'not') {
+              advance(); return !parseUnary()
+            }
+            if (t.value === '-') {
+              advance(); return -parseUnary()
+            }
+            if (t.value === '~') {
+              advance(); return ~parseUnary()
+            }
+          }
+          return parsePrimary()
+        }
+
+        const parsePrimary = () => {
+          const t = peek()
+          if (!t) throw new Error('Unexpected end of expression')
+
+          if (t.type === 'number') {
+            advance(); return t.value
+          }
+          if (t.type === 'string') {
+            advance(); return t.value
+          }
+          if (t.type === 'boolean') {
+            advance(); return t.value
+          }
+          if (t.type === 'ident') {
+            advance(); return resolveIdent(t.value)
+          }
+          if (t.type === 'op' && t.value === '(') {
+            advance() // consume '('
+            const val = parseTernary()
+            expect('op', ')')
+            return val
+          }
+
+          throw new Error(`Unexpected token: ${t.type} ${t.value}`)
+        }
+
+        const result = parseTernary()
+
+        // Ensure all tokens were consumed
+        if (pos < tokens.length) {
+          throw new Error(`Unexpected token after expression: ${tokens[pos].value}`)
+        }
+
+        return result
       }
       
       // Read methods

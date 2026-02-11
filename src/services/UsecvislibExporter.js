@@ -141,6 +141,48 @@ class UsecvislibExporter {
   // ── API Integration ──
 
   setApiUrl(url) {
+    // Validate URL can be parsed
+    let parsed
+    try {
+      parsed = new URL(url)
+    } catch {
+      throw new Error('Invalid API URL: unable to parse')
+    }
+
+    // Only allow http: and https: protocols
+    if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
+      throw new Error(`Invalid API URL: protocol "${parsed.protocol}" is not allowed (only http: and https:)`)
+    }
+
+    // Block private/internal IP ranges (except localhost/127.0.0.1 which is the default)
+    const hostname = parsed.hostname
+    const isLocalhost = hostname === 'localhost' || hostname === '127.0.0.1'
+
+    if (!isLocalhost) {
+      // Resolve hostname to check for private IPs
+      // Block 127.x.x.x (loopback, except 127.0.0.1 handled above)
+      // Block 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 169.254.x.x
+      const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
+      if (ipv4Match) {
+        const [, a, b, c, d] = ipv4Match.map(Number)
+        const isPrivate =
+          a === 10 ||
+          (a === 172 && b >= 16 && b <= 31) ||
+          (a === 192 && b === 168) ||
+          (a === 169 && b === 254) ||
+          a === 127
+
+        if (isPrivate) {
+          throw new Error(`Invalid API URL: private/internal IP address "${hostname}" is not allowed`)
+        }
+      }
+    }
+
+    // Explicitly block AWS metadata endpoint
+    if (hostname === '169.254.169.254') {
+      throw new Error('Invalid API URL: AWS metadata endpoint is not allowed')
+    }
+
     this.apiUrl = url.replace(/\/+$/, '')
     logger.info('API URL set to:', this.apiUrl)
   }

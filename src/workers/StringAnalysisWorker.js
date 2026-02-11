@@ -12,9 +12,20 @@
 
 // String extraction in Web Worker for performance
 self.addEventListener('message', async (event) => {
+  // Validate message structure
+  if (!event.data || typeof event.data.type !== 'string') {
+    self.postMessage({ type: 'error', error: 'Invalid message format' })
+    return
+  }
+
   const { type, data, options } = event.data
 
   if (type === 'analyze') {
+    // Validate analyze message data
+    if (!data) {
+      self.postMessage({ type: 'error', error: 'Invalid analyze message: missing file data' })
+      return
+    }
     try {
       const results = await analyzeStrings(data, options)
       self.postMessage({ type: 'complete', results })

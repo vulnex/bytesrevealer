@@ -17,6 +17,22 @@
 let isSearching = false
 let shouldCancel = false
 
+// Search result limits
+const MAX_RESULTS = 10000
+const MAX_HIGHLIGHT_BYTES = 100000
+
+/**
+ * Validate regex pattern to prevent ReDoS (catastrophic backtracking)
+ */
+function isSafeRegex(pattern) {
+  if (pattern.length > 1000) return false
+  // Detect nested quantifiers (catastrophic backtracking)
+  if (/(\+|\*|\?|\{)\s*\)[\+\*\?]|\)[\+\*\?]\s*\{/.test(pattern)) return false
+  // Detect excessive repetition groups
+  if (/(\{[0-9]{4,}\})/.test(pattern)) return false
+  return true
+}
+
 /**
  * Search for hex pattern in data
  */
@@ -58,6 +74,7 @@ function searchHexPattern(data, pattern, onProgress) {
         offset: i,
         length: patternLength
       })
+      if (results.length >= MAX_RESULTS) break
     }
 
     // Report progress
@@ -67,7 +84,7 @@ function searchHexPattern(data, pattern, onProgress) {
     }
   }
 
-  return { results, cancelled: false }
+  return { results, cancelled: false, truncated: results.length >= MAX_RESULTS }
 }
 
 /**
@@ -115,6 +132,7 @@ function searchAsciiPattern(data, pattern, caseInsensitive, onProgress) {
         offset: i,
         length: patternLength
       })
+      if (results.length >= MAX_RESULTS) break
     }
 
     // Report progress
@@ -124,7 +142,7 @@ function searchAsciiPattern(data, pattern, caseInsensitive, onProgress) {
     }
   }
 
-  return { results, cancelled: false }
+  return { results, cancelled: false, truncated: results.length >= MAX_RESULTS }
 }
 
 /**
@@ -136,6 +154,11 @@ function searchRegexPattern(data, pattern, flags, onProgress) {
   const chunkSize = 10 * 1024 * 1024 // 10MB chunks for regex (slower)
 
   try {
+    // Validate regex safety before compilation
+    if (!isSafeRegex(pattern)) {
+      throw new Error('Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition')
+    }
+
     // Convert data to string in chunks to avoid memory issues
     let processedBytes = 0
     const decoder = new TextDecoder('utf-8', { fatal: false })
@@ -155,7 +178,10 @@ function searchRegexPattern(data, pattern, flags, onProgress) {
           length: match[0].length,
           match: match[0]
         })
+        if (results.length >= MAX_RESULTS) break
       }
+
+      if (results.length >= MAX_RESULTS) break
 
       processedBytes = chunkEnd
 
@@ -164,7 +190,7 @@ function searchRegexPattern(data, pattern, flags, onProgress) {
       }
     }
 
-    return { results, cancelled: shouldCancel }
+    return { results, cancelled: shouldCancel, truncated: results.length >= MAX_RESULTS }
   } catch (error) {
     throw new Error(`Invalid regex pattern: ${error.message}`)
   }
@@ -230,11 +256,23 @@ function performSearch(data, searchType, pattern, options = {}) {
  * Handle messages from main thread
  */
 self.onmessage = function(event) {
+  // Validate message structure
+  if (!event.data || typeof event.data.type !== 'string') {
+    self.postMessage({ type: 'error', error: 'Invalid message format' })
+    return
+  }
+
   const { type, data } = event.data
 
   switch (type) {
     case 'search':
       try {
+        // Validate search message data
+        if (!data || !data.fileData || !data.searchType || !data.pattern) {
+          self.postMessage({ type: 'error', error: 'Invalid search message: missing fileData, searchType, or pattern' })
+          return
+        }
+
         const { fileData, searchType, pattern, options } = data
 
         // Start search
@@ -253,17 +291,23 @@ self.onmessage = function(event) {
         } else {
           // Convert results to array of byte indices for highlighting
           const highlightedBytes = []
-          result.results.forEach(match => {
+          let highlightTruncated = false
+          for (const match of result.results) {
+            if (highlightedBytes.length + match.length > MAX_HIGHLIGHT_BYTES) {
+              highlightTruncated = true
+              break
+            }
             for (let i = 0; i < match.length; i++) {
               highlightedBytes.push(match.offset + i)
             }
-          })
+          }
 
           self.postMessage({
             type: 'searchComplete',
             results: result.results,
             highlightedBytes,
-            matchCount: result.results.length
+            matchCount: result.results.length,
+            truncated: result.truncated || highlightTruncated
           })
         }
       } catch (error) {

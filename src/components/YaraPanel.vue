@@ -223,7 +223,8 @@ export default {
       builtinRuleSets: BUILTIN_RULE_SETS,
       worker: null,
       expandedRules: {},
-      yaraStore: null
+      yaraStore: null,
+      scanId: 0
     }
   },
 
@@ -304,6 +305,15 @@ export default {
     async runScan() {
       if (!this.rulesText.trim() || !this.fileBytes || !this.fileBytes.length) return
 
+      // Increment scanId and capture for this invocation
+      const currentScanId = ++this.scanId
+
+      // If a scan is already in progress, terminate and recreate the worker
+      if (this.yaraStore.isScanning && this.worker) {
+        this.worker.terminate()
+        this.worker = null
+      }
+
       // Sync rules text to store
       this.yaraStore.setRules(this.rulesText)
       this.yaraStore.isScanning = true
@@ -324,46 +334,61 @@ export default {
         ? this.fileBytes
         : new Uint8Array(this.fileBytes)
 
-      return new Promise((resolve) => {
-        this.worker.onmessage = (event) => {
-          const { type, ...data } = event.data
-
-          switch (type) {
-            case 'progress':
-              this.yaraStore.scanProgress = data.progress
-              break
-
-            case 'complete':
-              this.yaraStore.setScanResults(data.results)
-              // Auto-expand first rule
-              if (this.yaraStore.matchedRules.length > 0) {
-                this.expandedRules = { 0: true }
-              }
+      try {
+        await new Promise((resolve) => {
+          this.worker.onmessage = (event) => {
+            // Ignore stale results from a previous scan
+            if (currentScanId !== this.scanId) {
               resolve()
-              break
+              return
+            }
 
-            case 'error':
-              this.yaraStore.isScanning = false
-              this.yaraStore.error = data.error
+            const { type, ...data } = event.data
+
+            switch (type) {
+              case 'progress':
+                this.yaraStore.scanProgress = data.progress
+                break
+
+              case 'complete':
+                this.yaraStore.setScanResults(data.results)
+                // Auto-expand first rule
+                if (this.yaraStore.matchedRules.length > 0) {
+                  this.expandedRules = { 0: true }
+                }
+                resolve()
+                break
+
+              case 'error':
+                this.yaraStore.error = data.error
+                resolve()
+                break
+            }
+          }
+
+          this.worker.onerror = (err) => {
+            if (currentScanId !== this.scanId) {
               resolve()
-              break
+              return
+            }
+            this.yaraStore.error = err.message || 'Worker error'
+            resolve()
           }
-        }
 
-        this.worker.onerror = (err) => {
-          this.yaraStore.isScanning = false
-          this.yaraStore.error = err.message || 'Worker error'
-          resolve()
-        }
-
-        this.worker.postMessage({
-          type: 'scan',
-          data: {
-            fileData,
-            rules: this.rulesText
-          }
+          this.worker.postMessage({
+            type: 'scan',
+            data: {
+              fileData,
+              rules: this.rulesText
+            }
+          })
         })
-      })
+      } finally {
+        // Only reset isScanning if this is still the active scan
+        if (currentScanId === this.scanId) {
+          this.yaraStore.isScanning = false
+        }
+      }
     },
 
     toggleRule(index) {

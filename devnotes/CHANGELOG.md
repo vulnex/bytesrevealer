@@ -6,6 +6,51 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4] - 2026-02-10 (YARA Rule Scanning)
+
+### Added
+- **YARA Rule Scanning** — Browser-based YARA pattern matching via `libyara-wasm` v1.2.1
+  - New "YARA" tab with rule editor (`<textarea>`), built-in rule set selector, and `.yar` file import
+  - 4 built-in rule sets: Common Malware Patterns, Crypto Indicators, Packers & Protectors, Suspicious Strings
+  - Scan execution via Web Worker (lazy WASM initialization, kept warm for subsequent scans)
+  - Results display with matched rules count, total matches, scan duration
+  - Collapsible rule cards with match tables showing offset, string identifier, length, and data
+  - "Go" button on each match navigates to the offset in Hex View (reuses `navigateToMatch` pattern)
+  - "Highlight matches in Hex View" toggle for visual overlay of all match locations
+  - Warning banner for files >50MB (scanning still works)
+  - "No matches found" banner when scan completes with zero results
+  - Compile error display (red for errors, yellow for warnings)
+  - Progress bar during scan
+  - Feature toggle checkbox in analysis preferences
+  - Full session persistence (rules, results, settings saved/restored)
+  - Export integration (YARA matches checkbox in Export Options)
+  - Code-split `libyara-wasm` into separate ~1.1MB chunk, loaded only on first scan
+
+### Fixed
+- **HexView Sidebar Tab Overflow** — Bookmarks tab was clipped when right panel had 3+ tabs; added `flex-wrap: wrap`, reduced tab padding, added `white-space: nowrap`
+- **FormatSelector Readonly Computed Warning** — `confidence` was a read-only `computed()` but two places wrote to it directly; changed to write to `formatStore.confidence` instead
+
+### Technical Details
+- New files:
+  - `src/stores/yara.js` — Pinia store for YARA state (rules, results, scan status, session serialization)
+  - `src/stores/yara.test.js` — 24 tests covering state, getters, actions, session restore
+  - `src/yara/builtinRules.js` — 4 built-in rule sets (pure pattern matching, no PE/ELF modules)
+  - `src/yara/builtinRules.test.js` — 33 tests validating rule set structure and YARA syntax
+  - `src/workers/YaraWorker.js` — Web Worker with lazy libyara-wasm init, C++ collection extraction
+  - `src/workers/YaraWorker.test.js` — 9 tests with mocked WASM responses
+  - `src/components/YaraPanel.vue` — Full YARA UI (Options API, scoped CSS)
+- Modified files:
+  - `package.json` — Added `libyara-wasm@^1.2.1` dependency
+  - `vite.config.js` — Added `libyara-wasm` to `manualChunks` for separate chunk
+  - `src/App.vue` — YARA tab, feature toggle, navigation, session/reset integration
+  - `src/services/SessionManager.js` — YARA state in session data
+  - `src/components/ExportOptions.vue` — YARA matches export option
+  - `src/components/HexView.vue` — CSS fix for sidebar tab overflow
+  - `src/components/KsyManager/FormatSelector.vue` — Fixed readonly computed writes
+- All 379 tests pass (313 existing + 66 new); production build succeeds
+
+---
+
 ## [0.4] - 2026-02-10 (Cleanup & HexView Decomposition)
 
 ### Fixed
@@ -382,5 +427,5 @@ See [enhancement-action-plan.md](./enhancement-action-plan.md) for upcoming feat
 
 - ~~**USecVisLib Integration** - Export to BinVis visualization formats~~ (Done in 0.4.1)
 - ~~**Bookmarks & Annotations** - Mark and annotate byte offsets/ranges~~ (Done in 0.4)
-- **YARA Support** - Browser-based YARA rule scanning via libyara-wasm
+- ~~**YARA Support** - Browser-based YARA rule scanning via libyara-wasm~~ (Done in 0.4)
 - **Disassembly Support** - Basic disassembly via Capstone.js for common architectures

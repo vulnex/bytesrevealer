@@ -192,6 +192,16 @@ self.addEventListener('fetch', (event) => {
   );
 });
 
+// Valid format categories for CACHE_FORMAT messages
+const VALID_FORMAT_CATEGORIES = [
+  'common', 'image', 'archive', 'executable', 'media', 'database', 'network',
+  'filesystem', 'firmware', 'scientific', 'cad', 'font', 'game', 'geospatial',
+  '3d', 'hardware', 'log', 'machine_code', 'macos', 'security', 'serialization',
+  'windows', 'custom',
+  // Plural aliases (legacy)
+  'images', 'archives', 'executables', 'fonts', 'gaming'
+];
+
 // Message event - handle cache control messages
 self.addEventListener('message', (event) => {
   if (event.data.type === 'SKIP_WAITING') {
@@ -199,6 +209,14 @@ self.addEventListener('message', (event) => {
   }
 
   if (event.data.type === 'CLEAR_CACHE') {
+    // Validate that the message came from a controlled client
+    if (!event.source) {
+      return;
+    }
+    // Require explicit confirmation field
+    if (event.data.confirmed !== true) {
+      return;
+    }
     caches.keys().then(cacheNames => {
       Promise.all(
         cacheNames.map(cacheName => caches.delete(cacheName))
@@ -211,6 +229,10 @@ self.addEventListener('message', (event) => {
   if (event.data.type === 'CACHE_FORMAT') {
     // Cache a specific format category on demand
     const { formatCategory } = event.data;
+    // Validate format category against whitelist
+    if (!VALID_FORMAT_CATEGORIES.includes(formatCategory)) {
+      return;
+    }
     caches.open(RUNTIME_CACHE).then(cache => {
       fetch(`/assets/formats-${formatCategory}-*.js`)
         .then(response => {
@@ -222,5 +244,3 @@ self.addEventListener('message', (event) => {
     });
   }
 });
-
-console.log('BytesRevealer Service Worker loaded');

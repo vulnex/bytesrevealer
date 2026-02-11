@@ -278,59 +278,74 @@ class KsyToJsCompiler {
   }
 
   /**
-   * Create parser class from KSY
-   * @param {Object} ksy - Parsed KSY object
-   * @returns {Function} Parser class
+   * Validate that a KSY identifier contains only safe characters.
+   * @param {string} name - Identifier to validate
+   * @returns {boolean} True if the identifier is safe
    */
-  createParser(ksy) {
-    try {
-      const code = this.generateCode(ksy)
-      
-      // Clean up the code for Function constructor
-      const cleanCode = code
-        .replace(/export default.*$/m, '')
-        .replace(/export\s+/g, '')
-      
-      // Create a function that returns the parser
-      const parserFactory = new Function('return ' + cleanCode)
-      const Parser = parserFactory()
-      
-      // Add parse method for compatibility
-      Parser.parse = function(buffer) {
-        try {
-          // Ensure buffer is Uint8Array
-          if (!(buffer instanceof Uint8Array)) {
-            buffer = new Uint8Array(buffer)
-          }
-          
-          const instance = new Parser(buffer)
-          return {
-            success: true,
-            data: instance,
-            fields: Object.keys(instance)
-              .filter(key => !['buffer', 'offset', 'endian', 'parse'].includes(key) && !key.startsWith('read'))
-              .map(key => ({
-                name: key,
-                value: instance[key],
-                offset: 0, // Would need to track during parsing
-                size: 0 // Would need to track during parsing
-              }))
-          }
-        } catch (error) {
-          return {
-            success: false,
-            error: error.message
-          }
+  _isSafeIdentifier(name) {
+    return /^[a-zA-Z_][a-zA-Z0-9_]*$/.test(name)
+  }
+
+  /**
+   * Validate all identifiers in a KSY definition for safety.
+   * @param {Object} ksy - Parsed KSY object
+   * @throws {Error} If any identifier contains unsafe characters
+   */
+  _validateKsyIdentifiers(ksy) {
+    if (ksy.meta?.id && !this._isSafeIdentifier(ksy.meta.id)) {
+      throw new Error(`Unsafe identifier in meta.id: "${ksy.meta.id}"`)
+    }
+    if (ksy.seq) {
+      for (const field of ksy.seq) {
+        if (field.id && !this._isSafeIdentifier(field.id)) {
+          throw new Error(`Unsafe identifier in field id: "${field.id}"`)
+        }
+        if (field.type && typeof field.type === 'string' && !this.typeMap[field.type]
+            && field.type !== 'str' && field.type !== 'strz'
+            && !this._isSafeIdentifier(field.type)) {
+          throw new Error(`Unsafe identifier in field type: "${field.type}"`)
         }
       }
-      
-      return Parser
-    } catch (error) {
-      logger.error('Failed to create parser:', error)
-      // Return a dummy parser that always fails
-      return {
-        parse: () => ({ success: false, error: error.message })
+    }
+    if (ksy.types) {
+      for (const typeName of Object.keys(ksy.types)) {
+        if (!this._isSafeIdentifier(typeName)) {
+          throw new Error(`Unsafe identifier in type name: "${typeName}"`)
+        }
       }
+    }
+  }
+
+  /**
+   * Create parser class from KSY.
+   *
+   * SECURITY NOTE: This method previously used `new Function()` (equivalent to
+   * eval) to instantiate generated code, which allowed arbitrary JavaScript
+   * execution from user-supplied KSY files. That approach has been removed.
+   * Use AdvancedKsyCompiler instead, which parses fields directly without
+   * any dynamic code execution.
+   *
+   * @param {Object} ksy - Parsed KSY object
+   * @returns {Object} Parser-compatible object that directs to AdvancedKsyCompiler
+   */
+  createParser(ksy) {
+    // Validate all identifiers from the KSY to ensure they are safe
+    try {
+      this._validateKsyIdentifiers(ksy)
+    } catch (validationError) {
+      return {
+        parse: () => ({ success: false, error: `KSY validation error: ${validationError.message}` })
+      }
+    }
+
+    // SECURITY: new Function() / eval of generated code has been removed.
+    // Return a parser stub that directs callers to use AdvancedKsyCompiler,
+    // which creates parsers without dynamic code execution.
+    return {
+      parse: () => ({
+        success: false,
+        error: 'KsyToJsCompiler.createParser() is disabled for security reasons (no dynamic code execution). Use AdvancedKsyCompiler instead, which parses KSY fields directly and safely.'
+      })
     }
   }
 

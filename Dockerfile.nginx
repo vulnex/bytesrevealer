@@ -1,5 +1,5 @@
 # Build stage
-FROM node:20-alpine AS builder
+FROM node:20-alpine@sha256:2ffec31a58e85fbcd575c544a3584f6f4d128779e6b856153a04366b8dd01bb0 AS builder
 
 WORKDIR /app
 
@@ -7,8 +7,7 @@ WORKDIR /app
 COPY package*.json ./
 
 # Install ALL dependencies including devDependencies
-# Using npm install instead of npm ci for better compatibility
-RUN npm install
+RUN npm ci
 
 # Copy all project files
 COPY . .
@@ -17,7 +16,7 @@ COPY . .
 RUN npm run build
 
 # Production stage - Using nginx for better performance
-FROM nginx:alpine
+FROM nginx:alpine@sha256:24ab515c9c7d31dd337d1646362033bcb4fc6b35adad8c92d216058c8da581e2
 
 # Install wget for healthcheck
 RUN apk add --no-cache wget
@@ -56,6 +55,9 @@ HEALTHCHECK --interval=30s --timeout=3s --start-period=5s --retries=3 \
   CMD wget --no-verbose --tries=1 --spider http://localhost:80/ || exit 1
 
 EXPOSE 80
+
+# Run as non-root nginx user
+USER nginx
 
 # Run nginx in foreground
 CMD ["nginx", "-g", "daemon off;"]

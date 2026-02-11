@@ -26,6 +26,54 @@ const STORE_METADATA = 'metadata'
 // File extension for exported sessions
 export const SESSION_FILE_EXTENSION = '.brsession'
 
+// Maximum allowed session file size for import (50 MB)
+const MAX_SESSION_FILE_SIZE = 50 * 1024 * 1024
+
+/**
+ * Validate the schema of an imported session object.
+ * Throws an error if the session does not conform to expected structure.
+ */
+function validateSessionSchema(session) {
+  // Disallow prototype pollution keys at the top level
+  const dangerousKeys = ['__proto__', 'constructor', 'prototype']
+  for (const key of dangerousKeys) {
+    if (Object.prototype.hasOwnProperty.call(session, key)) {
+      throw new Error(`Invalid session: forbidden key "${key}"`)
+    }
+  }
+
+  // session.name must be a string, max 500 chars
+  if (typeof session.name !== 'string' || session.name.length > 500) {
+    throw new Error('Invalid session: name must be a string of at most 500 characters')
+  }
+
+  // session.version must be a string matching \d+\.\d+
+  if (typeof session.version !== 'string' || !/^\d+\.\d+$/.test(session.version)) {
+    throw new Error('Invalid session: version must be a string matching "major.minor" format')
+  }
+
+  // session.fileName must be a string if present, max 500 chars
+  if (session.fileName !== undefined && session.fileName !== null) {
+    if (typeof session.fileName !== 'string' || session.fileName.length > 500) {
+      throw new Error('Invalid session: fileName must be a string of at most 500 characters')
+    }
+  }
+
+  // session.fileSize must be a number >= 0 if present
+  if (session.fileSize !== undefined && session.fileSize !== null) {
+    if (typeof session.fileSize !== 'number' || session.fileSize < 0) {
+      throw new Error('Invalid session: fileSize must be a non-negative number')
+    }
+  }
+
+  // session.state must be a plain object if present
+  if (session.state !== undefined && session.state !== null) {
+    if (typeof session.state !== 'object' || Array.isArray(session.state)) {
+      throw new Error('Invalid session: state must be a plain object')
+    }
+  }
+}
+
 /**
  * SessionManager handles all session persistence operations
  * using IndexedDB for storage and supports import/export.
@@ -449,6 +497,11 @@ class SessionManager {
     await this.init()
 
     try {
+      // Enforce file size limit before reading content
+      if (file.size > MAX_SESSION_FILE_SIZE) {
+        throw new Error('Session file too large')
+      }
+
       // Read file content
       const text = await file.text()
       const importData = JSON.parse(text)
@@ -457,6 +510,9 @@ class SessionManager {
       if (!importData.session || !importData.session.version) {
         throw new Error('Invalid session file format')
       }
+
+      // Validate session schema
+      validateSessionSchema(importData.session)
 
       // Check version compatibility
       const [major] = importData.session.version.split('.')

@@ -218,6 +218,15 @@
 </template>
 
 <script>
+function isSafeRegex(pattern) {
+  if (pattern.length > 1000) return false
+  // Detect nested quantifiers (catastrophic backtracking)
+  if (/(\+|\*|\?|\{)\s*\)[\+\*\?]|\)[\+\*\?]\s*\{/.test(pattern)) return false
+  // Detect excessive repetition groups
+  if (/(\{[0-9]{4,}\})/.test(pattern)) return false
+  return true
+}
+
 export default {
   name: 'StringAnalysisView',
 
@@ -266,6 +275,10 @@ export default {
         if (this.useRegex) {
           // Regex mode
           try {
+            if (!isSafeRegex(this.searchQuery)) {
+              this.regexError = 'Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition';
+              return result;
+            }
             const regex = new RegExp(this.searchQuery, 'i');
             this.regexError = null;
             result = result.filter(str =>

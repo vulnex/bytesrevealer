@@ -10,6 +10,17 @@
  * https://www.vulnex.com
  */
 
+/**
+ * Memory Model:
+ * The current implementation loads files fully into memory (up to the 1.5GB
+ * limit enforced by the application). The chunk infrastructure (Map cache,
+ * IndexedDB, chunk metadata) is retained and prepared for a future streaming
+ * optimization where only a window of chunks would be resident in memory at
+ * any given time. Until that streaming path is implemented, the full
+ * Uint8Array returned by initialize() is the single source of truth and no
+ * redundant copies are made.
+ */
+
 import logger from './logger'
 
 class FileChunkManager {
@@ -119,18 +130,12 @@ class FileChunkManager {
 
         logger.info(`Large file "${file.name}" detected (${this.formatSize(this.totalSize)}), loading with chunking`)
 
-        // For now, let's load the entire file but keep chunking metadata
-        // This ensures compatibility while we optimize individual components
+        // Load the entire file into a single Uint8Array. Chunk metadata is
+        // set up above so that getStats() and UI indicators work, but we
+        // do NOT duplicate data into the Map/IndexedDB cache -- the full
+        // array is the single copy in memory.
         const buffer = await file.arrayBuffer()
         const fullArray = new Uint8Array(buffer)
-
-        // Store chunks for caching
-        for (let i = 0; i < Math.min(3, this.totalChunks); i++) {
-          const start = i * this.CHUNK_SIZE
-          const end = Math.min(start + this.CHUNK_SIZE, this.totalSize)
-          const chunk = fullArray.slice(start, end)
-          await this.storeChunk(i, chunk)
-        }
 
         // Mark as chunked for UI indicator
         fullArray.isChunked = true
@@ -293,14 +298,23 @@ class FileChunkManager {
   }
 
   /**
-   * Create a proxy array that loads chunks on demand
+   * Create a proxy array that loads chunks on demand.
+   *
+   * Instead of allocating a separate full-size Uint8Array, this method
+   * decorates the already-loaded data array with chunked-access metadata.
+   * If no data is provided the method falls back to an empty array (should
+   * not happen in normal usage since initialize() always returns the full
+   * data).
+   *
+   * @param {Uint8Array} fullData - The already-loaded full file data
+   * @returns {Uint8Array} The same array, decorated with chunk helpers
    */
-  createProxyArray() {
+  createProxyArray(fullData) {
     const manager = this
     const size = this.totalSize
 
-    // Create a sparse array that loads chunks as needed
-    const proxyArray = new Uint8Array(size)
+    // Re-use the existing full data buffer -- do NOT allocate a new one.
+    const proxyArray = fullData instanceof Uint8Array ? fullData : new Uint8Array(0)
 
     // Override slice method for efficient range access
     proxyArray.slice = function(start = 0, end = size) {

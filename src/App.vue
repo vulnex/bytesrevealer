@@ -579,6 +579,23 @@ export default {
 
     this.fileName = file.name;
 
+    // Validate file size BEFORE loading into memory
+    try {
+      const showWarning = validateFileSize(file);
+      if (showWarning) {
+        const proceed = await this.showSizeWarning(file.size);
+        if (!proceed) {
+          this.loading.file = false;
+          this.error = 'File loading cancelled';
+          return;
+        }
+      }
+    } catch (error) {
+      this.loading.file = false;
+      this.error = error.message;
+      return;
+    }
+
     // Clear session pending state (we now have real file data)
     this.hasSessionData = false;
     this.pendingSessionFile = null;
@@ -683,21 +700,6 @@ export default {
       this.activeTab = 'file'; // Auto-switch to File View after successful upload
     } else {
       this.activeTab = 'visual';
-    }
-
-    // Validate file size for overall limit
-    try {
-      const showWarning = validateFileSize(file);
-      if (showWarning) {
-        const proceed = await this.showSizeWarning(file.size);
-        if (!proceed) {
-          this.error = 'File loading cancelled';
-          return;
-        }
-      }
-    } catch (error) {
-      this.error = error.message;
-      return;
     }
 
     // Perform file analysis if selected

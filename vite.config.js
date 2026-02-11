@@ -18,7 +18,7 @@ import { fileURLToPath, URL } from 'url'
 export default defineConfig({
   plugins: [vue()],
   server: {
-    host: true,
+    host: '127.0.0.1',
     port: 8080
   },
   worker: {

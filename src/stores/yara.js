@@ -71,12 +71,17 @@ export const useYaraStore = defineStore('yara', {
 
     matchHighlightBytes: (state) => {
       if (!state.highlightMatchesInHex) return []
+      const MAX_HIGHLIGHT_BYTES = 100000
       const bytes = new Set()
       for (const rule of state.matchedRules) {
         if (rule.matches) {
           for (const match of rule.matches) {
             for (let i = 0; i < match.length; i++) {
               bytes.add(match.offset + i)
+              if (bytes.size > MAX_HIGHLIGHT_BYTES) {
+                // Highlights disabled for large result sets
+                return []
+              }
             }
           }
         }
