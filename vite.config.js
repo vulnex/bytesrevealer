@@ -13,10 +13,36 @@
 
 import { defineConfig } from 'vite'
 import vue from '@vitejs/plugin-vue'
+import { compression } from 'vite-plugin-compression2'
+import { visualizer } from 'rollup-plugin-visualizer'
 import { fileURLToPath, URL } from 'url'
 
+const isAnalyze = process.env.ANALYZE === 'true'
+
 export default defineConfig({
-  plugins: [vue()],
+  plugins: [
+    vue(),
+    // Gzip pre-compression (.gz files)
+    compression({
+      algorithm: 'gzip',
+      threshold: 1024,
+      exclude: [/\.(br|gz)$/]
+    }),
+    // Brotli pre-compression (.br files)
+    compression({
+      algorithm: 'brotliCompress',
+      threshold: 1024,
+      exclude: [/\.(br|gz)$/]
+    }),
+    // Bundle visualizer (only when ANALYZE=true)
+    isAnalyze &&
+      visualizer({
+        open: true,
+        filename: 'dist/stats.html',
+        gzipSize: true,
+        brotliSize: true
+      })
+  ].filter(Boolean),
   server: {
     host: '127.0.0.1',
     port: 8080
