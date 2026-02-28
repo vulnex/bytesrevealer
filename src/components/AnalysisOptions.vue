@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: AnalysisOptions.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-12
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: AnalysisOptions.vue * Author: Simon Roses Femerling *
+Created: 2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="analysis-options bg-white p-4 rounded-lg shadow mb-4">
@@ -19,43 +10,43 @@
         <input
           type="checkbox"
           :checked="modelValue.fileAnalysis"
-          @change="updateOption('fileAnalysis', $event.target.checked)"
           :disabled="disabled"
           class="form-checkbox h-4 w-4 text-blue-600"
-        >
+          @change="updateOption('fileAnalysis', $event.target.checked)"
+        />
         <span>File Analysis</span>
       </label>
-      
+
       <label class="flex items-center space-x-2">
         <input
           type="checkbox"
           :checked="modelValue.visualView"
-          @change="updateOption('visualView', $event.target.checked)"
           :disabled="disabled"
           class="form-checkbox h-4 w-4 text-blue-600"
-        >
+          @change="updateOption('visualView', $event.target.checked)"
+        />
         <span>Visual View</span>
       </label>
-      
+
       <label class="flex items-center space-x-2">
         <input
           type="checkbox"
           :checked="modelValue.hexView"
-          @change="updateOption('hexView', $event.target.checked)"
           :disabled="disabled"
           class="form-checkbox h-4 w-4 text-blue-600"
-        >
+          @change="updateOption('hexView', $event.target.checked)"
+        />
         <span>Hex View</span>
       </label>
-      
+
       <label class="flex items-center space-x-2">
         <input
           type="checkbox"
           :checked="modelValue.stringAnalysis"
-          @change="updateOption('stringAnalysis', $event.target.checked)"
           :disabled="disabled"
           class="form-checkbox h-4 w-4 text-blue-600"
-        >
+          @change="updateOption('stringAnalysis', $event.target.checked)"
+        />
         <span>String Analysis</span>
       </label>
     </div>
@@ -63,7 +54,7 @@
 </template>
 
 <script setup>
-defineProps({
+const props = defineProps({
   modelValue: {
     type: Object,
     required: true
@@ -72,14 +63,14 @@ defineProps({
     type: Boolean,
     default: false
   }
-});
+})
 
-const emit = defineEmits(['update:modelValue']);
+const emit = defineEmits(['update:modelValue'])
 
 function updateOption(key, value) {
   emit('update:modelValue', {
     ...props.modelValue,
     [key]: value
-  });
+  })
 }
 </script>

@@ -1,6 +1,10 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue'
 
-export function useVisualInteraction(props, emit, { baseOffset, containerRef, ROW_HEIGHT, BYTES_PER_ROW }) {
+export function useVisualInteraction(
+  props,
+  emit,
+  { baseOffset, containerRef, ROW_HEIGHT, BYTES_PER_ROW }
+) {
   // Hover / Inspector state
   const hoveredByte = ref(null)
   const inspectorLocked = ref(false)
@@ -75,8 +79,8 @@ export function useVisualInteraction(props, emit, { baseOffset, containerRef, RO
     const styles = {}
 
     // 1. Annotation: translucent background + bottom border
-    const annotation = props.annotations.find(a =>
-      actualOffset >= a.startOffset && actualOffset <= a.endOffset
+    const annotation = props.annotations.find(
+      (a) => actualOffset >= a.startOffset && actualOffset <= a.endOffset
     )
     if (annotation) {
       styles.backgroundColor = annotation.color + '40'
@@ -84,8 +88,8 @@ export function useVisualInteraction(props, emit, { baseOffset, containerRef, RO
     }
 
     // 2. ColoredBytes: solid background (overrides annotation bg)
-    const colorRange = props.coloredBytes.find(range =>
-      actualOffset >= range.start && actualOffset <= range.end
+    const colorRange = props.coloredBytes.find(
+      (range) => actualOffset >= range.start && actualOffset <= range.end
     )
     if (colorRange) {
       styles.backgroundColor = colorRange.color
@@ -169,10 +173,12 @@ export function useVisualInteraction(props, emit, { baseOffset, containerRef, RO
 
   const handleGlobalClick = (event) => {
     // Only unlock if clicking outside of a byte element
-    if (inspectorLocked.value &&
-        !event.target.closest('.byte-square') &&
-        !event.target.closest('.ascii-group span') &&
-        !event.target.closest('.data-inspector')) {
+    if (
+      inspectorLocked.value &&
+      !event.target.closest('.byte-square') &&
+      !event.target.closest('.ascii-group span') &&
+      !event.target.closest('.data-inspector')
+    ) {
       inspectorLocked.value = false
       lockedByte.value = null
     }

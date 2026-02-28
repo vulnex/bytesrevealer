@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: FormatLoadingIndicator.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: FormatLoadingIndicator.vue * Author: Simon Roses Femerling *
+Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <transition name="fade">
@@ -20,8 +11,7 @@
           <span class="loading-text">{{ loadingText }}</span>
         </div>
 
-        <div v-if="!isLoading && message"
-             :class="['message', messageType]">
+        <div v-if="!isLoading && message" :class="['message', messageType]">
           <span class="icon">{{ messageIcon }}</span>
           <span>{{ message }}</span>
         </div>
@@ -38,7 +28,7 @@
 import { ref, computed, watch } from 'vue'
 import { useFormatStore } from '../stores/format'
 
-const props = defineProps({
+const _props = defineProps({
   show: {
     type: Boolean,
     default: false
@@ -56,10 +46,14 @@ const progress = ref(0)
 // Message icons
 const messageIcon = computed(() => {
   switch (messageType.value) {
-    case 'success': return '✓'
-    case 'error': return '✗'
-    case 'cached': return '⚡'
-    default: return 'ℹ'
+    case 'success':
+      return '✓'
+    case 'error':
+      return '✗'
+    case 'cached':
+      return '⚡'
+    default:
+      return 'ℹ'
   }
 })
 
@@ -75,34 +69,38 @@ watch(message, (newMessage) => {
 })
 
 // Watch format store loading state
-watch(() => formatStore.isLoadingFormat, (loading) => {
-  if (loading) {
-    const formatName = formatStore.loadingFormatName || 'format'
-    startLoading(formatName)
-    if (formatStore.loadingProgress > 0) {
-      setProgress(formatStore.loadingProgress)
+watch(
+  () => formatStore.isLoadingFormat,
+  (loading) => {
+    if (loading) {
+      const formatName = formatStore.loadingFormatName || 'format'
+      startLoading(formatName)
+      if (formatStore.loadingProgress > 0) {
+        setProgress(formatStore.loadingProgress)
+      }
+    } else if (isLoading.value) {
+      // Loading finished
+      const formatName = formatStore.loadingFormatName || 'Format'
+      const isCached = formatStore.isFormatCached(formatStore.selectedFormatId)
+      showSuccess(`${formatName} loaded successfully`, isCached)
     }
-  } else if (isLoading.value) {
-    // Loading finished
-    const formatName = formatStore.loadingFormatName || 'Format'
-    const isCached = formatStore.isFormatCached(formatStore.selectedFormatId)
-    showSuccess(`${formatName} loaded successfully`, isCached)
   }
-})
+)
 
 // Watch loading progress
-watch(() => formatStore.loadingProgress, (progress) => {
-  if (formatStore.isLoadingFormat && progress > 0) {
-    setProgress(progress)
+watch(
+  () => formatStore.loadingProgress,
+  (progress) => {
+    if (formatStore.isLoadingFormat && progress > 0) {
+      setProgress(progress)
+    }
   }
-})
+)
 
 // Format loading state management
 const startLoading = (formatName = null) => {
   isLoading.value = true
-  loadingText.value = formatName
-    ? `Loading ${formatName} format...`
-    : 'Loading format...'
+  loadingText.value = formatName ? `Loading ${formatName} format...` : 'Loading format...'
   message.value = ''
   progress.value = 0
 }
@@ -178,7 +176,9 @@ defineExpose({
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .loading-text {
@@ -226,11 +226,13 @@ defineExpose({
 }
 
 /* Fade transition */
-.fade-enter-active, .fade-leave-active {
+.fade-enter-active,
+.fade-leave-active {
   transition: opacity 0.3s ease;
 }
 
-.fade-enter-from, .fade-leave-to {
+.fade-enter-from,
+.fade-leave-to {
   opacity: 0;
 }
 </style>

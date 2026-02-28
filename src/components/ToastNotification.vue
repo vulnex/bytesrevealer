@@ -1,23 +1,10 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: ToastNotification.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-24
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ToastNotification.vue * Author: Simon Roses Femerling *
+Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <Transition name="toast">
-    <div
-      v-if="visible"
-      class="toast-notification"
-      :class="[type]"
-    >
+    <div v-if="visible" class="toast-notification" :class="[type]">
       <span class="toast-icon">{{ icon }}</span>
       <span class="toast-message">{{ message }}</span>
     </div>
@@ -63,17 +50,20 @@ export default {
       return icons[props.type] || ''
     })
 
-    watch(() => props.show, (newVal) => {
-      if (newVal) {
-        visible.value = true
-        if (timer) clearTimeout(timer)
-        timer = setTimeout(() => {
+    watch(
+      () => props.show,
+      (newVal) => {
+        if (newVal) {
+          visible.value = true
+          if (timer) clearTimeout(timer)
+          timer = setTimeout(() => {
+            visible.value = false
+          }, props.duration)
+        } else {
           visible.value = false
-        }, props.duration)
-      } else {
-        visible.value = false
+        }
       }
-    })
+    )
 
     return {
       visible,

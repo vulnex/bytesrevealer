@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KaitaiRuntime.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -81,23 +81,23 @@ class KaitaiRuntime {
         logger.warn(`No parser for format ${format.name}`)
         return await this.parseWithFallback(data)
       }
-      
+
       // SimpleKsyCompiler parsers expect Uint8Array directly, not KaitaiStream
       const ParserClass = format.parser
-      
+
       // Check if parser exists
       if (!ParserClass) {
         logger.warn(`Parser is undefined for format ${format.name}`)
         return await this.parseWithFallback(data)
       }
-      
+
       // Check if it's a class or already has a parse method
       if (typeof ParserClass.parse === 'function') {
         logger.debug(`Using parser's parse method for ${format.name}`)
         // Use the static parse method
         const result = ParserClass.parse(data)
         logger.debug(`Parse result:`, result)
-        
+
         if (result && result.success && result.fields && result.fields.length > 0) {
           logger.debug(`Parse successful with ${result.fields.length} fields`)
           return {
@@ -136,7 +136,7 @@ class KaitaiRuntime {
    */
   async parseWithFallback(data, formatId = null) {
     await this.fallbackParser.initialize()
-    
+
     // If formatId provided, try to load that format
     if (formatId) {
       logger.debug(`Fallback parser trying format: ${formatId}`)
@@ -148,7 +148,7 @@ class KaitaiRuntime {
         await this.fallbackParser.loadFormat(format)
       }
     }
-    
+
     // Parse file
     const result = await this.fallbackParser.parseFile(data)
     logger.debug(`Fallback parser result:`, result)
@@ -161,22 +161,22 @@ class KaitaiRuntime {
    * @param {Object} format - Format metadata
    * @returns {Object} Structure for display
    */
-  convertToStructure(parsed, format) {
+  convertToStructure(parsed, _format) {
     const fields = []
     let offset = 0
-    
+
     // Process each field in the parsed object
     for (const [key, value] of Object.entries(parsed)) {
       // Skip internal properties
       if (key.startsWith('_')) continue
-      
+
       const field = this.convertField(key, value, offset)
       if (field) {
         fields.push(field)
         offset += field.size || 0
       }
     }
-    
+
     return {
       fields,
       offset: 0,
@@ -202,7 +202,7 @@ class KaitaiRuntime {
         fields: []
       }
     }
-    
+
     // Handle arrays
     if (Array.isArray(value)) {
       return {
@@ -210,27 +210,29 @@ class KaitaiRuntime {
         value: `[${value.length} items]`,
         offset,
         size: this.calculateArraySize(value),
-        fields: value.map((item, index) => 
-          this.convertField(`[${index}]`, item, offset + index * this.getItemSize(item))
-        ).filter(Boolean)
+        fields: value
+          .map((item, index) =>
+            this.convertField(`[${index}]`, item, offset + index * this.getItemSize(item))
+          )
+          .filter(Boolean)
       }
     }
-    
+
     // Handle objects (nested structures)
     if (typeof value === 'object') {
       const subFields = []
       let subOffset = offset
-      
+
       for (const [subKey, subValue] of Object.entries(value)) {
         if (subKey.startsWith('_')) continue
-        
+
         const subField = this.convertField(subKey, subValue, subOffset)
         if (subField) {
           subFields.push(subField)
           subOffset += subField.size || 0
         }
       }
-      
+
       return {
         name: this.formatFieldName(name),
         value: null,
@@ -239,7 +241,7 @@ class KaitaiRuntime {
         fields: subFields
       }
     }
-    
+
     // Handle primitive values
     return {
       name: this.formatFieldName(name),
@@ -257,9 +259,7 @@ class KaitaiRuntime {
    */
   formatFieldName(name) {
     // Convert snake_case to Title Case
-    return name
-      .replace(/_/g, ' ')
-      .replace(/\b\w/g, c => c.toUpperCase())
+    return name.replace(/_/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase())
   }
 
   /**
@@ -275,7 +275,7 @@ class KaitaiRuntime {
       }
       return value.toString()
     }
-    
+
     if (typeof value === 'string') {
       // Truncate long strings
       if (value.length > 50) {
@@ -283,11 +283,11 @@ class KaitaiRuntime {
       }
       return `"${value}"`
     }
-    
+
     if (typeof value === 'boolean') {
       return value ? 'true' : 'false'
     }
-    
+
     return String(value)
   }
 
@@ -301,16 +301,16 @@ class KaitaiRuntime {
       // Assume 4 bytes for numbers (could be improved)
       return 4
     }
-    
+
     if (typeof value === 'string') {
       // UTF-8 encoded size
       return new TextEncoder().encode(value).length
     }
-    
+
     if (typeof value === 'boolean') {
       return 1
     }
-    
+
     return 0
   }
 
@@ -369,49 +369,52 @@ class KaitaiRuntime {
     // Optimize for large files - only parse the viewport window
     const MAX_PARSE_SIZE = 2 * 1024 * 1024 // 2MB max for parsing
     const windowSize = endOffset - startOffset
-    
+
     if (windowSize > MAX_PARSE_SIZE) {
       logger.debug(`Viewport too large (${windowSize} bytes), limiting to ${MAX_PARSE_SIZE} bytes`)
       endOffset = startOffset + MAX_PARSE_SIZE
     }
-    
+
     // For large files, create a slice of data for parsing
     // This prevents parsing the entire file for viewport display
     let parseData = data
     let adjustedOffset = 0
-    
-    if (data.length > 10 * 1024 * 1024) { // For files > 10MB
+
+    if (data.length > 10 * 1024 * 1024) {
+      // For files > 10MB
       // Create a window around the viewport with some context
       const contextSize = 1024 * 1024 // 1MB context before/after
       const sliceStart = Math.max(0, startOffset - contextSize)
       const sliceEnd = Math.min(data.length, endOffset + contextSize)
-      
+
       parseData = data.slice(sliceStart, sliceEnd)
       adjustedOffset = sliceStart
-      
-      logger.debug(`Large file optimization: parsing slice [${sliceStart}:${sliceEnd}] of ${data.length} bytes`)
+
+      logger.debug(
+        `Large file optimization: parsing slice [${sliceStart}:${sliceEnd}] of ${data.length} bytes`
+      )
     }
-    
+
     // Parse the data (or slice)
     const result = await this.parse(parseData, formatId)
-    
+
     if (result && result.fields) {
       // Adjust offsets if we used a slice
       if (adjustedOffset > 0) {
-        result.fields.forEach(field => {
+        result.fields.forEach((field) => {
           if (field.offset !== undefined) {
             field.offset += adjustedOffset
           }
         })
       }
-      
+
       // Filter fields within viewport
-      const viewportFields = result.fields.filter(field => {
+      const viewportFields = result.fields.filter((field) => {
         const fieldSize = field.size || 1
         const fieldEnd = field.offset + fieldSize
         return field.offset < endOffset && fieldEnd > startOffset
       })
-      
+
       logger.debug(`Viewport fields: ${viewportFields.length} of ${result.fields.length} total`)
       return viewportFields
     }
@@ -427,7 +430,7 @@ class KaitaiRuntime {
       { path: 'archive/zip.ksy', category: 'system' },
       { path: 'media/png.ksy', category: 'system' }
     ]
-    
+
     for (const preset of presetFiles) {
       try {
         // In a real implementation, these would be loaded from files
@@ -456,7 +459,7 @@ class KaitaiRuntime {
    * @param {string} path - Preset path
    * @returns {string} KSY content
    */
-  async loadPresetContent(path) {
+  async loadPresetContent(_path) {
     // In a real implementation, this would load from the file system
     // For now, return null to use fallback parser
     return null

@@ -98,7 +98,8 @@ export function useExportRange(fileSize) {
     }
 
     const length = end - start
-    if (length > 10 * 1024 * 1024) { // Warn for >10MB
+    if (length > 10 * 1024 * 1024) {
+      // Warn for >10MB
       rangeError.value = `Warning: Large range (${formatFileSize(length)})`
     }
 

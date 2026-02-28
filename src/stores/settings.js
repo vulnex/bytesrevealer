@@ -1,4 +1,4 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
  *
  * File: settings.js
@@ -15,7 +15,7 @@ import { defineStore } from 'pinia'
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
-    baseOffset: 0,
+    baseOffset: 0
     // other settings...
   }),
   actions: {
@@ -30,4 +30,4 @@ export const useSettingsStore = defineStore('settings', {
     currentOffset: (state) => state.baseOffset
   },
   persist: true // If you want settings to persist across sessions
-}) 
+})

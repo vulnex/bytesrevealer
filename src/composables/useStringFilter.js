@@ -3,7 +3,7 @@ import { ref, computed, watch, watchEffect } from 'vue'
 function isSafeRegex(pattern) {
   if (pattern.length > 1000) return false
   // Detect nested quantifiers (catastrophic backtracking)
-  if (/(\+|\*|\?|\{)\s*\)[\+\*\?]|\)[\+\*\?]\s*\{/.test(pattern)) return false
+  if (/([+*?{])\s*\)[+*?]|\)[+*?]\s*\{/.test(pattern)) return false
   // Detect excessive repetition groups
   if (/(\{[0-9]{4,}\})/.test(pattern)) return false
   return true
@@ -34,7 +34,8 @@ export function useStringFilter(strings) {
 
     if (!isSafeRegex(searchQuery.value)) {
       compiledRegex.value = null
-      regexError.value = 'Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition'
+      regexError.value =
+        'Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition'
       return
     }
 
@@ -53,9 +54,9 @@ export function useStringFilter(strings) {
     // Apply type filter
     if (typeFilter.value !== 'all') {
       if (typeFilter.value === 'UTF-16') {
-        result = result.filter(str => str.type.includes('UTF-16'))
+        result = result.filter((str) => str.type.includes('UTF-16'))
       } else {
-        result = result.filter(str => str.type === typeFilter.value)
+        result = result.filter((str) => str.type === typeFilter.value)
       }
     }
 
@@ -64,16 +65,13 @@ export function useStringFilter(strings) {
       if (useRegex.value) {
         const regex = compiledRegex.value
         if (regex) {
-          result = result.filter(str =>
-            regex.test(str.value) || regex.test(str.type)
-          )
+          result = result.filter((str) => regex.test(str.value) || regex.test(str.type))
         }
         // If regex is invalid (compiledRegex is null), don't filter
       } else {
         const query = searchQuery.value.toLowerCase()
-        result = result.filter(str =>
-          str.value.toLowerCase().includes(query) ||
-          str.type.toLowerCase().includes(query)
+        result = result.filter(
+          (str) => str.value.toLowerCase().includes(query) || str.type.toLowerCase().includes(query)
         )
       }
     }

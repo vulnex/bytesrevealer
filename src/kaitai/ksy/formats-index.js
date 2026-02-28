@@ -26,10 +26,34 @@ export const formatIndex = [
   { id: 'pcx', name: 'PCX Image', extension: 'pcx', category: 'images' },
 
   // Executables
-  { id: 'elf', name: 'ELF Executable', extension: 'elf', category: 'executable', description: 'Linux/Unix executable' },
-  { id: 'pe', name: 'PE Executable', extension: 'exe', category: 'executable', description: 'Windows executable' },
-  { id: 'mach_o', name: 'Mach-O', extension: 'o', category: 'executable', description: 'macOS executable' },
-  { id: 'dex', name: 'Dalvik Executable', extension: 'dex', category: 'executable', description: 'Android executable' },
+  {
+    id: 'elf',
+    name: 'ELF Executable',
+    extension: 'elf',
+    category: 'executable',
+    description: 'Linux/Unix executable'
+  },
+  {
+    id: 'pe',
+    name: 'PE Executable',
+    extension: 'exe',
+    category: 'executable',
+    description: 'Windows executable'
+  },
+  {
+    id: 'mach_o',
+    name: 'Mach-O',
+    extension: 'o',
+    category: 'executable',
+    description: 'macOS executable'
+  },
+  {
+    id: 'dex',
+    name: 'Dalvik Executable',
+    extension: 'dex',
+    category: 'executable',
+    description: 'Android executable'
+  },
   { id: 'java_class', name: 'Java Class', extension: 'class', category: 'executable' },
   { id: 'pyc', name: 'Python Compiled', extension: 'pyc', category: 'executable' },
   { id: 'swf', name: 'Flash SWF', extension: 'swf', category: 'executable' },
@@ -37,17 +61,47 @@ export const formatIndex = [
   // Media
   { id: 'mp3', name: 'MP3 Audio', extension: 'mp3', category: 'media', mimeType: 'audio/mpeg' },
   { id: 'mp4', name: 'MP4 Video', extension: 'mp4', category: 'media', mimeType: 'video/mp4' },
-  { id: 'avi', name: 'AVI Video', extension: 'avi', category: 'media', mimeType: 'video/x-msvideo' },
+  {
+    id: 'avi',
+    name: 'AVI Video',
+    extension: 'avi',
+    category: 'media',
+    mimeType: 'video/x-msvideo'
+  },
   { id: 'wav', name: 'WAV Audio', extension: 'wav', category: 'media', mimeType: 'audio/wav' },
   { id: 'ogg', name: 'OGG Media', extension: 'ogg', category: 'media', mimeType: 'audio/ogg' },
   { id: 'flac', name: 'FLAC Audio', extension: 'flac', category: 'media', mimeType: 'audio/flac' },
-  { id: 'mkv', name: 'Matroska Video', extension: 'mkv', category: 'media', mimeType: 'video/x-matroska' },
-  { id: 'mov', name: 'QuickTime Movie', extension: 'mov', category: 'media', mimeType: 'video/quicktime' },
+  {
+    id: 'mkv',
+    name: 'Matroska Video',
+    extension: 'mkv',
+    category: 'media',
+    mimeType: 'video/x-matroska'
+  },
+  {
+    id: 'mov',
+    name: 'QuickTime Movie',
+    extension: 'mov',
+    category: 'media',
+    mimeType: 'video/quicktime'
+  },
   { id: 'flv', name: 'Flash Video', extension: 'flv', category: 'media' },
 
   // Network
-  { id: 'pcap', name: 'PCAP Capture', extension: 'pcap', category: 'network', description: 'Network packet capture' },
-  { id: 'pcapng', name: 'PCAPNG Capture', extension: 'pcapng', category: 'network', description: 'Next-gen packet capture' },
+  {
+    id: 'pcap',
+    name: 'PCAP Capture',
+    extension: 'pcap',
+    category: 'network',
+    description: 'Network packet capture'
+  },
+  {
+    id: 'pcapng',
+    name: 'PCAPNG Capture',
+    extension: 'pcapng',
+    category: 'network',
+    description: 'Next-gen packet capture'
+  },
   { id: 'tcp_segment', name: 'TCP Segment', extension: 'tcp', category: 'network' },
   { id: 'udp_datagram', name: 'UDP Datagram', extension: 'udp', category: 'network' },
   { id: 'dns_packet', name: 'DNS Packet', extension: 'dns', category: 'network' },
@@ -72,7 +126,13 @@ export const formatIndex = [
   { id: 'dbf', name: 'dBASE File', extension: 'dbf', category: 'database' },
 
   // Documents
-  { id: 'pdf', name: 'PDF Document', extension: 'pdf', category: 'documents', mimeType: 'application/pdf' },
+  {
+    id: 'pdf',
+    name: 'PDF Document',
+    extension: 'pdf',
+    category: 'documents',
+    mimeType: 'application/pdf'
+  },
   { id: 'doc', name: 'Word Document', extension: 'doc', category: 'documents' },
   { id: 'xls', name: 'Excel Spreadsheet', extension: 'xls', category: 'documents' },
   { id: 'ppt', name: 'PowerPoint', extension: 'ppt', category: 'documents' },
@@ -80,8 +140,20 @@ export const formatIndex = [
   { id: 'odt', name: 'OpenDocument Text', extension: 'odt', category: 'documents' },
 
   // Serialization
-  { id: 'json', name: 'JSON Data', extension: 'json', category: 'serialization', mimeType: 'application/json' },
-  { id: 'xml', name: 'XML Document', extension: 'xml', category: 'serialization', mimeType: 'application/xml' },
+  {
+    id: 'json',
+    name: 'JSON Data',
+    extension: 'json',
+    category: 'serialization',
+    mimeType: 'application/json'
+  },
+  {
+    id: 'xml',
+    name: 'XML Document',
+    extension: 'xml',
+    category: 'serialization',
+    mimeType: 'application/xml'
+  },
   { id: 'yaml', name: 'YAML Document', extension: 'yaml', category: 'serialization' },
   { id: 'msgpack', name: 'MessagePack', extension: 'msgpack', category: 'serialization' },
   { id: 'protobuf', name: 'Protocol Buffers', extension: 'pb', category: 'serialization' },
@@ -121,7 +193,7 @@ export const formatIndex = [
   // Hardware
   { id: 'edid', name: 'EDID Display Data', extension: 'edid', category: 'hardware' },
   { id: 'pci_ids', name: 'PCI IDs Database', extension: 'ids', category: 'hardware' },
-  { id: 'usb_ids', name: 'USB IDs Database', extension: 'ids', category: 'hardware' },
+  { id: 'usb_ids', name: 'USB IDs Database', extension: 'ids', category: 'hardware' }
 
   // Common/Misc formats would be added here...
 ]
@@ -137,16 +209,17 @@ export function searchFormats(query, category = null) {
   let results = formatIndex
 
   if (category) {
-    results = results.filter(f => f.category === category)
+    results = results.filter((f) => f.category === category)
   }
 
   if (query) {
     const q = query.toLowerCase()
-    results = results.filter(f =>
-      f.name?.toLowerCase().includes(q) ||
-      f.id?.toLowerCase().includes(q) ||
-      f.extension?.toLowerCase().includes(q) ||
-      f.description?.toLowerCase().includes(q)
+    results = results.filter(
+      (f) =>
+        f.name?.toLowerCase().includes(q) ||
+        f.id?.toLowerCase().includes(q) ||
+        f.extension?.toLowerCase().includes(q) ||
+        f.description?.toLowerCase().includes(q)
     )
   }
 
@@ -155,10 +228,10 @@ export function searchFormats(query, category = null) {
 
 // Get format by ID
 export function getFormatById(id) {
-  return formatIndex.find(f => f.id === id)
+  return formatIndex.find((f) => f.id === id)
 }
 
 // Get formats by category
 export function getFormatsByCategory(category) {
-  return formatIndex.filter(f => f.category === category)
+  return formatIndex.filter((f) => f.category === category)
 }

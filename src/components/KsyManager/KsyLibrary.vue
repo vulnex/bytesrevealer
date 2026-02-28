@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: KsyLibrary.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: KsyLibrary.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="ksy-library">
@@ -23,7 +14,7 @@
           class="search-input"
           @input="handleSearch"
         />
-        <select v-model="selectedCategory" @change="filterFormats" class="category-select">
+        <select v-model="selectedCategory" class="category-select" @change="filterFormats">
           <option value="">All Categories</option>
           <option value="user">User Formats</option>
           <option value="system">System Formats</option>
@@ -50,7 +41,7 @@
           <option value="Serialization">Serialization</option>
           <option value="Windows">Windows</option>
         </select>
-        <button @click="toggleView" class="view-toggle">
+        <button class="view-toggle" @click="toggleView">
           {{ viewMode === 'grid' ? '☰' : '⊞' }}
         </button>
       </div>
@@ -62,17 +53,12 @@
       <span v-if="searchQuery">matching "{{ searchQuery }}"</span>
     </div>
 
-    <div 
-      class="formats-container"
-      :class="{ 'list-view': viewMode === 'list' }"
-    >
-      <div v-if="loading" class="loading">
-        Loading formats...
-      </div>
+    <div class="formats-container" :class="{ 'list-view': viewMode === 'list' }">
+      <div v-if="loading" class="loading">Loading formats...</div>
 
       <div v-else-if="filteredFormats.length === 0" class="no-formats">
         <p>No formats found</p>
-        <button @click="resetFilters" v-if="searchQuery || selectedCategory" class="reset-btn">
+        <button v-if="searchQuery || selectedCategory" class="reset-btn" @click="resetFilters">
           Clear filters
         </button>
       </div>
@@ -82,9 +68,9 @@
           v-for="format in filteredFormats"
           :key="format.id"
           class="format-card"
-          :class="{ 
-            'selected': selectedFormat?.id === format.id,
-            'system': format.category === 'system'
+          :class="{
+            selected: selectedFormat?.id === format.id,
+            system: format.category === 'system'
           }"
           @click="selectFormat(format)"
         >
@@ -102,9 +88,11 @@
             </p>
             <div class="format-tags">
               <span v-if="format.metadata?.fileExtension" class="tag">
-                {{ Array.isArray(format.metadata.fileExtension) 
-                   ? format.metadata.fileExtension.join(', ') 
-                   : format.metadata.fileExtension }}
+                {{
+                  Array.isArray(format.metadata.fileExtension)
+                    ? format.metadata.fileExtension.join(', ')
+                    : format.metadata.fileExtension
+                }}
               </span>
               <span v-if="format.metadata?.endian" class="tag">
                 {{ format.metadata.endian }}
@@ -112,33 +100,25 @@
             </div>
           </div>
           <div class="format-actions">
-            <button 
-              @click.stop="useFormat(format)"
-              class="use-btn"
-              title="Use this format"
-            >
+            <button class="use-btn" title="Use this format" @click.stop="useFormat(format)">
               Use
             </button>
-            <button 
-              @click.stop="viewDetails(format)"
-              class="details-btn"
-              title="View details"
-            >
+            <button class="details-btn" title="View details" @click.stop="viewDetails(format)">
               ℹ
             </button>
-            <button 
+            <button
               v-if="format.category === 'user'"
-              @click.stop="editFormat(format)"
               class="edit-btn"
               title="Edit"
+              @click.stop="editFormat(format)"
             >
               ✎
             </button>
-            <button 
+            <button
               v-if="format.category === 'user'"
-              @click.stop="deleteFormat(format)"
               class="delete-btn"
               title="Delete"
+              @click.stop="deleteFormat(format)"
             >
               🗑
             </button>
@@ -152,7 +132,7 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>{{ detailFormat?.name }}</h3>
-          <button @click="closeDetails" class="close-btn">×</button>
+          <button class="close-btn" @click="closeDetails">×</button>
         </div>
         <div class="modal-body">
           <div class="detail-section">
@@ -170,7 +150,7 @@
               <dd>{{ formatExtensions(detailFormat?.metadata?.fileExtension) }}</dd>
             </dl>
           </div>
-          
+
           <div v-if="detailFormat?.metadata?.imports?.length" class="detail-section">
             <h4>Dependencies</h4>
             <ul>
@@ -200,15 +180,9 @@
           </div>
         </div>
         <div class="modal-footer">
-          <button @click="useFormat(detailFormat)" class="btn-primary">
-            Use Format
-          </button>
-          <button @click="exportFormat(detailFormat)" class="btn-secondary">
-            Export
-          </button>
-          <button @click="closeDetails" class="btn-cancel">
-            Close
-          </button>
+          <button class="btn-primary" @click="useFormat(detailFormat)">Use Format</button>
+          <button class="btn-secondary" @click="exportFormat(detailFormat)">Export</button>
+          <button class="btn-cancel" @click="closeDetails">Close</button>
         </div>
       </div>
     </div>
@@ -225,9 +199,9 @@ const logger = createLogger('KsyLibrary')
 
 export default {
   name: 'KsyLibrary',
-  
+
   emits: ['format-selected', 'format-use', 'format-edit'],
-  
+
   setup(props, { emit }) {
     const formats = ref([])
     const loading = ref(true)
@@ -237,75 +211,76 @@ export default {
     const viewMode = ref('grid') // 'grid' or 'list'
     const showDetails = ref(false)
     const detailFormat = ref(null)
-    
+
     const ksyManager = new KsyManager()
     const formatRegistry = getFormatRegistry()
-    
+
     const filteredFormats = computed(() => {
       let result = [...formats.value]
-      
+
       // Filter by category
       if (selectedCategory.value) {
-        result = result.filter(f => f.category === selectedCategory.value)
+        result = result.filter((f) => f.category === selectedCategory.value)
       }
-      
+
       // Filter by search query
       if (searchQuery.value) {
         const query = searchQuery.value.toLowerCase()
-        result = result.filter(f => 
-          f.name.toLowerCase().includes(query) ||
-          f.description?.toLowerCase().includes(query) ||
-          f.metadata?.formatId?.toLowerCase().includes(query) ||
-          f.metadata?.fileExtension?.toString().toLowerCase().includes(query)
+        result = result.filter(
+          (f) =>
+            f.name.toLowerCase().includes(query) ||
+            f.description?.toLowerCase().includes(query) ||
+            f.metadata?.formatId?.toLowerCase().includes(query) ||
+            f.metadata?.fileExtension?.toString().toLowerCase().includes(query)
         )
       }
-      
+
       // Sort: user formats last, then by name
       result.sort((a, b) => {
         if (a.category === 'user' && b.category !== 'user') return 1
         if (a.category !== 'user' && b.category === 'user') return -1
         return a.name.localeCompare(b.name)
       })
-      
+
       return result
     })
-    
+
     const loadFormats = async () => {
       loading.value = true
       try {
         logger.debug('Starting to load formats...')
-        
+
         // Ensure format registry is initialized - don't destroy existing formats
         await formatRegistry.initialize()
         logger.debug('Format registry initialized')
-        
+
         // Get all registered formats from registry - this is the authoritative source
         const registeredFormats = formatRegistry.getAllFormats()
         logger.debug(`Got ${registeredFormats.length} formats from registry`)
         logger.debug('Registry stats:', formatRegistry.getStats())
-        
+
         // Also load from KsyManager for user formats
         const storedFormats = await ksyManager.getAll()
         logger.debug(`Loaded ${storedFormats.length} stored formats from KsyManager`)
-        
+
         // Merge and deduplicate - prefer registry formats as they are already compiled/registered
         const formatMap = new Map()
-        
+
         // Add registry formats first (these are the active ones)
-        registeredFormats.forEach(f => {
+        registeredFormats.forEach((f) => {
           formatMap.set(f.id, f)
         })
-        
+
         // Add any stored formats that aren't already in registry
-        storedFormats.forEach(f => {
+        storedFormats.forEach((f) => {
           if (!formatMap.has(f.id)) {
             formatMap.set(f.id, f)
           }
         })
-        
+
         formats.value = Array.from(formatMap.values())
         logger.debug(`Total formats available: ${formats.value.length}`)
-        
+
         if (formats.value.length === 0) {
           logger.warn('No formats found! This might be an initialization issue.')
         }
@@ -315,30 +290,30 @@ export default {
         loading.value = false
       }
     }
-    
+
     const selectFormat = (format) => {
       selectedFormat.value = format
       emit('format-selected', format)
     }
-    
+
     const useFormat = (format) => {
       emit('format-use', format)
     }
-    
+
     const viewDetails = (format) => {
       detailFormat.value = format
       showDetails.value = true
     }
-    
+
     const closeDetails = () => {
       showDetails.value = false
       detailFormat.value = null
     }
-    
+
     const editFormat = (format) => {
       emit('format-edit', format)
     }
-    
+
     const deleteFormat = async (format) => {
       if (confirm(`Delete format "${format.name}"?`)) {
         try {
@@ -350,7 +325,7 @@ export default {
         }
       }
     }
-    
+
     const exportFormat = async (format) => {
       try {
         const blob = await ksyManager.export(format.id)
@@ -364,24 +339,24 @@ export default {
         logger.error('Failed to export format:', error)
       }
     }
-    
+
     const handleSearch = () => {
       // Debounced search is handled by computed property
     }
-    
+
     const filterFormats = () => {
       // Filtering is handled by computed property
     }
-    
+
     const resetFilters = () => {
       searchQuery.value = ''
       selectedCategory.value = ''
     }
-    
+
     const toggleView = () => {
       viewMode.value = viewMode.value === 'grid' ? 'list' : 'grid'
     }
-    
+
     const getFormatIcon = (format) => {
       const icons = {
         system: '📦',
@@ -390,26 +365,26 @@ export default {
       }
       return icons[format.category] || '📄'
     }
-    
+
     const formatExtensions = (ext) => {
       if (!ext) return 'N/A'
       return Array.isArray(ext) ? ext.join(', ') : ext
     }
-    
+
     const formatDate = (timestamp) => {
       if (!timestamp) return 'N/A'
       return new Date(timestamp).toLocaleString()
     }
-    
+
     onMounted(() => {
       loadFormats()
     })
-    
+
     // Refresh formats when new ones are added
     const refreshFormats = () => {
       loadFormats()
     }
-    
+
     return {
       formats,
       loading,
@@ -522,7 +497,8 @@ export default {
   padding: 20px;
 }
 
-.loading, .no-formats {
+.loading,
+.no-formats {
   text-align: center;
   padding: 40px;
   color: var(--text-secondary);

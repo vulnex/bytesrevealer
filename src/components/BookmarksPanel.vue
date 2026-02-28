@@ -1,22 +1,14 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: BookmarksPanel.vue
- * Author: Simon Roses Femerling
- * Created: 2026-02-09
- * Version: 0.1
- * License: Apache-2.0
- * Copyright (c) 2025-2026 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: BookmarksPanel.vue * Author: Simon Roses Femerling *
+Created: 2026-02-09 * Version: 0.1 * License: Apache-2.0 * Copyright (c) 2025-2026 VULNEX. All
+rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="bookmarks-panel">
     <!-- Filter & Sort Controls -->
     <div class="panel-controls">
       <input
-        type="text"
         v-model="filterText"
+        type="text"
         placeholder="Filter by label..."
         class="filter-input"
       />
@@ -46,11 +38,21 @@
           <span class="color-dot" :style="{ backgroundColor: bookmark.color }"></span>
           <div class="item-info">
             <span class="item-label">{{ bookmark.label }}</span>
-            <span class="item-offset">0x{{ bookmark.offset.toString(16).toUpperCase().padStart(8, '0') }}</span>
+            <span class="item-offset"
+              >0x{{ bookmark.offset.toString(16).toUpperCase().padStart(8, '0') }}</span
+            >
           </div>
           <div class="item-actions">
-            <button class="action-btn" @click.stop="startEdit('bookmark', bookmark)" title="Edit">&#9998;</button>
-            <button class="action-btn delete-btn" @click.stop="$emit('remove-bookmark', bookmark.id)" title="Delete">&#10005;</button>
+            <button class="action-btn" title="Edit" @click.stop="startEdit('bookmark', bookmark)">
+              &#9998;
+            </button>
+            <button
+              class="action-btn delete-btn"
+              title="Delete"
+              @click.stop="$emit('remove-bookmark', bookmark.id)"
+            >
+              &#10005;
+            </button>
           </div>
         </div>
       </div>
@@ -76,19 +78,33 @@
           <div class="item-info">
             <span class="item-label">{{ annotation.label }}</span>
             <span class="item-offset">
-              0x{{ annotation.startOffset.toString(16).toUpperCase().padStart(8, '0') }}
-              - 0x{{ annotation.endOffset.toString(16).toUpperCase().padStart(8, '0') }}
+              0x{{ annotation.startOffset.toString(16).toUpperCase().padStart(8, '0') }} - 0x{{
+                annotation.endOffset.toString(16).toUpperCase().padStart(8, '0')
+              }}
             </span>
             <span
               v-if="annotation.note"
               class="item-note"
               :class="{ expanded: expandedNotes[annotation.id] }"
               @click.stop="toggleNote(annotation.id)"
-            >{{ annotation.note }}</span>
+              >{{ annotation.note }}</span
+            >
           </div>
           <div class="item-actions">
-            <button class="action-btn" @click.stop="startEdit('annotation', annotation)" title="Edit">&#9998;</button>
-            <button class="action-btn delete-btn" @click.stop="$emit('remove-annotation', annotation.id)" title="Delete">&#10005;</button>
+            <button
+              class="action-btn"
+              title="Edit"
+              @click.stop="startEdit('annotation', annotation)"
+            >
+              &#9998;
+            </button>
+            <button
+              class="action-btn delete-btn"
+              title="Delete"
+              @click.stop="$emit('remove-annotation', annotation.id)"
+            >
+              &#10005;
+            </button>
           </div>
         </div>
       </div>
@@ -103,12 +119,7 @@
         </div>
         <div class="edit-body">
           <label class="edit-label">Label</label>
-          <input
-            type="text"
-            v-model="editForm.label"
-            class="edit-input"
-            @keyup.enter="saveEdit"
-          />
+          <input v-model="editForm.label" type="text" class="edit-input" @keyup.enter="saveEdit" />
           <template v-if="editType === 'annotation'">
             <label class="edit-label">Note</label>
             <textarea
@@ -174,8 +185,14 @@ export default {
         color: '#4fc3f7'
       },
       paletteColors: [
-        '#4fc3f7', '#81c784', '#ffb74d', '#e57373',
-        '#ba68c8', '#4db6ac', '#fff176', '#f06292'
+        '#4fc3f7',
+        '#81c784',
+        '#ffb74d',
+        '#e57373',
+        '#ba68c8',
+        '#4db6ac',
+        '#fff176',
+        '#f06292'
       ]
     }
   },
@@ -184,7 +201,7 @@ export default {
       let items = [...this.bookmarks]
       if (this.filterText) {
         const query = this.filterText.toLowerCase()
-        items = items.filter(b => b.label.toLowerCase().includes(query))
+        items = items.filter((b) => b.label.toLowerCase().includes(query))
       }
       return this.sortItems(items, 'bookmark')
     },
@@ -192,9 +209,10 @@ export default {
       let items = [...this.annotations]
       if (this.filterText) {
         const query = this.filterText.toLowerCase()
-        items = items.filter(a =>
-          a.label.toLowerCase().includes(query) ||
-          (a.note && a.note.toLowerCase().includes(query))
+        items = items.filter(
+          (a) =>
+            a.label.toLowerCase().includes(query) ||
+            (a.note && a.note.toLowerCase().includes(query))
         )
       }
       return this.sortItems(items, 'annotation')
@@ -494,7 +512,9 @@ export default {
   border-radius: 4px;
   cursor: pointer;
   border: 2px solid transparent;
-  transition: border-color 0.15s, transform 0.15s;
+  transition:
+    border-color 0.15s,
+    transform 0.15s;
 }
 
 .color-swatch:hover {

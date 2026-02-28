@@ -22,8 +22,8 @@ describe('useByteInspector', () => {
   describe('onByteHover', () => {
     it('sets hoveredByte to actual offset when unlocked', () => {
       const { hoveredByte, onByteHover } = useByteInspector()
-      onByteHover(0x1A, 0x10)
-      expect(hoveredByte.value).toBe(0x0A)
+      onByteHover(0x1a, 0x10)
+      expect(hoveredByte.value).toBe(0x0a)
     })
 
     it('does not update hoveredByte when locked', () => {
@@ -55,7 +55,8 @@ describe('useByteInspector', () => {
 
   describe('handleKeyDown', () => {
     it('pressing "l" locks inspector to current hoveredByte', () => {
-      const { hoveredByte, inspectorLocked, lockedByte, onByteHover, handleKeyDown } = useByteInspector()
+      const { hoveredByte: _hoveredByte, inspectorLocked, lockedByte, onByteHover, handleKeyDown } =
+        useByteInspector()
       onByteHover(0x05, 0x00)
       handleKeyDown({ key: 'l' })
       expect(inspectorLocked.value).toBe(true)

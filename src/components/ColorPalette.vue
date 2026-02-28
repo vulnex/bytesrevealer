@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: ColorPalette.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-16
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ColorPalette.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-02-16 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="color-palette-container">
@@ -18,7 +9,7 @@
         v-for="color in colors"
         :key="color.id"
         class="color-square"
-        :class="{ 'selected': selectedColor === color.value }"
+        :class="{ selected: selectedColor === color.value }"
         :style="{ backgroundColor: color.value }"
         @click="selectColor(color.value)"
       ></button>
@@ -30,6 +21,7 @@
 <script>
 export default {
   name: 'ColorPalette',
+  emits: ['color-selected'],
   data() {
     return {
       colors: [
@@ -47,8 +39,8 @@ export default {
   },
   methods: {
     selectColor(color) {
-      this.selectedColor = color;
-      this.$emit('color-selected', color);
+      this.selectedColor = color
+      this.$emit('color-selected', color)
     }
   }
 }
@@ -92,7 +84,7 @@ export default {
 }
 
 /* Special styling for white color square */
-.color-square[style*="background-color: #ffffff"] {
+.color-square[style*='background-color: #ffffff'] {
   border: 1px solid var(--border-color);
   background-color: var(--bg-primary) !important;
 }

@@ -5,7 +5,12 @@ import { useHexVirtualScroll } from './useHexVirtualScroll'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
@@ -211,7 +216,7 @@ describe('useHexVirtualScroll', () => {
       result.handleScroll(false)
       expect(result.scrollTop.value).toBe(0) // not yet updated
       // Execute the RAF callback
-      rafCallbacks.forEach(cb => cb())
+      rafCallbacks.forEach((cb) => cb())
       expect(result.scrollTop.value).toBe(240)
       app.unmount()
     })

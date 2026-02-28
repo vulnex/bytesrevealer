@@ -8,7 +8,7 @@ describe('BUILTIN_RULE_SETS', () => {
   })
 
   it('contains all expected rule sets', () => {
-    const ids = BUILTIN_RULE_SETS.map(rs => rs.id)
+    const ids = BUILTIN_RULE_SETS.map((rs) => rs.id)
     expect(ids).toContain('malware_common')
     expect(ids).toContain('crypto_indicators')
     expect(ids).toContain('packers')
@@ -62,13 +62,13 @@ describe('BUILTIN_RULE_SETS', () => {
   })
 
   it('has unique IDs across all rule sets', () => {
-    const ids = BUILTIN_RULE_SETS.map(rs => rs.id)
+    const ids = BUILTIN_RULE_SETS.map((rs) => rs.id)
     const uniqueIds = new Set(ids)
     expect(uniqueIds.size).toBe(ids.length)
   })
 
   it('has unique names across all rule sets', () => {
-    const names = BUILTIN_RULE_SETS.map(rs => rs.name)
+    const names = BUILTIN_RULE_SETS.map((rs) => rs.name)
     const uniqueNames = new Set(names)
     expect(uniqueNames.size).toBe(names.length)
   })

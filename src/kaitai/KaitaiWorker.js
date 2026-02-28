@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KaitaiWorker.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27
@@ -73,7 +73,7 @@ class KaitaiParser {
 
   parseChunk(data, format, offset, length) {
     const cacheKey = `${format}_${offset}_${length}`
-    
+
     // Check cache first
     const cached = this.cache.get(cacheKey)
     if (cached) {
@@ -89,23 +89,23 @@ class KaitaiParser {
       // Create a stream for the specific chunk
       const chunkData = data.slice(offset, offset + length)
       const stream = new KaitaiStream(chunkData)
-      
+
       // Parse the chunk
       const parsed = new Parser(stream)
-      
+
       // Convert to serializable format
       const result = this.serializeStructure(parsed, offset)
-      
+
       // Cache the result
       this.cache.set(cacheKey, result)
-      
+
       return { success: true, data: result, fromCache: false }
     } catch (error) {
-      return { 
-        success: false, 
+      return {
+        success: false,
         error: error.message,
         offset,
-        length 
+        length
       }
     }
   }
@@ -120,7 +120,7 @@ class KaitaiParser {
     // Extract field information
     for (const [key, value] of Object.entries(struct)) {
       if (key.startsWith('_')) continue // Skip internal fields
-      
+
       const field = {
         name: key,
         value: this.serializeValue(value),
@@ -143,18 +143,18 @@ class KaitaiParser {
     if (value === null || value === undefined) {
       return null
     }
-    
+
     if (typeof value === 'object') {
       if (value instanceof Uint8Array) {
         return Array.from(value.slice(0, 100)) // Limit array size
       }
       if (Array.isArray(value)) {
-        return value.slice(0, 100).map(v => this.serializeValue(v))
+        return value.slice(0, 100).map((v) => this.serializeValue(v))
       }
       // Nested structure
       return this.serializeStructure(value)
     }
-    
+
     return value
   }
 
@@ -189,27 +189,23 @@ self.addEventListener('message', async (event) => {
       }
       break
 
-    case 'PARSE_CHUNK':
+    case 'PARSE_CHUNK': {
       const { data, format, offset, length } = payload
-      const result = parser.parseChunk(
-        new Uint8Array(data),
-        format,
-        offset,
-        length
-      )
-      
+      const result = parser.parseChunk(new Uint8Array(data), format, offset, length)
+
       self.postMessage({
         id,
         type: 'CHUNK_PARSED',
         ...result
       })
       break
+    }
 
     case 'PARSE_FULL':
       try {
         const { data, format } = payload
         const Parser = parser.parsers.get(format)
-        
+
         if (!Parser) {
           throw new Error(`Parser not loaded for format: ${format}`)
         }

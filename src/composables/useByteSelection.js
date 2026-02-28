@@ -9,7 +9,7 @@ export function useByteSelection() {
   const selectionEnd = ref(null)
   const selectedColor = ref(null)
 
-  const startSelection = (event, emit) => {
+  const startSelection = (event, _emit) => {
     // Ignore right-click (button 2) to preserve selection for context menu
     if (event.button === 2) return
 

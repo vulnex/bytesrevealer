@@ -92,12 +92,12 @@ describe('useExportRange', () => {
 
     it('formats values that fill 4 chars', () => {
       const { formatOffset } = createRange()
-      expect(formatOffset(0xABCD)).toBe('0xABCD')
+      expect(formatOffset(0xabcd)).toBe('0xABCD')
     })
 
     it('formats values larger than 4 hex chars without truncation', () => {
       const { formatOffset } = createRange()
-      expect(formatOffset(0x1ABCDE)).toBe('0x1ABCDE')
+      expect(formatOffset(0x1abcde)).toBe('0x1ABCDE')
     })
 
     it('uses uppercase hex', () => {
@@ -349,7 +349,7 @@ describe('useExportRange', () => {
 
     it('uses uppercase hex', () => {
       const { range, setRange } = createRange(1024)
-      setRange(0, 0xFF)
+      setRange(0, 0xff)
       expect(range.value.end).toBe('0xFF')
     })
 

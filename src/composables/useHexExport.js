@@ -34,13 +34,15 @@ export function useHexExport(props, { baseOffset, selectionStart, selectionEnd, 
     initialEnd: 0
   })
 
-  const totalSize = computed(() => props.fileBytes ? props.fileBytes.length : 0)
+  const totalSize = computed(() => (props.fileBytes ? props.fileBytes.length : 0))
   const fileData = computed(() => props.fileBytes)
 
   const handleContextMenu = (event) => {
     event.preventDefault()
 
-    logger.debug(`Context menu opened. Selection: start=${selectionStart.value}, end=${selectionEnd.value}`)
+    logger.debug(
+      `Context menu opened. Selection: start=${selectionStart.value}, end=${selectionEnd.value}`
+    )
 
     let selectedBytes = new Uint8Array()
 
@@ -88,7 +90,9 @@ export function useHexExport(props, { baseOffset, selectionStart, selectionEnd, 
 
   const showToast = (message, type = 'success') => {
     toast.value = { show: true, message, type }
-    setTimeout(() => { toast.value.show = false }, 100)
+    setTimeout(() => {
+      toast.value.show = false
+    }, 100)
   }
 
   const handleAddBookmark = (offset) => {
@@ -98,13 +102,17 @@ export function useHexExport(props, { baseOffset, selectionStart, selectionEnd, 
 
   const handleAddAnnotation = ({ startOffset, endOffset }) => {
     emit('add-annotation', { startOffset, endOffset })
-    showToast(`Annotation added for range 0x${startOffset.toString(16).toUpperCase()}-0x${endOffset.toString(16).toUpperCase()}`)
+    showToast(
+      `Annotation added for range 0x${startOffset.toString(16).toUpperCase()}-0x${endOffset.toString(16).toUpperCase()}`
+    )
   }
 
   const handleCopyResult = (result) => {
     if (result.success) {
       logger.info(`Copied ${result.bytesCount} bytes as ${result.format}`)
-      showToast(`Copied ${result.bytesCount} byte${result.bytesCount !== 1 ? 's' : ''} as ${result.format}`)
+      showToast(
+        `Copied ${result.bytesCount} byte${result.bytesCount !== 1 ? 's' : ''} as ${result.format}`
+      )
     } else {
       logger.error(`Failed to copy: ${result.error}`)
       showToast(result.error || 'Failed to copy bytes', 'error')

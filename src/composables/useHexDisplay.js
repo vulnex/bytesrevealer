@@ -3,11 +3,10 @@ import { ref, computed } from 'vue'
 /**
  * Composable for byte formatting, classification, styling, and display toggles.
  */
-export function useHexDisplay(props, {
-  baseOffset, structureHighlight,
-  selectionStart, selectionEnd,
-  hoveredByte, selectedColor
-}) {
+export function useHexDisplay(
+  props,
+  { baseOffset, structureHighlight, selectionStart, selectionEnd, hoveredByte, selectedColor }
+) {
   const useUppercase = ref(true)
   const useColors = ref(true)
 
@@ -41,10 +40,10 @@ export function useHexDisplay(props, {
   function getByteClass(byte) {
     if (byte === 0x00) return 'byte-null'
     if (!useColors.value) return 'byte-white'
-    if (byte >= 0x20 && byte <= 0x7E) return 'byte-printable'
-    if (byte === 0xFF) return 'byte-ff'
-    if (byte >= 0x01 && byte <= 0x1F) return 'byte-control'
-    if (byte >= 0x7F && byte <= 0xFE) return 'byte-extended'
+    if (byte >= 0x20 && byte <= 0x7e) return 'byte-printable'
+    if (byte === 0xff) return 'byte-ff'
+    if (byte >= 0x01 && byte <= 0x1f) return 'byte-control'
+    if (byte >= 0x7f && byte <= 0xfe) return 'byte-extended'
     return 'byte-default'
   }
 
@@ -90,16 +89,16 @@ export function useHexDisplay(props, {
 
     const styles = {}
 
-    const annotation = props.annotations.find(a =>
-      actualOffset >= a.startOffset && actualOffset <= a.endOffset
+    const annotation = props.annotations.find(
+      (a) => actualOffset >= a.startOffset && actualOffset <= a.endOffset
     )
     if (annotation) {
       styles.backgroundColor = annotation.color + '40'
       styles.borderBottom = `2px solid ${annotation.color}`
     }
 
-    const colorRange = props.coloredBytes.find(range =>
-      actualOffset >= range.start && actualOffset <= range.end
+    const colorRange = props.coloredBytes.find(
+      (range) => actualOffset >= range.start && actualOffset <= range.end
     )
     if (colorRange) {
       styles.backgroundColor = colorRange.color

@@ -1,0 +1,6 @@
+dist/
+coverage/
+node_modules/
+public/
+src/kaitai/ksy/presets/generated_formats.js
+package-lock.json

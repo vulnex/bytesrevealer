@@ -71,15 +71,15 @@ class ByteFormatter {
       'clang-macro': this.formatCLangMacro,
 
       // Data formats
-      'hex': this.formatHexString,
+      hex: this.formatHexString,
       'hex-spaced': this.formatHexStringSpaced,
-      'base64': this.formatBase64,
-      'binary': this.formatBinary,
-      'decimal': this.formatDecimal,
-      'escape': this.formatEscapeSequences,
+      base64: this.formatBase64,
+      binary: this.formatBinary,
+      decimal: this.formatDecimal,
+      escape: this.formatEscapeSequences,
       'escape-single': this.formatEscapeSequencesSingle,
       'escape-double': this.formatEscapeSequencesDouble,
-      'csv': this.formatCSV,
+      csv: this.formatCSV
     }
   }
 
@@ -136,7 +136,7 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `const ${variableName} = new Uint8Array([${hex.join(', ')}]);`
     }
 
@@ -144,7 +144,7 @@ class ByteFormatter {
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('  ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -159,14 +159,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `const ${variableName} = [${hex.join(', ')}];`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('  ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -175,7 +175,9 @@ class ByteFormatter {
 
   formatJSHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `const ${variableName} = "${hex}";`
   }
 
@@ -189,7 +191,9 @@ class ByteFormatter {
 
     // Use hex notation for readability
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '\\x' + b.toString(16).padStart(2, '0')).join('')
+      const hex = Array.from(bytes)
+        .map((b) => '\\x' + b.toString(16).padStart(2, '0'))
+        .join('')
       return `${variableName} = b"${hex}"`
     }
 
@@ -197,7 +201,7 @@ class ByteFormatter {
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -212,14 +216,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `${variableName} = bytearray([${hex.join(', ')}])`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -234,14 +238,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `${variableName} = [${hex.join(', ')}]`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -257,14 +261,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `unsigned char ${variableName}[] = {${hex.join(', ')}};`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -279,14 +283,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `uint8_t ${variableName}[] = {${hex.join(', ')}};`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -301,14 +305,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `std::vector<uint8_t> ${variableName} = {${hex.join(', ')}};`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -328,14 +332,18 @@ class ByteFormatter {
   // Additional Python formatters
   formatPythonHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `${variableName} = "${hex}"`
   }
 
   // Additional C/C++ formatters
   formatCHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => '\\x' + b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => '\\x' + b.toString(16).padStart(2, '0'))
+      .join('')
     return `const char* ${variableName} = "${hex}";`
   }
 
@@ -348,17 +356,17 @@ class ByteFormatter {
     }
 
     // Java bytes are signed (-128 to 127)
-    const toSignedByte = (b) => b > 127 ? b - 256 : b
+    const toSignedByte = (b) => (b > 127 ? b - 256 : b)
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const values = Array.from(bytes).map(b => toSignedByte(b))
+      const values = Array.from(bytes).map((b) => toSignedByte(b))
       return `byte[] ${variableName} = {${values.join(', ')}};`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const values = Array.from(chunk).map(b => toSignedByte(b))
+      const values = Array.from(chunk).map((b) => toSignedByte(b))
       lines.push('    ' + values.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -367,14 +375,16 @@ class ByteFormatter {
 
   formatJavaList(bytes, options) {
     const { variableName = 'data' } = options
-    const toSignedByte = (b) => b > 127 ? `(byte)${b}` : String(b)
-    const values = Array.from(bytes).map(b => toSignedByte(b))
+    const toSignedByte = (b) => (b > 127 ? `(byte)${b}` : String(b))
+    const values = Array.from(bytes).map((b) => toSignedByte(b))
     return `List<Byte> ${variableName} = Arrays.asList(${values.join(', ')});`
   }
 
   formatJavaHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `String ${variableName} = "${hex}";`
   }
 
@@ -387,14 +397,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `byte[] ${variableName} = { ${hex.join(', ')} };`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -403,13 +413,15 @@ class ByteFormatter {
 
   formatCSharpList(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+    const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
     return `List<byte> ${variableName} = new List<byte> { ${hex.join(', ')} };`
   }
 
   formatCSharpHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `string ${variableName} = "${hex}";`
   }
 
@@ -422,14 +434,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `${variableName} := []byte{${hex.join(', ')}}`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('\t' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -438,13 +450,15 @@ class ByteFormatter {
 
   formatGoArray(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+    const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
     return `var ${variableName} = [${bytes.length}]byte{${hex.join(', ')}}`
   }
 
   formatGoHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `${variableName} := "${hex}"`
   }
 
@@ -457,14 +471,14 @@ class ByteFormatter {
     }
 
     if (bytes.length <= lineWidth || !splitLines) {
-      const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       return `let ${variableName} = vec![${hex.join(', ')}];`
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const hex = Array.from(chunk).map(b => '0x' + b.toString(16).padStart(2, '0'))
+      const hex = Array.from(chunk).map((b) => '0x' + b.toString(16).padStart(2, '0'))
       lines.push('    ' + hex.join(', ') + (i + lineWidth < bytes.length ? ',' : ''))
     }
 
@@ -473,30 +487,36 @@ class ByteFormatter {
 
   formatRustArray(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => '0x' + b.toString(16).padStart(2, '0'))
+    const hex = Array.from(bytes).map((b) => '0x' + b.toString(16).padStart(2, '0'))
     return `let ${variableName}: [u8; ${bytes.length}] = [${hex.join(', ')}];`
   }
 
   formatRustHexString(bytes, options) {
     const { variableName = 'data' } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return `let ${variableName} = "${hex}";`
   }
 
   // Data formatters
   formatHexString(bytes, options) {
     const { uppercase = false } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join('')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join('')
     return uppercase ? hex.toUpperCase() : hex
   }
 
   formatHexStringSpaced(bytes, options) {
     const { uppercase = false } = options
-    const hex = Array.from(bytes).map(b => b.toString(16).padStart(2, '0')).join(' ')
+    const hex = Array.from(bytes)
+      .map((b) => b.toString(16).padStart(2, '0'))
+      .join(' ')
     return uppercase ? hex.toUpperCase() : hex
   }
 
-  formatBase64(bytes, options) {
+  formatBase64(bytes, _options) {
     // Convert Uint8Array to base64
     let binary = ''
     for (let i = 0; i < bytes.length; i++) {
@@ -509,13 +529,15 @@ class ByteFormatter {
     const { splitLines = true, lineWidth = 4 } = options
 
     if (!splitLines || bytes.length <= lineWidth) {
-      return Array.from(bytes).map(b => b.toString(2).padStart(8, '0')).join(' ')
+      return Array.from(bytes)
+        .map((b) => b.toString(2).padStart(8, '0'))
+        .join(' ')
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const binary = Array.from(chunk).map(b => b.toString(2).padStart(8, '0'))
+      const binary = Array.from(chunk).map((b) => b.toString(2).padStart(8, '0'))
       lines.push(binary.join(' '))
     }
     return lines.join('\n')
@@ -525,13 +547,15 @@ class ByteFormatter {
     const { splitLines = true, lineWidth = 16 } = options
 
     if (!splitLines || bytes.length <= lineWidth) {
-      return Array.from(bytes).map(b => b.toString().padStart(3, ' ')).join(' ')
+      return Array.from(bytes)
+        .map((b) => b.toString().padStart(3, ' '))
+        .join(' ')
     }
 
     const lines = []
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, i + lineWidth)
-      const decimal = Array.from(chunk).map(b => b.toString().padStart(3, ' '))
+      const decimal = Array.from(chunk).map((b) => b.toString().padStart(3, ' '))
       lines.push(decimal.join(' '))
     }
     return lines.join('\n')
@@ -539,12 +563,12 @@ class ByteFormatter {
 
   // Assembler formats
   formatAsmDB(bytes, options) {
-    const { splitLines = true, lineWidth = 16, uppercase = true } = options
+    const { splitLines: _splitLines = true, lineWidth = 16, uppercase = true } = options
     const lines = []
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0' + (uppercase ? h.toUpperCase() : h) + 'h'
       })
@@ -555,12 +579,12 @@ class ByteFormatter {
   }
 
   formatAsmNASM(bytes, options) {
-    const { variableName = 'data', splitLines = true, lineWidth = 16, uppercase = true } = options
+    const { variableName = 'data', splitLines: _splitLines2 = true, lineWidth = 16, uppercase = true } = options
     const lines = [`${variableName}:`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -572,12 +596,12 @@ class ByteFormatter {
   }
 
   formatAsmMASM(bytes, options) {
-    const { variableName = 'data', splitLines = true, lineWidth = 16, uppercase = true } = options
+    const { variableName = 'data', splitLines: _splitLines3 = true, lineWidth = 16, uppercase = true } = options
     const lines = [`${variableName} DB`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return (uppercase ? h.toUpperCase() : h) + 'h'
       })
@@ -589,12 +613,12 @@ class ByteFormatter {
   }
 
   formatAsmGAS(bytes, options) {
-    const { variableName = 'data', splitLines = true, lineWidth = 16, uppercase = true } = options
+    const { variableName = 'data', splitLines: _splitLines4 = true, lineWidth = 16, uppercase = true } = options
     const lines = [`${variableName}:`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -614,7 +638,7 @@ class ByteFormatter {
     }
 
     if (!splitLines || bytes.length <= lineWidth) {
-      const hex = Array.from(bytes).map(b => {
+      const hex = Array.from(bytes).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -624,7 +648,7 @@ class ByteFormatter {
     const lines = [`unsigned char ${variableName}[] = {`]
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -637,7 +661,7 @@ class ByteFormatter {
   }
 
   formatCLangInit(bytes, options) {
-    const { variableName = 'data', splitLines = true, lineWidth = 16, uppercase = true } = options
+    const { variableName = 'data', splitLines: _splitLines5 = true, lineWidth = 16, uppercase = true } = options
     const lines = []
 
     lines.push(`#define ${variableName.toUpperCase()}_SIZE ${bytes.length}`)
@@ -645,7 +669,7 @@ class ByteFormatter {
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -683,7 +707,7 @@ class ByteFormatter {
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
       const chunk = bytes.slice(i, Math.min(i + lineWidth, bytes.length))
-      const hex = Array.from(chunk).map(b => {
+      const hex = Array.from(chunk).map((b) => {
         const h = b.toString(16).padStart(2, '0')
         return '0x' + (uppercase ? h.toUpperCase() : h)
       })
@@ -738,7 +762,7 @@ class ByteFormatter {
   }
 
   formatCSV(bytes, options) {
-    const { splitLines = true, lineWidth = 16, header = true } = options
+    const { splitLines: _splitLines6 = true, lineWidth = 16, header = true } = options
     const lines = []
 
     if (header) {

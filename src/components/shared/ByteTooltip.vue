@@ -1,24 +1,11 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: ByteTooltip.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-12
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ByteTooltip.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
-  <div 
-    class="byte-tooltip" 
-    v-if="show"
-    :style="tooltipStyle"
-  >
-    Offset: {{ offset.toString(16).toUpperCase() }}h<br>
-    Hex: {{ formatByte(byte) }}<br>
+  <div v-if="show" class="byte-tooltip" :style="tooltipStyle">
+    Offset: {{ offset.toString(16).toUpperCase() }}h<br />
+    Hex: {{ formatByte(byte) }}<br />
     ASCII: {{ byteToAscii(byte) }}
   </div>
 </template>
@@ -52,7 +39,7 @@ export default {
     tooltipStyle() {
       return {
         position: 'fixed',
-        left: `${this.x + 15}px`,  // Small offset from cursor
+        left: `${this.x + 15}px`, // Small offset from cursor
         top: `${this.y}px`
       }
     }
@@ -80,7 +67,7 @@ export default {
   border-radius: 4px;
   font-size: 12px;
   pointer-events: none;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
   z-index: 1000;
   backdrop-filter: blur(4px);
   white-space: nowrap;

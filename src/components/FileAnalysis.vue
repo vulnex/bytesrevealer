@@ -1,24 +1,15 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: FileAnalysis.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-03-17
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: FileAnalysis.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-03-17 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
-  <div class="analysis-panel" v-if="fileBytes.length > 0 || hasSessionData">
+  <div v-if="fileBytes.length > 0 || hasSessionData" class="analysis-panel">
     <!-- Add loading indicator -->
     <div v-if="isAnalyzing" class="analysis-loading">
       <span class="loading-spinner"></span>
       Analyzing file...
     </div>
-    
+
     <!-- Show content when analysis is complete -->
     <div v-else>
       <!-- File Type Detection Section -->
@@ -65,7 +56,11 @@
             </div>
             <div class="stat-item">
               <label>Null bytes:</label>
-              <span>{{ nullByteCount }} ({{ ((nullByteCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+              <span
+                >{{ nullByteCount }} ({{
+                  ((nullByteCount / fileBytes.length) * 100).toFixed(1)
+                }}%)</span
+              >
             </div>
             <div class="stat-item">
               <label>Unique bytes:</label>
@@ -73,15 +68,27 @@
             </div>
             <div class="stat-item">
               <label>Most common byte:</label>
-              <span>0x{{ mostCommonByte.value.toString(16).padStart(2, '0').toUpperCase() }} ({{ mostCommonByte.count }}x)</span>
+              <span
+                >0x{{ mostCommonByte.value.toString(16).padStart(2, '0').toUpperCase() }} ({{
+                  mostCommonByte.count
+                }}x)</span
+              >
             </div>
             <div class="stat-item">
               <label>Printable chars:</label>
-              <span>{{ printableCount }} ({{ ((printableCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+              <span
+                >{{ printableCount }} ({{
+                  ((printableCount / fileBytes.length) * 100).toFixed(1)
+                }}%)</span
+              >
             </div>
             <div class="stat-item">
               <label>Control chars:</label>
-              <span>{{ controlCount }} ({{ ((controlCount / fileBytes.length) * 100).toFixed(1) }}%)</span>
+              <span
+                >{{ controlCount }} ({{
+                  ((controlCount / fileBytes.length) * 100).toFixed(1)
+                }}%)</span
+              >
             </div>
           </template>
           <!-- Show placeholder for session data without bytes -->
@@ -97,23 +104,20 @@
       <!-- Only show entropy graph when we have actual bytes -->
       <EntropyGraph
         v-if="hasActualBytes"
-        :fileBytes="fileBytes"
-        :activeGraphTab="activeGraphTab"
-        @update:activeGraphTab="$emit('update:activeGraphTab', $event)"
+        :file-bytes="fileBytes"
+        :active-graph-tab="activeGraphTab"
+        @update:active-graph-tab="$emit('update:activeGraphTab', $event)"
       />
       <div v-else class="entropy-placeholder">
         <h3>Entropy & Byte Distribution</h3>
-        <p class="placeholder-text">Upload the original file to view entropy graph and byte distribution analysis.</p>
+        <p class="placeholder-text">
+          Upload the original file to view entropy graph and byte distribution analysis.
+        </p>
       </div>
-      
-      <FileSignatures
-        :signatures="fileSignatures"
-        class="mb-4"
-      />
 
-      <BinaryAnalysis
-        :fileSignatures="fileSignatures"
-      />
+      <FileSignatures :signatures="fileSignatures" class="mb-4" />
+
+      <BinaryAnalysis :file-signatures="fileSignatures" />
 
       <HashSection :hashes="hashes" />
     </div>
@@ -172,6 +176,7 @@ export default {
       default: 0
     }
   },
+  emits: ['update:activeGraphTab'],
   data() {
     return {
       isAnalyzing: false,
@@ -186,96 +191,96 @@ export default {
   computed: {
     // Check if we have actual file bytes (not just session metadata)
     hasActualBytes() {
-      return this.fileBytes && this.fileBytes.length > 0;
+      return this.fileBytes && this.fileBytes.length > 0
     },
 
     // Get file size from bytes or session data
     displayFileSize() {
       if (this.hasActualBytes) {
-        return this.fileBytes.length;
+        return this.fileBytes.length
       }
-      return this.sessionFileSize || 0;
+      return this.sessionFileSize || 0
     },
 
     nullByteCount() {
       // Return 0 if no bytes
-      if (!this.hasActualBytes) return 0;
+      if (!this.hasActualBytes) return 0
       // For large files, use sampled data or return estimate
       if (this.fileBytes.length > 50 * 1024 * 1024) {
-        return 0; // Skip for large files
+        return 0 // Skip for large files
       }
-      let count = 0;
+      let count = 0
       for (let i = 0; i < this.fileBytes.length; i++) {
-        if (this.fileBytes[i] === 0) count++;
+        if (this.fileBytes[i] === 0) count++
       }
-      return count;
+      return count
     },
-    
+
     uniqueBytes() {
       // For large files, sample instead of processing all
       if (this.fileBytes.length > 50 * 1024 * 1024) {
-        return 'N/A'; // Skip for large files
+        return 'N/A' // Skip for large files
       }
-      return new Set(this.fileBytes).size;
+      return new Set(this.fileBytes).size
     },
-    
+
     asciiPercentage() {
       // For large files, sample the first 1MB
-      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
-      let printable = 0;
+      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024)
+      let printable = 0
       for (let i = 0; i < sampleSize; i++) {
-        const byte = this.fileBytes[i];
-        if (byte >= 32 && byte <= 126) printable++;
+        const byte = this.fileBytes[i]
+        if (byte >= 32 && byte <= 126) printable++
       }
-      return (printable / sampleSize) * 100;
+      return (printable / sampleSize) * 100
     },
-    
+
     printableCount() {
       // For large files, return estimate based on sample
       if (this.fileBytes.length > 50 * 1024 * 1024) {
-        const percentage = this.asciiPercentage / 100;
-        return Math.round(this.fileBytes.length * percentage);
+        const percentage = this.asciiPercentage / 100
+        return Math.round(this.fileBytes.length * percentage)
       }
-      let count = 0;
+      let count = 0
       for (let i = 0; i < this.fileBytes.length; i++) {
-        const byte = this.fileBytes[i];
-        if (byte >= 32 && byte <= 126) count++;
+        const byte = this.fileBytes[i]
+        if (byte >= 32 && byte <= 126) count++
       }
-      return count;
+      return count
     },
-    
+
     controlCount() {
       // For large files, return estimate
       if (this.fileBytes.length > 50 * 1024 * 1024) {
-        return 0; // Skip for large files
+        return 0 // Skip for large files
       }
-      let count = 0;
+      let count = 0
       for (let i = 0; i < this.fileBytes.length; i++) {
-        const byte = this.fileBytes[i];
-        if (byte < 32 || byte === 127) count++;
+        const byte = this.fileBytes[i]
+        if (byte < 32 || byte === 127) count++
       }
-      return count;
+      return count
     },
-    
+
     mostCommonByte() {
       // For large files, sample first 1MB
-      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
-      const byteCounts = new Array(256).fill(0);
-      
+      const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024)
+      const byteCounts = new Array(256).fill(0)
+
       for (let i = 0; i < sampleSize; i++) {
-        byteCounts[this.fileBytes[i]]++;
+        byteCounts[this.fileBytes[i]]++
       }
-      
-      let maxCount = 0;
-      let maxByte = 0;
+
+      let maxCount = 0
+      let maxByte = 0
       for (let byte = 0; byte < 256; byte++) {
         if (byteCounts[byte] > maxCount) {
-          maxCount = byteCounts[byte];
-          maxByte = byte;
+          maxCount = byteCounts[byte]
+          maxByte = byte
         }
       }
-      
-      return { value: maxByte, count: maxCount };
+
+      return { value: maxByte, count: maxCount }
     }
   },
   watch: {
@@ -292,32 +297,32 @@ export default {
     performAnalysis() {
       // Skip heavy analysis for large files
       if (this.fileBytes.length > 50 * 1024 * 1024) {
-        logger.debug('Skipping detailed analysis for large file (>50MB)');
-        this.isAnalyzing = false;
-        return;
+        logger.debug('Skipping detailed analysis for large file (>50MB)')
+        this.isAnalyzing = false
+        return
       }
-      
-      this.isAnalyzing = true;
-      
+
+      this.isAnalyzing = true
+
       // Use setTimeout to prevent blocking
       setTimeout(() => {
         try {
           // Calculate basic statistics
-          const byteCounts = new Array(256).fill(0);
-          let nullBytes = 0;
-          let printableChars = 0;
-          let controlChars = 0;
+          const byteCounts = new Array(256).fill(0)
+          let nullBytes = 0
+          let printableChars = 0
+          let controlChars = 0
 
           // For files over 10MB, only sample first 1MB
-          const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024);
-          
+          const sampleSize = Math.min(this.fileBytes.length, 1024 * 1024)
+
           for (let i = 0; i < sampleSize; i++) {
-            const byte = this.fileBytes[i];
-            byteCounts[byte]++;
-            
-            if (byte === 0) nullBytes++;
-            if (byte >= 32 && byte <= 126) printableChars++;
-            if (byte < 32 || byte === 127) controlChars++;
+            const byte = this.fileBytes[i]
+            byteCounts[byte]++
+
+            if (byte === 0) nullBytes++
+            if (byte >= 32 && byte <= 126) printableChars++
+            if (byte < 32 || byte === 127) controlChars++
           }
 
           this.analysisResults = {
@@ -325,25 +330,25 @@ export default {
             printableChars,
             controlChars,
             byteCounts
-          };
+          }
         } catch (error) {
-          logger.error('Analysis error:', error);
+          logger.error('Analysis error:', error)
         } finally {
-          this.isAnalyzing = false;
+          this.isAnalyzing = false
         }
-      }, 10);
+      }, 10)
     },
 
     formatFileSize(bytes) {
       const units = ['B', 'KB', 'MB', 'GB']
       let size = bytes
       let unitIndex = 0
-      
+
       while (size >= 1024 && unitIndex < units.length - 1) {
         size /= 1024
         unitIndex++
       }
-      
+
       return `${size.toFixed(1)} ${units[unitIndex]}`
     }
   }
@@ -619,6 +624,8 @@ export default {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 </style>

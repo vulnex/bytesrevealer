@@ -1,21 +1,12 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: KsyUploader.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: KsyUploader.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="ksy-uploader">
-    <div 
+    <div
       class="upload-area"
-      :class="{ 
+      :class="{
         'drag-over': isDragOver,
         'has-files': uploadedFiles.length > 0
       }"
@@ -29,22 +20,22 @@
         type="file"
         multiple
         accept=".ksy,.yaml,.yml"
-        @change="handleFileSelect"
         style="display: none"
+        @change="handleFileSelect"
       />
-      
+
       <div v-if="uploadedFiles.length === 0" class="upload-prompt">
         <div class="upload-icon">📁</div>
         <h3>Drop KSY files here</h3>
         <p>or click to browse</p>
         <p class="file-types">Accepts .ksy, .yaml, .yml files</p>
       </div>
-      
+
       <div v-else class="uploaded-list">
         <h3>Uploaded Formats</h3>
         <div class="file-list">
-          <div 
-            v-for="file in uploadedFiles" 
+          <div
+            v-for="file in uploadedFiles"
             :key="file.id"
             class="file-item"
             :class="{ 'has-error': file.error }"
@@ -57,30 +48,20 @@
               <span v-if="file.processing" class="status-processing">Processing...</span>
               <span v-else-if="file.error" class="status-error">{{ file.error }}</span>
               <span v-else class="status-success">✓ Ready</span>
-              <button 
-                @click.stop="removeFile(file.id)"
-                class="remove-btn"
-                title="Remove"
-              >
-                ×
-              </button>
+              <button class="remove-btn" title="Remove" @click.stop="removeFile(file.id)">×</button>
             </div>
           </div>
         </div>
-        <button @click="clearAll" class="clear-all-btn">Clear All</button>
+        <button class="clear-all-btn" @click="clearAll">Clear All</button>
       </div>
     </div>
-    
+
     <div v-if="uploadedFiles.length > 0" class="actions">
-      <button 
-        @click="processFiles"
-        :disabled="processing || !hasValidFiles"
-        class="process-btn"
-      >
+      <button :disabled="processing || !hasValidFiles" class="process-btn" @click="processFiles">
         {{ processing ? 'Processing...' : 'Load Formats' }}
       </button>
     </div>
-    
+
     <div v-if="validationErrors.length > 0" class="validation-errors">
       <h4>Validation Errors:</h4>
       <ul>
@@ -102,68 +83,66 @@ const logger = createLogger('KsyUploader')
 
 export default {
   name: 'KsyUploader',
-  
+
   emits: ['formats-loaded', 'error'],
-  
+
   setup(props, { emit }) {
     const fileInput = ref(null)
     const isDragOver = ref(false)
     const uploadedFiles = ref([])
     const processing = ref(false)
     const validationErrors = ref([])
-    
+
     const ksyManager = getKsyManager()
     const validator = getKsyValidator()
-    
+
     const hasValidFiles = computed(() => {
       if (!uploadedFiles.value || uploadedFiles.value.length === 0) {
         return false
       }
-      return uploadedFiles.value.some(f => !f.error && !f.processing)
+      return uploadedFiles.value.some((f) => !f.error && !f.processing)
     })
-    
+
     const triggerFileInput = () => {
       if (fileInput.value) {
         fileInput.value.click()
       }
     }
-    
+
     const handleFileSelect = (event) => {
       const files = Array.from(event.target.files)
       processSelectedFiles(files)
     }
-    
+
     const handleDrop = (event) => {
       event.preventDefault()
       isDragOver.value = false
-      
+
       const files = Array.from(event.dataTransfer.files)
-      const ksyFiles = files.filter(f => 
-        f.name.endsWith('.ksy') || 
-        f.name.endsWith('.yaml') || 
-        f.name.endsWith('.yml')
+      const ksyFiles = files.filter(
+        (f) => f.name.endsWith('.ksy') || f.name.endsWith('.yaml') || f.name.endsWith('.yml')
       )
-      
+
       if (ksyFiles.length > 0) {
         processSelectedFiles(ksyFiles)
       } else {
         validationErrors.value = ['Please drop only KSY, YAML, or YML files']
       }
     }
-    
+
     const handleDragOver = (event) => {
       event.preventDefault()
       isDragOver.value = true
     }
-    
+
     const handleDragLeave = (event) => {
       event.preventDefault()
       isDragOver.value = false
     }
-    
+
     const processSelectedFiles = async (files) => {
       validationErrors.value = []
-      
+
       for (const file of files) {
         const fileId = generateId()
         const fileEntry = {
@@ -175,24 +154,24 @@ export default {
           error: null,
           content: null
         }
-        
+
         uploadedFiles.value.push(fileEntry)
-        const fileIndex = uploadedFiles.value.length - 1  // Get the index of the newly added file
-        
+        const fileIndex = uploadedFiles.value.length - 1 // Get the index of the newly added file
+
         try {
           // Read file content
           const content = await file.text()
-          
+
           // Update the entry in the array directly for reactivity
           uploadedFiles.value[fileIndex].content = content
-          
+
           // Quick validation
           const isValid = validator.quickValidate(content)
-          
+
           if (!isValid) {
             uploadedFiles.value[fileIndex].error = 'Invalid YAML syntax'
           }
-          
+
           // Update processing state directly in the array
           uploadedFiles.value[fileIndex].processing = false
         } catch (error) {
@@ -202,26 +181,26 @@ export default {
         }
       }
     }
-    
+
     const processFiles = async () => {
       processing.value = true
       validationErrors.value = []
       const loadedFormats = []
-      
+
       for (const file of uploadedFiles.value) {
         if (file.error || !file.content) continue
-        
+
         try {
           // Full validation
           const validation = await validator.validate(file.content)
-          
+
           // Skip validation errors for now - just check if we can parse it
           if (!validation.parsed) {
             file.error = 'Failed to parse YAML'
             validationErrors.value.push(`${file.name}: Failed to parse YAML structure`)
             continue
           }
-          
+
           // Only block on actual errors, not warnings
           if (!validation.valid && validation.errors && validation.errors.length > 0) {
             // Only show as error if there are real errors, not just warnings
@@ -229,12 +208,12 @@ export default {
             validationErrors.value.push(`${file.name}: ${validation.errors.join(', ')}`)
             continue
           }
-          
+
           // Don't log warnings to console - they're not errors
           // if (validation.warnings && validation.warnings.length > 0) {
           //   console.info(`Info for ${file.name}:`, validation.warnings)
           // }
-          
+
           // Add to manager
           const formatId = await ksyManager.add({
             name: file.name.replace(/\.(ksy|yaml|yml)$/i, ''),
@@ -245,13 +224,12 @@ export default {
               warnings: validation.warnings || []
             }
           })
-          
+
           loadedFormats.push({
             id: formatId,
             name: file.name,
             metadata: validation.parsed?.meta
           })
-          
         } catch (error) {
           logger.error('Error processing file:', error)
           file.error = error.message
@@ -259,27 +237,27 @@ export default {
           // Don't set processing to false here - let all files process
         }
       }
-      
+
       processing.value = false
-      
+
       if (loadedFormats.length > 0) {
         emit('formats-loaded', loadedFormats)
         // Clear successful files
-        uploadedFiles.value = uploadedFiles.value.filter(f => f.error)
-        
+        uploadedFiles.value = uploadedFiles.value.filter((f) => f.error)
+
         if (uploadedFiles.value.length === 0) {
           validationErrors.value = []
         }
       }
     }
-    
+
     const removeFile = (fileId) => {
-      uploadedFiles.value = uploadedFiles.value.filter(f => f.id !== fileId)
+      uploadedFiles.value = uploadedFiles.value.filter((f) => f.id !== fileId)
       if (uploadedFiles.value.length === 0) {
         validationErrors.value = []
       }
     }
-    
+
     const clearAll = () => {
       uploadedFiles.value = []
       validationErrors.value = []
@@ -287,17 +265,17 @@ export default {
         fileInput.value.value = ''
       }
     }
-    
+
     const formatSize = (bytes) => {
       if (bytes < 1024) return bytes + ' B'
       if (bytes < 1024 * 1024) return (bytes / 1024).toFixed(1) + ' KB'
       return (bytes / (1024 * 1024)).toFixed(1) + ' MB'
     }
-    
+
     const generateId = () => {
       return Date.now().toString(36) + Math.random().toString(36).substr(2)
     }
-    
+
     return {
       fileInput,
       isDragOver,

@@ -16,9 +16,7 @@ export function useVisualScroll(props, baseOffset) {
     Math.ceil((props.fileBytes.length - baseOffset.value) / BYTES_PER_ROW)
   )
 
-  const totalHeight = computed(() =>
-    totalRows.value * ROW_HEIGHT
-  )
+  const totalHeight = computed(() => totalRows.value * ROW_HEIGHT)
 
   const visibleRange = computed(() => {
     const start = Math.max(0, Math.floor(scrollTop.value / ROW_HEIGHT) - BUFFER_ROWS)
@@ -29,9 +27,7 @@ export function useVisualScroll(props, baseOffset) {
     return { start, end }
   })
 
-  const startOffset = computed(() =>
-    visibleRange.value.start * ROW_HEIGHT
-  )
+  const startOffset = computed(() => visibleRange.value.start * ROW_HEIGHT)
 
   // Update visibleData computed to correctly handle base offset and progressive loading
   const visibleData = computed(() => {
@@ -58,13 +54,18 @@ export function useVisualScroll(props, baseOffset) {
         // Trigger async load if chunks not loaded
         const startChunkIndex = Math.floor(actualOffset / props.chunkManager.CHUNK_SIZE)
         if (props.fileBytes.loadedChunks && !props.fileBytes.loadedChunks.has(startChunkIndex)) {
-          props.chunkManager.getRange(actualOffset, endOffset).then(data => {
+          props.chunkManager.getRange(actualOffset, endOffset).then((_data) => {
             // This will update the view when loaded
           })
         }
       } else {
         // Standard mode - use slice
-        bytes = Array.from(props.fileBytes.slice(actualOffset, Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)))
+        bytes = Array.from(
+          props.fileBytes.slice(
+            actualOffset,
+            Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)
+          )
+        )
       }
 
       rows.push({

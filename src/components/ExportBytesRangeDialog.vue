@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: ExportBytesRangeDialog.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-24
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ExportBytesRangeDialog.vue * Author: Simon Roses Femerling *
+Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <Transition name="modal">
@@ -46,18 +37,12 @@
                     @input="validateRange"
                   />
                 </div>
-                <button
-                  class="clear-btn"
-                  @click="clearRange"
-                  title="Clear range"
-                >
-                  Clear
-                </button>
+                <button class="clear-btn" title="Clear range" @click="clearRange">Clear</button>
               </div>
               <div class="range-info">
                 <span v-if="rangeValid" class="info-text success">
-                  ✓ Range: {{ formatOffset(parsedRange.start) }} to {{ formatOffset(parsedRange.end) }}
-                  ({{ parsedRange.length }} bytes)
+                  ✓ Range: {{ formatOffset(parsedRange.start) }} to
+                  {{ formatOffset(parsedRange.end) }} ({{ parsedRange.length }} bytes)
                 </span>
                 <span v-else-if="range.start || range.end" class="info-text error">
                   ✗ {{ rangeError }}
@@ -69,30 +54,26 @@
               <div class="quick-ranges">
                 <button
                   class="quick-btn"
-                  @click="setRange(0, Math.min(256, fileSize))"
                   title="First 256 bytes"
+                  @click="setRange(0, Math.min(256, fileSize))"
                 >
                   First 256B
                 </button>
                 <button
                   class="quick-btn"
-                  @click="setRange(0, Math.min(1024, fileSize))"
                   title="First 1KB"
+                  @click="setRange(0, Math.min(1024, fileSize))"
                 >
                   First 1KB
                 </button>
                 <button
                   class="quick-btn"
-                  @click="setRange(0, Math.min(4096, fileSize))"
                   title="First 4KB"
+                  @click="setRange(0, Math.min(4096, fileSize))"
                 >
                   First 4KB
                 </button>
-                <button
-                  class="quick-btn"
-                  @click="setRange(0, fileSize)"
-                  title="Entire file"
-                >
+                <button class="quick-btn" title="Entire file" @click="setRange(0, fileSize)">
                   Entire File
                 </button>
               </div>
@@ -116,11 +97,7 @@
 
             <div class="format-options">
               <select v-model="selectedFormat" class="format-select">
-                <option
-                  v-for="format in currentFormats"
-                  :key="format.id"
-                  :value="format.id"
-                >
+                <option v-for="format in currentFormats" :key="format.id" :value="format.id">
                   {{ format.name }}
                 </option>
               </select>
@@ -143,14 +120,11 @@
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.splitLines"
-                  type="checkbox"
-                />
+                <input v-model="options.splitLines" type="checkbox" />
                 Split into multiple lines
               </label>
             </div>
-            <div class="option-row" v-if="options.splitLines">
+            <div v-if="options.splitLines" class="option-row">
               <label>
                 Bytes per line:
                 <input
@@ -164,19 +138,13 @@
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.includeOffset"
-                  type="checkbox"
-                />
+                <input v-model="options.includeOffset" type="checkbox" />
                 Include offset comments
               </label>
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.uppercase"
-                  type="checkbox"
-                />
+                <input v-model="options.uppercase" type="checkbox" />
                 Uppercase hex values
               </label>
             </div>
@@ -191,9 +159,7 @@
                   {{ parsedRange.length }} byte{{ parsedRange.length !== 1 ? 's' : '' }} |
                   {{ formatFileSize(parsedRange.length) }}
                 </span>
-                <span v-else class="warning">
-                  Select a valid range to preview
-                </span>
+                <span v-else class="warning"> Select a valid range to preview </span>
               </div>
             </div>
             <div class="code-preview" :class="syntaxClass">
@@ -203,18 +169,10 @@
         </div>
 
         <div class="modal-footer">
-          <button
-            class="btn btn-secondary"
-            @click="copyToClipboard"
-            :disabled="!rangeValid"
-          >
+          <button class="btn btn-secondary" :disabled="!rangeValid" @click="copyToClipboard">
             <span class="btn-icon">📋</span> Copy to Clipboard
           </button>
-          <button
-            class="btn btn-primary"
-            @click="saveToFile"
-            :disabled="!rangeValid"
-          >
+          <button class="btn btn-primary" :disabled="!rangeValid" @click="saveToFile">
             <span class="btn-icon">💾</span> Save to File
           </button>
           <button class="btn btn-cancel" @click="close">Cancel</button>
@@ -266,15 +224,20 @@ export default {
 
     // Composables
     const {
-      range, rangeValid, rangeError, parsedRange,
-      parseOffset, formatOffset, formatFileSize,
-      validateRange, setRange, clearRange
+      range,
+      rangeValid,
+      rangeError,
+      parsedRange,
+      parseOffset,
+      formatOffset,
+      formatFileSize,
+      validateRange,
+      setRange,
+      clearRange
     } = useExportRange(fileSize)
 
-    const {
-      languages, selectedLanguage, selectedFormat,
-      options, currentFormats, syntaxClass
-    } = useExportFormat()
+    const { languages, selectedLanguage, selectedFormat, options, currentFormats, syntaxClass } =
+      useExportFormat()
 
     // Dialog-level computed
     const selectedBytes = computed(() => {
@@ -301,11 +264,7 @@ export default {
           startOffset: parsedRange.value.start
         }
 
-        return ByteFormatter.format(
-          selectedBytes.value,
-          selectedFormat.value,
-          formatOptions
-        )
+        return ByteFormatter.format(selectedBytes.value, selectedFormat.value, formatOptions)
       } catch (error) {
         logger.error('Error formatting bytes:', error)
         return `// Error: ${error.message}`
@@ -351,14 +310,14 @@ export default {
 
       try {
         const extensions = {
-          'javascript': 'js',
-          'python': 'py',
-          'c': 'c',
-          'java': 'java',
-          'csharp': 'cs',
-          'go': 'go',
-          'rust': 'rs',
-          'data': 'txt'
+          javascript: 'js',
+          python: 'py',
+          c: 'c',
+          java: 'java',
+          csharp: 'cs',
+          go: 'go',
+          rust: 'rs',
+          data: 'txt'
         }
 
         const ext = extensions[selectedLanguage.value] || 'txt'
@@ -392,18 +351,21 @@ export default {
     }
 
     // Auto-set initial range when dialog opens
-    watch(() => props.visible, (newVal) => {
-      if (newVal) {
-        if (props.initialStart !== undefined && props.initialEnd !== undefined) {
-          range.value.start = '0x' + props.initialStart.toString(16).toUpperCase()
-          range.value.end = '0x' + props.initialEnd.toString(16).toUpperCase()
-          validateRange()
-        } else {
-          range.value.start = ''
-          range.value.end = ''
+    watch(
+      () => props.visible,
+      (newVal) => {
+        if (newVal) {
+          if (props.initialStart !== undefined && props.initialEnd !== undefined) {
+            range.value.start = '0x' + props.initialStart.toString(16).toUpperCase()
+            range.value.end = '0x' + props.initialEnd.toString(16).toUpperCase()
+            validateRange()
+          } else {
+            range.value.start = ''
+            range.value.end = ''
+          }
         }
       }
-    })
+    )
 
     return {
       languages,
@@ -415,7 +377,7 @@ export default {
       rangeValid,
       rangeError,
       parsedRange,
-      fileSize,
+      fileSize, // eslint-disable-line vue/no-dupe-keys -- computed wraps prop with default
       selectedBytes,
       formattedCode,
       syntaxClass,

@@ -44,7 +44,7 @@ describe('useExportFormat', () => {
 
     it('includes expected language ids', () => {
       const { languages } = useExportFormat()
-      const ids = languages.map(l => l.id)
+      const ids = languages.map((l) => l.id)
       expect(ids).toContain('javascript')
       expect(ids).toContain('python')
       expect(ids).toContain('c')
@@ -96,7 +96,9 @@ describe('useExportFormat', () => {
 
     it('all format ids are unique', () => {
       const { formats } = useExportFormat()
-      const allIds = Object.values(formats).flat().map(f => f.id)
+      const allIds = Object.values(formats)
+        .flat()
+        .map((f) => f.id)
       expect(new Set(allIds).size).toBe(allIds.length)
     })
   })

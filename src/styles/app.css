@@ -12,7 +12,7 @@
   border-radius: 8px;
   font-size: 14px;
   font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 /* Session restore banner */
@@ -118,7 +118,8 @@
 }
 
 @keyframes pulse {
-  0%, 100% {
+  0%,
+  100% {
     opacity: 1;
   }
   50% {
@@ -499,11 +500,11 @@ h1 {
   color: var(--text-primary) !important;
 }
 
-.file-input input[type="file"] {
+.file-input input[type='file'] {
   color: var(--text-primary);
 }
 
-.file-input input[type="file"]::file-selector-button {
+.file-input input[type='file']::file-selector-button {
   background-color: var(--bg-secondary);
   color: var(--text-primary);
   border-color: var(--border-color);
@@ -545,8 +546,8 @@ a {
 }
 
 /* Search bar */
-input[type="text"],
-input[type="search"] {
+input[type='text'],
+input[type='search'] {
   background-color: var(--input-bg);
   color: var(--input-text);
   border-color: var(--border-color);
@@ -559,7 +560,10 @@ input[type="search"] {
 
 /* Add at the top of your style section */
 * {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+  transition:
+    background-color 0.3s ease,
+    color 0.3s ease,
+    border-color 0.3s ease;
 }
 
 /* Add specific dark mode styles for tabs */

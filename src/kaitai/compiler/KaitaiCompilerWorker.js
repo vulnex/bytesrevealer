@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KaitaiCompilerWorker.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27
@@ -136,7 +136,7 @@ self.addEventListener('message', async (event) => {
     }
   }
 });
-`;
+`
 
 /**
  * Create a Web Worker from inline code
@@ -146,17 +146,17 @@ export function createCompilerWorker() {
   // Create a blob from the worker code
   const blob = new Blob([workerCode], { type: 'application/javascript' })
   const workerUrl = URL.createObjectURL(blob)
-  
+
   // Create and return the worker
   const worker = new Worker(workerUrl)
-  
+
   // Clean up the URL when the worker is terminated
   const originalTerminate = worker.terminate.bind(worker)
-  worker.terminate = function() {
+  worker.terminate = function () {
     URL.revokeObjectURL(workerUrl)
     originalTerminate()
   }
-  
+
   return worker
 }
 
@@ -169,19 +169,19 @@ export function createCompilerWorker() {
 export function compileInWorker(worker, content) {
   return new Promise((resolve, reject) => {
     const id = Math.random().toString(36).substr(2, 9)
-    
+
     const messageHandler = (event) => {
       if (event.data.id !== id) return
-      
+
       worker.removeEventListener('message', messageHandler)
-      
+
       if (event.data.type === 'compiled') {
         resolve(event.data.result)
       } else if (event.data.type === 'error') {
         reject(new Error(event.data.error))
       }
     }
-    
+
     worker.addEventListener('message', messageHandler)
     worker.postMessage({
       type: 'compile',
@@ -200,19 +200,19 @@ export function compileInWorker(worker, content) {
 export function validateInWorker(worker, content) {
   return new Promise((resolve, reject) => {
     const id = Math.random().toString(36).substr(2, 9)
-    
+
     const messageHandler = (event) => {
       if (event.data.id !== id) return
-      
+
       worker.removeEventListener('message', messageHandler)
-      
+
       if (event.data.type === 'validated') {
         resolve(event.data.valid)
       } else {
         reject(new Error('Validation failed'))
       }
     }
-    
+
     worker.addEventListener('message', messageHandler)
     worker.postMessage({
       type: 'validate',

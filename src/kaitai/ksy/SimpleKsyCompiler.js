@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: SimpleKsyCompiler.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -32,11 +32,11 @@ class SimpleKsyCompiler {
   async compile(ksyContent) {
     try {
       logger.debug('compile called, content length:', ksyContent?.length)
-      
+
       // Parse YAML
       const ksy = yaml.parse(ksyContent)
       logger.debug('Parsed KSY:', ksy?.meta?.id, 'has seq:', !!ksy?.seq)
-      
+
       if (!ksy || !ksy.meta) {
         throw new Error('Invalid KSY: missing meta section')
       }
@@ -44,7 +44,7 @@ class SimpleKsyCompiler {
       // Create a parser function
       const parser = this.createParserFunction(ksy)
       logger.debug('Created parser, type:', typeof parser)
-      
+
       // Return just the parser for compatibility with FormatRegistry
       return parser
     } catch (error) {
@@ -62,7 +62,7 @@ class SimpleKsyCompiler {
   createParserFunction(ksy) {
     logger.debug('createParserFunction called for:', ksy.meta?.id)
     const endian = ksy.meta?.endian === 'be' ? 'BE' : 'LE'
-    
+
     // Return a parser class
     const ParserClass = class KsyParser {
       constructor(buffer) {
@@ -70,7 +70,7 @@ class SimpleKsyCompiler {
         this.offset = 0
         this.endian = endian
         this._parsed = {}
-        
+
         // Parse the structure
         this._parse(ksy)
       }
@@ -78,7 +78,7 @@ class SimpleKsyCompiler {
       _parse(ksy) {
         // Store the KSY definition for type lookups
         this._ksy = ksy
-        
+
         if (ksy.seq) {
           for (const field of ksy.seq) {
             try {
@@ -87,14 +87,16 @@ class SimpleKsyCompiler {
                 logger.debug(`Stopping at field ${field.id} - reached EOF`)
                 break
               }
-              
+
               this._parseField(field)
             } catch (error) {
               logger.warn(`Failed to parse field ${field.id}:`, error.message)
               // For critical errors, stop parsing
-              if (error.message.includes('Not enough bytes') || 
-                  error.message.includes('EOF') ||
-                  this.offset >= this.buffer.length) {
+              if (
+                error.message.includes('Not enough bytes') ||
+                error.message.includes('EOF') ||
+                this.offset >= this.buffer.length
+              ) {
                 logger.debug('Stopping parse due to error or EOF')
                 break
               }
@@ -105,7 +107,7 @@ class SimpleKsyCompiler {
 
       _parseField(field) {
         if (!field.id) return
-        
+
         const fieldName = field.id
         logger.debug(`Parsing field ${fieldName}: offset before = ${this.offset}`)
 
@@ -123,21 +125,30 @@ class SimpleKsyCompiler {
         if (field.contents) {
           const contents = this._normalizeContents(field.contents)
           const bytes = this._readBytes(contents.length)
-          
+
           // Validate magic but don't throw - just log warning
           let isValid = true
           for (let i = 0; i < contents.length; i++) {
             if (bytes[i] !== contents[i]) {
-              logger.warn(`Magic mismatch at field ${fieldName}: expected ${contents[i]} but got ${bytes[i]} at position ${i}`)
+              logger.warn(
+                `Magic mismatch at field ${fieldName}: expected ${contents[i]} but got ${bytes[i]} at position ${i}`
+              )
               isValid = false
               // Don't throw - continue parsing to show structure
             }
           }
-          
+
           // Store the field regardless of validation
           this[fieldName] = bytes
-          this._parsed[fieldName] = { value: bytes, offset: startOffset, size: contents.length, valid: isValid }
-          logger.debug(`Field ${fieldName}: stored offset=${startOffset}, size=${contents.length}, valid=${isValid}, offset after = ${this.offset}`)
+          this._parsed[fieldName] = {
+            value: bytes,
+            offset: startOffset,
+            size: contents.length,
+            valid: isValid
+          }
+          logger.debug(
+            `Field ${fieldName}: stored offset=${startOffset}, size=${contents.length}, valid=${isValid}, offset after = ${this.offset}`
+          )
           return
         }
 
@@ -147,12 +158,20 @@ class SimpleKsyCompiler {
           if (this._ksy?.types?.[field.type]) {
             const value = this._parseCustomType(field.type)
             this[fieldName] = value
-            this._parsed[fieldName] = { value, offset: startOffset, size: this.offset - startOffset }
+            this._parsed[fieldName] = {
+              value,
+              offset: startOffset,
+              size: this.offset - startOffset
+            }
           } else {
             // Primitive type
             const value = this._readType(field.type, field)
             this[fieldName] = value
-            this._parsed[fieldName] = { value, offset: startOffset, size: this._getTypeSize(field.type) }
+            this._parsed[fieldName] = {
+              value,
+              offset: startOffset,
+              size: this._getTypeSize(field.type)
+            }
           }
           return
         }
@@ -160,7 +179,7 @@ class SimpleKsyCompiler {
         // Handle sized fields
         if (field.size) {
           let size = field.size
-          
+
           // Handle size expressions
           if (typeof size === 'string') {
             // Check if it's a reference to another field
@@ -171,7 +190,7 @@ class SimpleKsyCompiler {
               size = 0
             }
           }
-          
+
           const bytes = this._readBytes(size)
           this[fieldName] = bytes
           this._parsed[fieldName] = { value: bytes, offset: startOffset, size }
@@ -182,7 +201,7 @@ class SimpleKsyCompiler {
         const fieldName = field.id
         const items = []
         const startOffset = this.offset
-        
+
         if (field.repeat === 'until') {
           // Simple implementation - just read a few items or until EOF
           let maxItems = 20 // Lower safety limit for better performance
@@ -193,12 +212,12 @@ class SimpleKsyCompiler {
                 logger.debug('Not enough bytes for another chunk')
                 break
               }
-              
+
               const item = this._parseSingleField(field)
               if (!item) break
-              
+
               items.push(item)
-              
+
               // Check for IEND chunk type (PNG specific)
               if (field.type === 'chunk' && item && item.type === 'IEND') {
                 logger.debug('Found IEND chunk, stopping')
@@ -221,11 +240,15 @@ class SimpleKsyCompiler {
             }
           }
         }
-        
+
         this[fieldName] = items
-        this._parsed[fieldName] = { value: items, offset: startOffset, size: this.offset - startOffset }
+        this._parsed[fieldName] = {
+          value: items,
+          offset: startOffset,
+          size: this.offset - startOffset
+        }
       }
-      
+
       _parseSingleField(field) {
         // Parse a single instance of a field (for repeat fields)
         if (field.type && this._ksy?.types?.[field.type]) {
@@ -239,23 +262,23 @@ class SimpleKsyCompiler {
         }
         return null
       }
-      
+
       _parseCustomType(typeName) {
         const typeDef = this._ksy?.types?.[typeName]
         if (!typeDef) {
           logger.warn(`Type ${typeName} not found`)
           return null
         }
-        
+
         const result = {}
-        const startOffset = this.offset
-        
+        const _startOffset = this.offset
+
         if (typeDef.seq) {
           for (const field of typeDef.seq) {
             try {
               const fieldName = field.id
               if (!fieldName) continue
-              
+
               if (field.type && typeof field.type === 'object' && field.type['switch-on']) {
                 // Handle switch types - just read as bytes for now
                 if (field.size) {
@@ -305,13 +328,13 @@ class SimpleKsyCompiler {
             }
           }
         }
-        
+
         return result
       }
 
       _normalizeContents(contents) {
         if (typeof contents === 'string') {
-          return Array.from(contents).map(c => c.charCodeAt(0))
+          return Array.from(contents).map((c) => c.charCodeAt(0))
         }
         if (Array.isArray(contents)) {
           const result = []
@@ -372,15 +395,32 @@ class SimpleKsyCompiler {
 
       _getTypeSize(type) {
         const sizes = {
-          'u1': 1, 's1': 1,
-          'u2': 2, 'u2le': 2, 'u2be': 2,
-          's2': 2, 's2le': 2, 's2be': 2,
-          'u4': 4, 'u4le': 4, 'u4be': 4,
-          's4': 4, 's4le': 4, 's4be': 4,
-          'u8': 8, 'u8le': 8, 'u8be': 8,
-          's8': 8, 's8le': 8, 's8be': 8,
-          'f4': 4, 'f4le': 4, 'f4be': 4,
-          'f8': 8, 'f8le': 8, 'f8be': 8
+          u1: 1,
+          s1: 1,
+          u2: 2,
+          u2le: 2,
+          u2be: 2,
+          s2: 2,
+          s2le: 2,
+          s2be: 2,
+          u4: 4,
+          u4le: 4,
+          u4be: 4,
+          s4: 4,
+          s4le: 4,
+          s4be: 4,
+          u8: 8,
+          u8le: 8,
+          u8be: 8,
+          s8: 8,
+          s8le: 8,
+          s8be: 8,
+          f4: 4,
+          f4le: 4,
+          f4be: 4,
+          f8: 8,
+          f8le: 8,
+          f8be: 8
         }
         return sizes[type] || 0
       }
@@ -396,12 +436,14 @@ class SimpleKsyCompiler {
             count = 0
           }
         }
-        
+
         if (count < 0 || count > this.buffer.length - this.offset) {
-          logger.warn(`Invalid byte count: ${count}, available: ${this.buffer.length - this.offset}`)
+          logger.warn(
+            `Invalid byte count: ${count}, available: ${this.buffer.length - this.offset}`
+          )
           count = Math.min(Math.max(0, count), this.buffer.length - this.offset)
         }
-        
+
         const bytes = this.buffer.slice(this.offset, this.offset + count)
         this.offset += count
         return bytes
@@ -428,20 +470,22 @@ class SimpleKsyCompiler {
 
       _readU4LE() {
         if (this.offset + 4 > this.buffer.length) throw new Error('EOF')
-        const val = this.buffer[this.offset] |
-                   (this.buffer[this.offset + 1] << 8) |
-                   (this.buffer[this.offset + 2] << 16) |
-                   (this.buffer[this.offset + 3] << 24)
+        const val =
+          this.buffer[this.offset] |
+          (this.buffer[this.offset + 1] << 8) |
+          (this.buffer[this.offset + 2] << 16) |
+          (this.buffer[this.offset + 3] << 24)
         this.offset += 4
         return val >>> 0
       }
 
       _readU4BE() {
         if (this.offset + 4 > this.buffer.length) throw new Error('EOF')
-        const val = (this.buffer[this.offset] << 24) |
-                   (this.buffer[this.offset + 1] << 16) |
-                   (this.buffer[this.offset + 2] << 8) |
-                   this.buffer[this.offset + 3]
+        const val =
+          (this.buffer[this.offset] << 24) |
+          (this.buffer[this.offset + 1] << 16) |
+          (this.buffer[this.offset + 2] << 8) |
+          this.buffer[this.offset + 3]
         this.offset += 4
         return val >>> 0
       }
@@ -491,13 +535,16 @@ class SimpleKsyCompiler {
         try {
           logger.debug('KsyParser.parse called with buffer length:', buffer.length)
           const instance = new KsyParser(buffer)
-          
+
           // Debug: log what's in _parsed
           logger.debug('KsyParser _parsed contents:', instance._parsed)
-          
-          const fields = Object.keys(instance._parsed).map(key => {
+
+          const fields = Object.keys(instance._parsed).map((key) => {
             const field = instance._parsed[key]
-            logger.debug(`Field ${key}: offset=${field.offset}, size=${field.size}, value=`, field.value)
+            logger.debug(
+              `Field ${key}: offset=${field.offset}, size=${field.size}, value=`,
+              field.value
+            )
             return {
               name: key,
               value: field.value,
@@ -505,9 +552,9 @@ class SimpleKsyCompiler {
               size: field.size
             }
           })
-          
+
           logger.debug('Final fields array:', fields)
-          
+
           return {
             success: true,
             data: instance,
@@ -522,7 +569,7 @@ class SimpleKsyCompiler {
         }
       }
     }
-    
+
     logger.debug('Returning ParserClass, type:', typeof ParserClass)
     return ParserClass
   }

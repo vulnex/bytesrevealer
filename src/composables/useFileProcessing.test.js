@@ -20,7 +20,9 @@ vi.mock('../utils/fileHandler', () => ({
   validateFileSize: vi.fn().mockReturnValue(false),
   formatFileSize: vi.fn((size) => `${size} bytes`),
   calculateFileHashes: vi.fn().mockResolvedValue({ md5: 'abc', sha1: 'def', sha256: 'ghi' }),
-  detectFileType: vi.fn().mockResolvedValue({ ext: 'bin', mime: 'application/octet-stream', description: 'Binary' }),
+  detectFileType: vi
+    .fn()
+    .mockResolvedValue({ ext: 'bin', mime: 'application/octet-stream', description: 'Binary' }),
   FILE_LIMITS: { ANALYSIS_SIZE_LIMIT: 50 * 1024 * 1024 }
 }))
 
@@ -54,7 +56,12 @@ vi.mock('../utils/entropyOptimized', () => ({
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)

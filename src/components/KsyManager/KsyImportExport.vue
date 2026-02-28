@@ -1,62 +1,39 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: KsyImportExport.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: KsyImportExport.vue * Author: Simon Roses Femerling *
+Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="ksy-import-export">
     <div class="section-header">
       <h3>Import/Export KSY Collection</h3>
     </div>
-    
+
     <div class="actions">
       <!-- Export Section -->
       <div class="export-section">
         <h4>Export Collection</h4>
         <div class="export-options">
           <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              v-model="exportOptions.includePresets"
-            />
+            <input v-model="exportOptions.includePresets" type="checkbox" />
             Include preset formats
           </label>
           <label class="checkbox-label">
-            <input 
-              type="checkbox" 
-              v-model="exportOptions.includeCustom"
-            />
+            <input v-model="exportOptions.includeCustom" type="checkbox" />
             Include custom formats
           </label>
         </div>
-        <button 
-          @click="exportCollection" 
-          class="action-btn export"
-          :disabled="!hasFormats"
-        >
+        <button class="action-btn export" :disabled="!hasFormats" @click="exportCollection">
           <span class="icon">📥</span> Export as ZIP
         </button>
-        <button 
-          @click="exportAsJson" 
-          class="action-btn export-json"
-          :disabled="!hasFormats"
-        >
+        <button class="action-btn export-json" :disabled="!hasFormats" @click="exportAsJson">
           <span class="icon">📋</span> Export as JSON
         </button>
       </div>
-      
+
       <!-- Import Section -->
       <div class="import-section">
         <h4>Import Collection</h4>
-        <div 
+        <div
           class="drop-zone"
           :class="{ dragging: isDragging }"
           @drop="handleDrop"
@@ -68,50 +45,34 @@
             <span class="icon">📁</span>
             <p>Drop ZIP or JSON file here</p>
             <p class="hint">or click to browse</p>
-            <input 
-              type="file"
-              accept=".zip,.json"
-              @change="handleFileSelect"
-              class="file-input"
-            />
+            <input type="file" accept=".zip,.json" class="file-input" @change="handleFileSelect" />
           </div>
         </div>
-        
-        <div class="import-options" v-if="importPreview">
+
+        <div v-if="importPreview" class="import-options">
           <h5>Import Preview</h5>
           <div class="preview-list">
-            <div 
-              v-for="format in importPreview" 
-              :key="format.id"
-              class="preview-item"
-            >
+            <div v-for="format in importPreview" :key="format.id" class="preview-item">
               <label class="checkbox-label">
-                <input 
-                  type="checkbox" 
-                  v-model="format.selected"
-                />
-                {{ format.name }} 
+                <input v-model="format.selected" type="checkbox" />
+                {{ format.name }}
                 <span class="format-type">{{ format.type }}</span>
               </label>
             </div>
           </div>
           <div class="import-actions">
-            <button @click="confirmImport" class="action-btn confirm">
-              Import Selected
-            </button>
-            <button @click="cancelImport" class="action-btn cancel">
-              Cancel
-            </button>
+            <button class="action-btn confirm" @click="confirmImport">Import Selected</button>
+            <button class="action-btn cancel" @click="cancelImport">Cancel</button>
           </div>
         </div>
       </div>
     </div>
-    
+
     <!-- Status Messages -->
     <div v-if="statusMessage" class="status-message" :class="statusType">
       {{ statusMessage }}
     </div>
-    
+
     <!-- Progress Bar -->
     <div v-if="isProcessing" class="progress-bar">
       <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
@@ -127,12 +88,12 @@ import JSZip from 'jszip'
 
 export default {
   name: 'KsyImportExport',
-  
+
   emits: ['imported', 'exported'],
-  
+
   setup(props, { emit }) {
     const manager = getKsyManager()
-    
+
     // State
     const isDragging = ref(false)
     const isProcessing = ref(false)
@@ -142,33 +103,33 @@ export default {
     const statusType = ref('info')
     const formats = ref([])
     const importPreview = ref(null)
-    
+
     // Export options
     const exportOptions = ref({
       includePresets: true,
       includeCustom: true
     })
-    
+
     // Computed
     const hasFormats = computed(() => formats.value.length > 0)
-    
+
     // Load formats on mount
     onMounted(async () => {
       await loadFormats()
     })
-    
+
     const loadFormats = async () => {
       formats.value = await manager.list()
     }
-    
+
     const exportCollection = async () => {
       try {
         isProcessing.value = true
         progress.value = 0
         progressText.value = 'Preparing export...'
-        
+
         const zip = new JSZip()
-        const formatsToExport = formats.value.filter(format => {
+        const formatsToExport = formats.value.filter((format) => {
           if (format.category === 'preset' && !exportOptions.value.includePresets) {
             return false
           }
@@ -177,27 +138,27 @@ export default {
           }
           return true
         })
-        
+
         // Add manifest
         const manifest = {
           version: '1.0',
           created: new Date().toISOString(),
           formats: []
         }
-        
+
         // Add each format
         for (let i = 0; i < formatsToExport.length; i++) {
           const format = formatsToExport[i]
           progress.value = (i / formatsToExport.length) * 100
           progressText.value = `Exporting ${format.name}...`
-          
+
           // Get full format data
           const fullFormat = await manager.get(format.id)
-          
+
           // Add to ZIP
           const folder = format.category || 'custom'
           zip.file(`${folder}/${format.name}.ksy`, fullFormat.content)
-          
+
           // Add to manifest
           manifest.formats.push({
             id: format.id,
@@ -206,14 +167,14 @@ export default {
             path: `${folder}/${format.name}.ksy`
           })
         }
-        
+
         // Add manifest to ZIP
         zip.file('manifest.json', JSON.stringify(manifest, null, 2))
-        
+
         // Generate ZIP
         progressText.value = 'Generating ZIP file...'
         const blob = await zip.generateAsync({ type: 'blob' })
-        
+
         // Download
         const url = URL.createObjectURL(blob)
         const a = document.createElement('a')
@@ -221,10 +182,9 @@ export default {
         a.download = `ksy-collection-${Date.now()}.zip`
         a.click()
         URL.revokeObjectURL(url)
-        
+
         setStatus(`Exported ${formatsToExport.length} formats`, 'success')
         emit('exported', formatsToExport)
-        
       } catch (error) {
         setStatus(`Export failed: ${error.message}`, 'error')
       } finally {
@@ -233,10 +193,10 @@ export default {
         progressText.value = ''
       }
     }
-    
+
     const exportAsJson = async () => {
       try {
-        const formatsToExport = formats.value.filter(format => {
+        const formatsToExport = formats.value.filter((format) => {
           if (format.category === 'preset' && !exportOptions.value.includePresets) {
             return false
           }
@@ -245,18 +205,18 @@ export default {
           }
           return true
         })
-        
+
         const exportData = {
           version: '1.0',
           created: new Date().toISOString(),
           formats: []
         }
-        
+
         for (const format of formatsToExport) {
           const fullFormat = await manager.get(format.id)
           exportData.formats.push(fullFormat)
         }
-        
+
         // Download JSON
         const blob = new Blob([JSON.stringify(exportData, null, 2)], {
           type: 'application/json'
@@ -267,37 +227,36 @@ export default {
         a.download = `ksy-collection-${Date.now()}.json`
         a.click()
         URL.revokeObjectURL(url)
-        
+
         setStatus(`Exported ${formatsToExport.length} formats as JSON`, 'success')
         emit('exported', formatsToExport)
-        
       } catch (error) {
         setStatus(`Export failed: ${error.message}`, 'error')
       }
     }
-    
+
     const handleDrop = async (event) => {
       event.preventDefault()
       isDragging.value = false
-      
+
       const files = Array.from(event.dataTransfer.files)
       if (files.length > 0) {
         await processImportFile(files[0])
       }
     }
-    
+
     const handleFileSelect = async (event) => {
       const file = event.target.files[0]
       if (file) {
         await processImportFile(file)
       }
     }
-    
+
     const processImportFile = async (file) => {
       try {
         isProcessing.value = true
         progressText.value = 'Reading file...'
-        
+
         if (file.name.endsWith('.zip')) {
           await processZipImport(file)
         } else if (file.name.endsWith('.json')) {
@@ -305,25 +264,24 @@ export default {
         } else {
           throw new Error('Unsupported file format')
         }
-        
       } catch (error) {
         setStatus(`Import failed: ${error.message}`, 'error')
         isProcessing.value = false
       }
     }
-    
+
     const processZipImport = async (file) => {
       const zip = new JSZip()
       const contents = await zip.loadAsync(file)
-      
+
       // Read manifest
       const manifestFile = contents.file('manifest.json')
       if (!manifestFile) {
         throw new Error('Invalid ZIP: missing manifest.json')
       }
-      
+
       const manifest = JSON.parse(await manifestFile.async('string'))
-      
+
       // Prepare preview
       const preview = []
       for (const formatInfo of manifest.formats) {
@@ -339,54 +297,53 @@ export default {
           })
         }
       }
-      
+
       importPreview.value = preview
       isProcessing.value = false
     }
-    
+
     const processJsonImport = async (file) => {
       const text = await file.text()
       const data = JSON.parse(text)
-      
+
       if (!data.formats || !Array.isArray(data.formats)) {
         throw new Error('Invalid JSON format')
       }
-      
+
       // Prepare preview
-      importPreview.value = data.formats.map(format => ({
+      importPreview.value = data.formats.map((format) => ({
         ...format,
         selected: true
       }))
-      
+
       isProcessing.value = false
     }
-    
+
     const confirmImport = async () => {
       try {
         isProcessing.value = true
-        const selectedFormats = importPreview.value.filter(f => f.selected)
-        
+        const selectedFormats = importPreview.value.filter((f) => f.selected)
+
         for (let i = 0; i < selectedFormats.length; i++) {
           const format = selectedFormats[i]
           progress.value = (i / selectedFormats.length) * 100
           progressText.value = `Importing ${format.name}...`
-          
+
           await manager.add({
             name: format.name,
             content: format.content,
             category: format.category || 'imported'
           })
         }
-        
+
         setStatus(`Imported ${selectedFormats.length} formats`, 'success')
         emit('imported', selectedFormats)
-        
+
         // Reload formats
         await loadFormats()
-        
+
         // Clear preview
         importPreview.value = null
-        
       } catch (error) {
         setStatus(`Import failed: ${error.message}`, 'error')
       } finally {
@@ -395,20 +352,20 @@ export default {
         progressText.value = ''
       }
     }
-    
+
     const cancelImport = () => {
       importPreview.value = null
     }
-    
+
     const setStatus = (message, type = 'info') => {
       statusMessage.value = message
       statusType.value = type
-      
+
       setTimeout(() => {
         statusMessage.value = ''
       }, 5000)
     }
-    
+
     return {
       isDragging,
       isProcessing,
@@ -593,15 +550,15 @@ export default {
 }
 
 .action-btn.confirm {
-  background: #4CAF50;
+  background: #4caf50;
   color: white;
-  border-color: #4CAF50;
+  border-color: #4caf50;
 }
 
 .action-btn.cancel {
-  background: #F44336;
+  background: #f44336;
   color: white;
-  border-color: #F44336;
+  border-color: #f44336;
 }
 
 .status-message {
@@ -613,19 +570,19 @@ export default {
 
 .status-message.success {
   background: rgba(76, 175, 80, 0.1);
-  color: #4CAF50;
+  color: #4caf50;
   border: 1px solid rgba(76, 175, 80, 0.3);
 }
 
 .status-message.error {
   background: rgba(244, 67, 54, 0.1);
-  color: #F44336;
+  color: #f44336;
   border: 1px solid rgba(244, 67, 54, 0.3);
 }
 
 .status-message.info {
   background: rgba(33, 150, 243, 0.1);
-  color: #2196F3;
+  color: #2196f3;
   border: 1px solid rgba(33, 150, 243, 0.3);
 }
 

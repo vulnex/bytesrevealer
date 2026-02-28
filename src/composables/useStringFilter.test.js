@@ -1,11 +1,16 @@
-import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { ref, nextTick } from 'vue'
 import { createApp } from 'vue'
 import { useStringFilter } from './useStringFilter'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
@@ -76,7 +81,7 @@ describe('useStringFilter', () => {
     it('default sort is by size descending', () => {
       const strings = makeSampleStrings()
       const [result, app] = withSetup(() => useStringFilter(strings))
-      const sizes = result.filteredAndSortedStrings.value.map(s => s.size)
+      const sizes = result.filteredAndSortedStrings.value.map((s) => s.size)
       for (let i = 0; i < sizes.length - 1; i++) {
         expect(sizes[i]).toBeGreaterThanOrEqual(sizes[i + 1])
       }
@@ -84,9 +89,7 @@ describe('useStringFilter', () => {
     })
 
     it('reacts to changes in source strings', async () => {
-      const strings = ref([
-        { type: 'ASCII', size: 5, value: 'Hello', offset: 0 }
-      ])
+      const strings = ref([{ type: 'ASCII', size: 5, value: 'Hello', offset: 0 }])
       const [result, app] = withSetup(() => useStringFilter(strings))
       expect(result.filteredAndSortedStrings.value.length).toBe(1)
 
@@ -107,7 +110,7 @@ describe('useStringFilter', () => {
       result.typeFilter.value = 'ASCII'
       await nextTick()
 
-      expect(result.filteredAndSortedStrings.value.every(s => s.type === 'ASCII')).toBe(true)
+      expect(result.filteredAndSortedStrings.value.every((s) => s.type === 'ASCII')).toBe(true)
       expect(result.filteredAndSortedStrings.value.length).toBe(2)
       app.unmount()
     })
@@ -118,7 +121,7 @@ describe('useStringFilter', () => {
       result.typeFilter.value = 'UTF-8'
       await nextTick()
 
-      expect(result.filteredAndSortedStrings.value.every(s => s.type === 'UTF-8')).toBe(true)
+      expect(result.filteredAndSortedStrings.value.every((s) => s.type === 'UTF-8')).toBe(true)
       expect(result.filteredAndSortedStrings.value.length).toBe(1)
       app.unmount()
     })
@@ -129,15 +132,15 @@ describe('useStringFilter', () => {
       result.typeFilter.value = 'UTF-16'
       await nextTick()
 
-      expect(result.filteredAndSortedStrings.value.every(s => s.type.includes('UTF-16'))).toBe(true)
+      expect(result.filteredAndSortedStrings.value.every((s) => s.type.includes('UTF-16'))).toBe(
+        true
+      )
       expect(result.filteredAndSortedStrings.value.length).toBe(2)
       app.unmount()
     })
 
     it('returns empty when filter matches nothing', async () => {
-      const strings = ref([
-        { type: 'ASCII', size: 5, value: 'Hello', offset: 0 }
-      ])
+      const strings = ref([{ type: 'ASCII', size: 5, value: 'Hello', offset: 0 }])
       const [result, app] = withSetup(() => useStringFilter(strings))
       result.typeFilter.value = 'UTF-8'
       await nextTick()
@@ -332,7 +335,7 @@ describe('useStringFilter', () => {
       result.sortBy.value = 'size'
       await nextTick()
 
-      const sizes = result.filteredAndSortedStrings.value.map(s => s.size)
+      const sizes = result.filteredAndSortedStrings.value.map((s) => s.size)
       for (let i = 0; i < sizes.length - 1; i++) {
         expect(sizes[i]).toBeGreaterThanOrEqual(sizes[i + 1])
       }
@@ -345,7 +348,7 @@ describe('useStringFilter', () => {
       result.sortBy.value = 'offset'
       await nextTick()
 
-      const offsets = result.filteredAndSortedStrings.value.map(s => s.offset)
+      const offsets = result.filteredAndSortedStrings.value.map((s) => s.offset)
       for (let i = 0; i < offsets.length - 1; i++) {
         expect(offsets[i]).toBeLessThanOrEqual(offsets[i + 1])
       }
@@ -358,7 +361,7 @@ describe('useStringFilter', () => {
       result.sortBy.value = 'type'
       await nextTick()
 
-      const types = result.filteredAndSortedStrings.value.map(s => s.type)
+      const types = result.filteredAndSortedStrings.value.map((s) => s.type)
       for (let i = 0; i < types.length - 1; i++) {
         expect(types[i].localeCompare(types[i + 1])).toBeLessThanOrEqual(0)
       }
@@ -383,12 +386,14 @@ describe('useStringFilter', () => {
 
   describe('pagination', () => {
     function makeManyStrings(count) {
-      return ref(Array.from({ length: count }, (_, i) => ({
-        type: 'ASCII',
-        size: count - i,
-        value: `String${i}`,
-        offset: i * 10
-      })))
+      return ref(
+        Array.from({ length: count }, (_, i) => ({
+          type: 'ASCII',
+          size: count - i,
+          value: `String${i}`,
+          offset: i * 10
+        }))
+      )
     }
 
     it('totalPages is 1 when items fit on one page', () => {

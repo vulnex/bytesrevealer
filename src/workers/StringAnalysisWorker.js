@@ -113,7 +113,7 @@ function extractAsciiStrings(bytes, baseOffset, minLength, results, maxResults) 
     const byte = bytes[i]
 
     // Printable ASCII range (0x20-0x7E)
-    if (byte >= 0x20 && byte <= 0x7E) {
+    if (byte >= 0x20 && byte <= 0x7e) {
       if (current.length === 0) {
         startOffset = baseOffset + i
       }
@@ -147,12 +147,11 @@ function extractUtf16Strings(bytes, baseOffset, minLength, results, maxResults, 
   let startOffset = baseOffset
 
   for (let i = 0; i < bytes.length - 1 && results.length < maxResults; i += 2) {
-    const code = endianness === 'le'
-      ? bytes[i] | (bytes[i + 1] << 8)
-      : (bytes[i] << 8) | bytes[i + 1]
+    const code =
+      endianness === 'le' ? bytes[i] | (bytes[i + 1] << 8) : (bytes[i] << 8) | bytes[i + 1]
 
     // Basic Multilingual Plane printable characters
-    if (code >= 0x20 && code <= 0x7E) {
+    if (code >= 0x20 && code <= 0x7e) {
       if (current.length === 0) {
         startOffset = baseOffset + i
       }
@@ -194,23 +193,29 @@ function extractUtf16Strings(bytes, baseOffset, minLength, results, maxResults, 
 }
 
 function analyzePatterns(results) {
-  const allStrings = [
-    ...results.ascii,
-    ...results.utf16le,
-    ...results.utf16be
-  ]
+  const allStrings = [...results.ascii, ...results.utf16le, ...results.utf16be]
 
   // Regular expressions for pattern matching
   const patterns = {
     url: /https?:\/\/[^\s]+/gi,
     email: /[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/gi,
-    path: /^[a-zA-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$|^\/(?:[^\/\0]+\/)*[^\/\0]*$/gm,
+    path: /^[a-zA-Z]:\\(?:[^\\/:*?"<>|\r\n]+\\)*[^\\/:*?"<>|\r\n]*$|^\/(?:[^/\0]+\/)*[^/\0]*$/gm,
     ip: /\b(?:(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\.){3}(?:25[0-5]|2[0-4][0-9]|[01]?[0-9][0-9]?)\b/g
   }
 
   const interestingKeywords = [
-    'password', 'secret', 'key', 'token', 'api', 'private',
-    'credential', 'auth', 'admin', 'root', 'user', 'login'
+    'password',
+    'secret',
+    'key',
+    'token',
+    'api',
+    'private',
+    'credential',
+    'auth',
+    'admin',
+    'root',
+    'user',
+    'login'
   ]
 
   for (const str of allStrings) {
@@ -219,8 +224,8 @@ function analyzePatterns(results) {
     // Check for URLs
     const urls = value.match(patterns.url)
     if (urls) {
-      urls.forEach(url => {
-        if (!results.urls.some(u => u.value === url)) {
+      urls.forEach((url) => {
+        if (!results.urls.some((u) => u.value === url)) {
           results.urls.push({ ...str, value: url, type: 'URL' })
         }
       })
@@ -229,8 +234,8 @@ function analyzePatterns(results) {
     // Check for emails
     const emails = value.match(patterns.email)
     if (emails) {
-      emails.forEach(email => {
-        if (!results.emails.some(e => e.value === email)) {
+      emails.forEach((email) => {
+        if (!results.emails.some((e) => e.value === email)) {
           results.emails.push({ ...str, value: email, type: 'Email' })
         }
       })
@@ -244,8 +249,8 @@ function analyzePatterns(results) {
     // Check for IPs
     const ips = value.match(patterns.ip)
     if (ips) {
-      ips.forEach(ip => {
-        if (!results.ips.some(i => i.value === ip)) {
+      ips.forEach((ip) => {
+        if (!results.ips.some((i) => i.value === ip)) {
           results.ips.push({ ...str, value: ip, type: 'IP' })
         }
       })

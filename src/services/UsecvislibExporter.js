@@ -27,7 +27,15 @@ class UsecvislibExporter {
 
   // ── Offline Exports ──
 
-  generateBinVisData({ fileBytes, entropy, hashes, detectedFileType, fileSignatures, coloredBytes, fileName }) {
+  generateBinVisData({
+    fileBytes,
+    entropy: _entropy,
+    hashes,
+    detectedFileType,
+    fileSignatures,
+    coloredBytes,
+    fileName
+  }) {
     logger.info('Generating BinVis data for:', fileName)
 
     let entropyAnalysis
@@ -35,12 +43,18 @@ class UsecvislibExporter {
       entropyAnalysis = calculateOptimizedEntropy(fileBytes)
     } catch (error) {
       logger.error('Entropy calculation failed:', error)
-      entropyAnalysis = { globalEntropy: 0, entropyValues: [], highEntropyRegions: [], byteFrequencies: new Array(256).fill(0), statistics: {} }
+      entropyAnalysis = {
+        globalEntropy: 0,
+        entropyValues: [],
+        highEntropyRegions: [],
+        byteFrequencies: new Array(256).fill(0),
+        statistics: {}
+      }
     }
 
     const regions = this._mapColoredBytesToRegions(coloredBytes)
 
-    const sigDetails = fileSignatures && fileSignatures.length > 0 ? fileSignatures[0] : null
+    const _sigDetails = fileSignatures && fileSignatures.length > 0 ? fileSignatures[0] : null
 
     return {
       format: 'usecvislib-binvis',
@@ -60,12 +74,12 @@ class UsecvislibExporter {
       entropyAnalysis: {
         globalEntropy: entropyAnalysis.globalEntropy,
         blockSize: entropyAnalysis.blockSize,
-        blocks: entropyAnalysis.entropyValues.map(v => ({
+        blocks: entropyAnalysis.entropyValues.map((v) => ({
           offset: v.offset,
           entropy: parseFloat(v.entropy.toFixed(4)),
           size: v.size
         })),
-        highEntropyRegions: entropyAnalysis.highEntropyRegions.map(r => ({
+        highEntropyRegions: entropyAnalysis.highEntropyRegions.map((r) => ({
           start: r.start,
           end: r.end,
           entropy: parseFloat(r.entropy.toFixed(4))
@@ -73,22 +87,27 @@ class UsecvislibExporter {
         statistics: entropyAnalysis.statistics
       },
       regions,
-      signatures: fileSignatures ? fileSignatures.map(sig => ({
-        name: sig.name,
-        extension: sig.extension,
-        confidence: sig.confidence,
-        offset: sig.offset,
-        details: sig.details || {}
-      })) : []
+      signatures: fileSignatures
+        ? fileSignatures.map((sig) => ({
+            name: sig.name,
+            extension: sig.extension,
+            confidence: sig.confidence,
+            offset: sig.offset,
+            details: sig.details || {}
+          }))
+        : []
     }
   }
 
-  generateAttackGraphConfig({ fileSignatures, detectedFileType, fileName, hashes, entropy }) {
+  generateAttackGraphConfig({ fileSignatures, detectedFileType, fileName, hashes: _hashes, entropy }) {
     const sig = fileSignatures && fileSignatures.length > 0 ? fileSignatures[0] : null
     const sigName = sig ? sig.name : ''
 
-    if (!EXECUTABLE_TYPES.some(t => sigName.includes(t))) {
-      return { toml: null, error: 'Attack graph generation is only supported for PE, ELF, and Mach-O executables.' }
+    if (!EXECUTABLE_TYPES.some((t) => sigName.includes(t))) {
+      return {
+        toml: null,
+        error: 'Attack graph generation is only supported for PE, ELF, and Mach-O executables.'
+      }
     }
 
     logger.info('Generating attack graph config for:', fileName)
@@ -109,16 +128,39 @@ class UsecvislibExporter {
     const exploits = []
     const networkEdges = []
 
-    hosts.push({ id: 'binary', label: fileName || 'Binary', description: `Analyzed binary file (${detectedStr})`, zone: 'analysis' })
+    hosts.push({
+      id: 'binary',
+      label: fileName || 'Binary',
+      description: `Analyzed binary file (${detectedStr})`,
+      zone: 'analysis'
+    })
 
     if (sigName.includes('PE')) {
-      hosts.push({ id: 'target_system', label: 'Target Windows', description: 'Windows target system', zone: 'target', os: 'Windows' })
+      hosts.push({
+        id: 'target_system',
+        label: 'Target Windows',
+        description: 'Windows target system',
+        zone: 'target',
+        os: 'Windows'
+      })
       this._mapPEVulnerabilities(details, vulnerabilities, privileges, exploits, entropy)
     } else if (sigName.includes('ELF')) {
-      hosts.push({ id: 'target_system', label: 'Target Linux', description: 'Linux target system', zone: 'target', os: 'Linux' })
+      hosts.push({
+        id: 'target_system',
+        label: 'Target Linux',
+        description: 'Linux target system',
+        zone: 'target',
+        os: 'Linux'
+      })
       this._mapELFVulnerabilities(details, vulnerabilities, privileges, exploits, entropy)
     } else if (sigName.includes('Mach-O')) {
-      hosts.push({ id: 'target_system', label: 'Target macOS', description: 'macOS target system', zone: 'target', os: 'macOS' })
+      hosts.push({
+        id: 'target_system',
+        label: 'Target macOS',
+        description: 'macOS target system',
+        zone: 'target',
+        os: 'macOS'
+      })
       this._mapMachOVulnerabilities(details, vulnerabilities, privileges, exploits, entropy)
     }
 
@@ -126,7 +168,14 @@ class UsecvislibExporter {
 
     networkEdges.push({ from: 'binary', to: 'target_system', label: 'Execution' })
 
-    const toml = this._serializeToToml(graph, hosts, vulnerabilities, privileges, exploits, networkEdges)
+    const toml = this._serializeToToml(
+      graph,
+      hosts,
+      vulnerabilities,
+      privileges,
+      exploits,
+      networkEdges
+    )
     const summary = {
       type: sigName,
       hosts: hosts.length,
@@ -151,7 +200,9 @@ class UsecvislibExporter {
 
     // Only allow http: and https: protocols
     if (parsed.protocol !== 'http:' && parsed.protocol !== 'https:') {
-      throw new Error(`Invalid API URL: protocol "${parsed.protocol}" is not allowed (only http: and https:)`)
+      throw new Error(
+        `Invalid API URL: protocol "${parsed.protocol}" is not allowed (only http: and https:)`
+      )
     }
 
     // Block private/internal IP ranges (except localhost/127.0.0.1 which is the default)
@@ -164,7 +215,7 @@ class UsecvislibExporter {
       // Block 10.x.x.x, 172.16-31.x.x, 192.168.x.x, 169.254.x.x
       const ipv4Match = hostname.match(/^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/)
       if (ipv4Match) {
-        const [, a, b, c, d] = ipv4Match.map(Number)
+        const [, a, b, _c, _d] = ipv4Match.map(Number)
         const isPrivate =
           a === 10 ||
           (a === 172 && b >= 16 && b <= 31) ||
@@ -173,7 +224,9 @@ class UsecvislibExporter {
           a === 127
 
         if (isPrivate) {
-          throw new Error(`Invalid API URL: private/internal IP address "${hostname}" is not allowed`)
+          throw new Error(
+            `Invalid API URL: private/internal IP address "${hostname}" is not allowed`
+          )
         }
       }
     }
@@ -205,13 +258,19 @@ class UsecvislibExporter {
     const timeout = setTimeout(() => controller.abort(), 5000)
 
     try {
-      const healthRes = await fetch(`${this.apiUrl}/health`, { signal: controller.signal, headers: this._authHeaders() })
+      const healthRes = await fetch(`${this.apiUrl}/health`, {
+        signal: controller.signal,
+        headers: this._authHeaders()
+      })
       if (!healthRes.ok) throw new Error(`Health check failed: ${healthRes.status}`)
       const health = await healthRes.json()
 
       let styles = []
       try {
-        const stylesRes = await fetch(`${this.apiUrl}/styles`, { signal: controller.signal, headers: this._authHeaders() })
+        const stylesRes = await fetch(`${this.apiUrl}/styles`, {
+          signal: controller.signal,
+          headers: this._authHeaders()
+        })
         if (stylesRes.ok) {
           styles = await stylesRes.json()
         }
@@ -219,7 +278,12 @@ class UsecvislibExporter {
         logger.warn('Could not fetch styles')
       }
 
-      return { available: true, version: health.version || 'unknown', styles: Array.isArray(styles) ? styles : [], error: null }
+      return {
+        available: true,
+        version: health.version || 'unknown',
+        styles: Array.isArray(styles) ? styles : [],
+        error: null
+      }
     } catch (error) {
       logger.error('Connection test failed:', error)
       const isCors = error instanceof TypeError && error.message === 'Failed to fetch'
@@ -232,10 +296,17 @@ class UsecvislibExporter {
     }
   }
 
-  async requestVisualization(fileBytes, { visType = 'entropy', style = 'bv_default', format = 'png' } = {}) {
+  async requestVisualization(
+    fileBytes,
+    { visType = 'entropy', style = 'bv_default', format = 'png' } = {}
+  ) {
     logger.info(`Requesting ${visType} visualization (${style}, ${format})`)
     const formData = new FormData()
-    formData.append('file', new Blob([fileBytes], { type: 'application/octet-stream' }), 'binary.bin')
+    formData.append(
+      'file',
+      new Blob([fileBytes], { type: 'application/octet-stream' }),
+      'binary.bin'
+    )
 
     const params = new URLSearchParams({ visualization_type: visType, style, format })
 
@@ -345,11 +416,17 @@ class UsecvislibExporter {
     return regions
   }
 
-  _mapPEVulnerabilities(details, vulnerabilities, privileges, exploits, entropy) {
+  _mapPEVulnerabilities(details, vulnerabilities, privileges, exploits, _entropy3) {
     const chars = details.characteristics || []
     const security = details.security || {}
 
-    privileges.push({ id: 'priv_exec', label: 'Binary Execution', description: 'Execute the binary on target', host: 'target_system', level: 'user' })
+    privileges.push({
+      id: 'priv_exec',
+      label: 'Binary Execution',
+      description: 'Execute the binary on target',
+      host: 'target_system',
+      level: 'user'
+    })
 
     // 1. DLL Hijacking
     if (chars.includes('DLL')) {
@@ -385,7 +462,13 @@ class UsecvislibExporter {
     // 3. Native subsystem
     const subsystem = details.subsystem || ''
     if (subsystem.includes('Native')) {
-      privileges.push({ id: 'priv_kernel', label: 'Kernel Access', description: 'Kernel-level execution', host: 'target_system', level: 'kernel' })
+      privileges.push({
+        id: 'priv_kernel',
+        label: 'Kernel Access',
+        description: 'Kernel-level execution',
+        host: 'target_system',
+        level: 'kernel'
+      })
     }
 
     // 4. No ASLR
@@ -393,7 +476,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_no_aslr',
         label: 'No ASLR (DYNAMIC_BASE missing)',
-        description: 'Binary lacks ASLR support, loaded at predictable address enabling reliable exploitation.',
+        description:
+          'Binary lacks ASLR support, loaded at predictable address enabling reliable exploitation.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
         affected_host: 'target_system'
       })
@@ -450,7 +534,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_seh',
         label: 'SEH Chain Exploitation',
-        description: 'Binary uses Structured Exception Handling, potentially vulnerable to SEH overwrite attacks.',
+        description:
+          'Binary uses Structured Exception Handling, potentially vulnerable to SEH overwrite attacks.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
@@ -480,7 +565,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_rwx',
         label: 'RWX Memory Sections',
-        description: 'Binary contains sections with read-write-execute permissions, enabling code injection.',
+        description:
+          'Binary contains sections with read-write-execute permissions, enabling code injection.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
@@ -499,7 +585,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_unsigned',
         label: 'Unsigned Binary',
-        description: 'Binary lacks Authenticode signature, allowing modification without detection.',
+        description:
+          'Binary lacks Authenticode signature, allowing modification without detection.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:N/I:H/A:N',
         affected_host: 'target_system'
       })
@@ -518,7 +605,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_debug_info',
         label: 'Debug Information Present',
-        description: 'Binary contains debug information, aiding reverse engineering and vulnerability discovery.',
+        description:
+          'Binary contains debug information, aiding reverse engineering and vulnerability discovery.',
         cvss_vector: 'CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:L/I:N/A:N',
         affected_host: 'binary'
       })
@@ -548,7 +636,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_partial_aslr',
         label: 'Partial ASLR (no High Entropy VA)',
-        description: '64-bit binary without HIGH_ENTROPY_VA limits ASLR randomization to 32-bit address space.',
+        description:
+          '64-bit binary without HIGH_ENTROPY_VA limits ASLR randomization to 32-bit address space.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:L/I:L/A:N',
         affected_host: 'target_system'
       })
@@ -556,8 +645,14 @@ class UsecvislibExporter {
 
     // Privilege escalation paths
     if (subsystem.includes('Native') || details.hasRWXSections) {
-      if (!privileges.some(p => p.id === 'priv_system')) {
-        privileges.push({ id: 'priv_system', label: 'SYSTEM Access', description: 'Escalated privileges via native subsystem or RWX memory exploitation', host: 'target_system', level: 'system' })
+      if (!privileges.some((p) => p.id === 'priv_system')) {
+        privileges.push({
+          id: 'priv_system',
+          label: 'SYSTEM Access',
+          description: 'Escalated privileges via native subsystem or RWX memory exploitation',
+          host: 'target_system',
+          level: 'system'
+        })
       }
     }
 
@@ -572,10 +667,16 @@ class UsecvislibExporter {
     }
   }
 
-  _mapELFVulnerabilities(details, vulnerabilities, privileges, exploits, entropy) {
+  _mapELFVulnerabilities(details, vulnerabilities, privileges, exploits, _entropy4) {
     const elfType = details.type || ''
 
-    privileges.push({ id: 'priv_exec', label: 'Binary Execution', description: 'Execute the binary on target', host: 'target_system', level: 'user' })
+    privileges.push({
+      id: 'priv_exec',
+      label: 'Binary Execution',
+      description: 'Execute the binary on target',
+      host: 'target_system',
+      level: 'user'
+    })
 
     if (elfType === 'Executable') {
       vulnerabilities.push({
@@ -625,7 +726,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_no_pie',
         label: 'No ASLR (PIE disabled)',
-        description: 'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
+        description:
+          'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
         affected_host: 'target_system'
       })
@@ -682,7 +784,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_rwx',
         label: 'RWX Memory Segments',
-        description: 'Binary contains segments with read-write-execute permissions, enabling code injection.',
+        description:
+          'Binary contains segments with read-write-execute permissions, enabling code injection.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
@@ -748,18 +851,36 @@ class UsecvislibExporter {
 
     // Privilege escalation path for executable stack or shared object
     if (details.executableStack || elfType === 'Shared object') {
-      if (!privileges.some(p => p.id === 'priv_root')) {
-        privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Escalated privileges via stack execution or library injection', host: 'target_system', level: 'root' })
+      if (!privileges.some((p) => p.id === 'priv_root')) {
+        privileges.push({
+          id: 'priv_root',
+          label: 'Root Access',
+          description: 'Escalated privileges via stack execution or library injection',
+          host: 'target_system',
+          level: 'root'
+        })
       }
     }
     // Also add priv_root for SUID path if not yet added
-    if (elfType === 'Executable' && !privileges.some(p => p.id === 'priv_root')) {
-      privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Root-level access via SUID', host: 'target_system', level: 'root' })
+    if (elfType === 'Executable' && !privileges.some((p) => p.id === 'priv_root')) {
+      privileges.push({
+        id: 'priv_root',
+        label: 'Root Access',
+        description: 'Root-level access via SUID',
+        host: 'target_system',
+        level: 'root'
+      })
     }
   }
 
-  _mapMachOVulnerabilities(details, vulnerabilities, privileges, exploits, entropy) {
-    privileges.push({ id: 'priv_exec', label: 'Binary Execution', description: 'Execute the binary on target', host: 'target_system', level: 'user' })
+  _mapMachOVulnerabilities(details, vulnerabilities, privileges, exploits, _entropy5) {
+    privileges.push({
+      id: 'priv_exec',
+      label: 'Binary Execution',
+      description: 'Execute the binary on target',
+      host: 'target_system',
+      level: 'user'
+    })
 
     if (details.isDynamicallyLinked) {
       vulnerabilities.push({
@@ -809,7 +930,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_encrypted',
         label: 'Encrypted Binary',
-        description: 'Binary uses encryption (cryptid set), indicating protected or App Store binary.',
+        description:
+          'Binary uses encryption (cryptid set), indicating protected or App Store binary.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:H/PR:L/UI:N/S:U/C:H/I:N/A:N',
         affected_host: 'binary'
       })
@@ -827,7 +949,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_universal',
         label: 'Multi-Architecture Binary',
-        description: 'Universal binary contains multiple architecture slices, expanding attack surface.',
+        description:
+          'Universal binary contains multiple architecture slices, expanding attack surface.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:N/UI:N/S:U/C:L/I:L/A:N',
         affected_host: 'binary'
       })
@@ -845,7 +968,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_rwx',
         label: 'RWX Memory Segments',
-        description: 'Binary contains segments with read-write-execute permissions, enabling code injection.',
+        description:
+          'Binary contains segments with read-write-execute permissions, enabling code injection.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
@@ -863,7 +987,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_stack_exec',
         label: 'Executable Stack',
-        description: 'Binary allows stack execution (MH_ALLOW_STACK_EXECUTION), enabling stack-based attacks.',
+        description:
+          'Binary allows stack execution (MH_ALLOW_STACK_EXECUTION), enabling stack-based attacks.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:H/I:H/A:H',
         affected_host: 'target_system'
       })
@@ -881,7 +1006,8 @@ class UsecvislibExporter {
       vulnerabilities.push({
         id: 'vuln_no_pie',
         label: 'No ASLR (PIE disabled)',
-        description: 'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
+        description:
+          'Binary is not position-independent, loaded at fixed address enabling reliable exploitation.',
         cvss_vector: 'CVSS:3.1/AV:L/AC:L/PR:L/UI:N/S:U/C:L/I:H/A:N',
         affected_host: 'target_system'
       })
@@ -916,12 +1042,23 @@ class UsecvislibExporter {
 
     // Add root privilege escalation path for dylibs and stack execution
     if (details.fileType === 'Dynamic Library' || details.allowStackExecution) {
-      privileges.push({ id: 'priv_root', label: 'Root Access', description: 'Escalated privileges via dylib injection or stack execution', host: 'target_system', level: 'root' })
+      privileges.push({
+        id: 'priv_root',
+        label: 'Root Access',
+        description: 'Escalated privileges via dylib injection or stack execution',
+        host: 'target_system',
+        level: 'root'
+      })
     }
   }
 
-  _mapEntropyVulnerabilities(entropy, vulnerabilities, exploits) {
-    const globalEntropy = typeof entropy === 'number' ? entropy : (entropy && entropy.globalEntropy ? entropy.globalEntropy : null)
+  _mapEntropyVulnerabilities(entropy, vulnerabilities, _exploits) {
+    const globalEntropy =
+      typeof entropy === 'number'
+        ? entropy
+        : entropy && entropy.globalEntropy
+          ? entropy.globalEntropy
+          : null
     if (globalEntropy !== null && globalEntropy > 7.5) {
       vulnerabilities.push({
         id: 'vuln_packing',

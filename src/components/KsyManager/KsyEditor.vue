@@ -1,46 +1,30 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: KsyEditor.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: KsyEditor.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="ksy-editor">
     <div class="editor-header">
-      <input 
-        v-model="formatName"
-        placeholder="Format Name"
-        class="format-name-input"
-      />
+      <input v-model="formatName" placeholder="Format Name" class="format-name-input" />
       <div class="editor-actions">
-        <button @click="validateKsy" class="action-btn validate">
+        <button class="action-btn validate" @click="validateKsy">
           <span class="icon">✓</span> Validate
         </button>
-        <button @click="compileKsy" class="action-btn compile">
+        <button class="action-btn compile" @click="compileKsy">
           <span class="icon">⚡</span> Compile
         </button>
-        <button @click="saveKsy" class="action-btn save">
-          <span class="icon">💾</span> Save
-        </button>
-        <button @click="testKsy" class="action-btn test" v-if="testFile">
+        <button class="action-btn save" @click="saveKsy"><span class="icon">💾</span> Save</button>
+        <button v-if="testFile" class="action-btn test" @click="testKsy">
           <span class="icon">🧪</span> Test
         </button>
       </div>
     </div>
-    
+
     <div class="editor-content">
       <div class="editor-pane">
         <div class="pane-header">KSY Definition</div>
         <textarea
           v-model="ksyContent"
-          @input="handleInput"
           class="code-editor"
           placeholder="meta:
   id: format_name
@@ -52,32 +36,29 @@ seq:
   - id: field_name
     type: u4"
           spellcheck="false"
+          @input="handleInput"
         ></textarea>
       </div>
-      
-      <div class="preview-pane" v-if="showPreview">
+
+      <div v-if="showPreview" class="preview-pane">
         <div class="pane-header">
           Compiled JavaScript
-          <button @click="copyCode" class="copy-btn">Copy</button>
+          <button class="copy-btn" @click="copyCode">Copy</button>
         </div>
         <pre class="code-preview">{{ compiledCode }}</pre>
       </div>
     </div>
-    
-    <div class="editor-footer" v-if="status">
+
+    <div v-if="status" class="editor-footer">
       <div class="status" :class="statusClass">
         {{ status }}
       </div>
     </div>
-    
+
     <!-- Test File Upload -->
-    <div class="test-section" v-if="showTestSection">
+    <div v-if="showTestSection" class="test-section">
       <div class="test-header">Test with Sample File</div>
-      <input 
-        type="file"
-        @change="handleTestFile"
-        class="test-file-input"
-      />
+      <input type="file" class="test-file-input" @change="handleTestFile" />
       <div v-if="testResult" class="test-result">
         <pre>{{ testResult }}</pre>
       </div>
@@ -86,14 +67,14 @@ seq:
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { ref, watch } from 'vue'
 import { getKsyCompiler } from '../../kaitai/ksy/KsyCompiler'
 import { getKsyValidator } from '../../kaitai/ksy/KsyValidator'
 import { getKsyManager } from '../../kaitai/ksy/KsyManager'
 
 export default {
   name: 'KsyEditor',
-  
+
   props: {
     initialContent: {
       type: String,
@@ -108,9 +89,9 @@ export default {
       default: null
     }
   },
-  
+
   emits: ['save', 'compile', 'validate'],
-  
+
   setup(props, { emit }) {
     const formatName = ref(props.initialName)
     const ksyContent = ref(props.initialContent || getDefaultTemplate())
@@ -121,13 +102,13 @@ export default {
     const showTestSection = ref(false)
     const testFile = ref(null)
     const testResult = ref('')
-    
+
     const compiler = getKsyCompiler()
     const validator = getKsyValidator()
     const manager = getKsyManager()
-    
+
     let inputTimeout = null
-    
+
     function getDefaultTemplate() {
       return `meta:
   id: my_format
@@ -149,14 +130,14 @@ seq:
     size: header_size
     doc: Data section`
     }
-    
+
     const handleInput = () => {
       clearTimeout(inputTimeout)
       inputTimeout = setTimeout(() => {
         validateKsy()
       }, 500)
     }
-    
+
     const validateKsy = async () => {
       try {
         const validation = await validator.validate(ksyContent.value)
@@ -170,11 +151,11 @@ seq:
         setStatus(`Validation failed: ${error.message}`, 'error')
       }
     }
-    
+
     const compileKsy = async () => {
       try {
         setStatus('Compiling...', 'info')
-        
+
         const result = await compiler.compile(ksyContent.value)
         if (result.success) {
           compiledCode.value = result.code
@@ -188,7 +169,7 @@ seq:
         setStatus(`Compilation error: ${error.message}`, 'error')
       }
     }
-    
+
     const saveKsy = async () => {
       try {
         const format = {
@@ -196,26 +177,26 @@ seq:
           content: ksyContent.value,
           category: 'custom'
         }
-        
+
         if (props.formatId) {
           format.id = props.formatId
           await manager.update(props.formatId, format)
         } else {
           await manager.add(format)
         }
-        
+
         setStatus('Saved successfully', 'success')
         emit('save', format)
       } catch (error) {
         setStatus(`Save failed: ${error.message}`, 'error')
       }
     }
-    
+
     const copyCode = () => {
       navigator.clipboard.writeText(compiledCode.value)
       setStatus('Copied to clipboard', 'success')
     }
-    
+
     const handleTestFile = (event) => {
       const file = event.target.files[0]
       if (file) {
@@ -223,24 +204,24 @@ seq:
         testKsy()
       }
     }
-    
+
     const testKsy = async () => {
       if (!testFile.value) return
-      
+
       try {
         setStatus('Testing...', 'info')
-        
+
         // Compile the KSY
         const compileResult = await compiler.compile(ksyContent.value)
         if (!compileResult.success) {
           setStatus(`Cannot test: ${compileResult.error}`, 'error')
           return
         }
-        
+
         // Read test file
         const buffer = await testFile.value.arrayBuffer()
         const bytes = new Uint8Array(buffer)
-        
+
         // Parse with compiled format
         const parser = compileResult.parser
         if (parser) {
@@ -256,23 +237,23 @@ seq:
         testResult.value = `Error: ${error.message}`
       }
     }
-    
+
     const setStatus = (message, type) => {
       status.value = message
       statusClass.value = type
-      
+
       if (type === 'success' || type === 'info') {
         setTimeout(() => {
           status.value = ''
         }, 3000)
       }
     }
-    
+
     // Auto-save draft
     watch(ksyContent, (newContent) => {
       localStorage.setItem('ksy-editor-draft', newContent)
     })
-    
+
     // Load draft on mount
     const loadDraft = () => {
       if (!props.initialContent) {
@@ -282,9 +263,9 @@ seq:
         }
       }
     }
-    
+
     loadDraft()
-    
+
     return {
       formatName,
       ksyContent,
@@ -364,10 +345,18 @@ seq:
   font-size: 16px;
 }
 
-.action-btn.validate .icon { color: #4CAF50; }
-.action-btn.compile .icon { color: #FF9800; }
-.action-btn.save .icon { color: #2196F3; }
-.action-btn.test .icon { color: #9C27B0; }
+.action-btn.validate .icon {
+  color: #4caf50;
+}
+.action-btn.compile .icon {
+  color: #ff9800;
+}
+.action-btn.save .icon {
+  color: #2196f3;
+}
+.action-btn.test .icon {
+  color: #9c27b0;
+}
 
 .editor-content {
   flex: 1;
@@ -452,17 +441,17 @@ seq:
 
 .status.success {
   background: rgba(76, 175, 80, 0.1);
-  color: #4CAF50;
+  color: #4caf50;
 }
 
 .status.error {
   background: rgba(244, 67, 54, 0.1);
-  color: #F44336;
+  color: #f44336;
 }
 
 .status.info {
   background: rgba(33, 150, 243, 0.1);
-  color: #2196F3;
+  color: #2196f3;
 }
 
 .test-section {

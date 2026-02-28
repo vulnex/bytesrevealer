@@ -100,7 +100,9 @@ class FileChunkManager {
         this.fileId = `array_${Date.now()}`
         this.totalChunks = Math.ceil(this.totalSize / this.CHUNK_SIZE)
 
-        logger.info(`Large array detected (${this.formatSize(this.totalSize)}), splitting into ${this.totalChunks} chunks`)
+        logger.info(
+          `Large array detected (${this.formatSize(this.totalSize)}), splitting into ${this.totalChunks} chunks`
+        )
 
         // Store chunks
         for (let i = 0; i < this.totalChunks; i++) {
@@ -128,7 +130,9 @@ class FileChunkManager {
         this.fileId = `file_${file.name}_${Date.now()}`
         this.totalChunks = Math.ceil(this.totalSize / this.CHUNK_SIZE)
 
-        logger.info(`Large file "${file.name}" detected (${this.formatSize(this.totalSize)}), loading with chunking`)
+        logger.info(
+          `Large file "${file.name}" detected (${this.formatSize(this.totalSize)}), loading with chunking`
+        )
 
         // Load the entire file into a single Uint8Array. Chunk metadata is
         // set up above so that getStats() and UI indicators work, but we
@@ -285,7 +289,7 @@ class FileChunkManager {
       if (!chunk) continue
 
       const chunkStart = i * this.CHUNK_SIZE
-      const chunkEnd = chunkStart + chunk.byteLength
+      const _chunkEnd = chunkStart + chunk.byteLength
 
       const copyStart = Math.max(0, start - chunkStart)
       const copyEnd = Math.min(chunk.byteLength, end - chunkStart)
@@ -317,7 +321,7 @@ class FileChunkManager {
     const proxyArray = fullData instanceof Uint8Array ? fullData : new Uint8Array(0)
 
     // Override slice method for efficient range access
-    proxyArray.slice = function(start = 0, end = size) {
+    proxyArray.slice = function (start = 0, end = size) {
       if (end - start <= manager.CHUNK_SIZE * 2) {
         // For small slices, use synchronous access
         return Uint8Array.prototype.slice.call(this, start, end)
@@ -381,7 +385,10 @@ class FileChunkManager {
    */
   getStats() {
     const memoryChunks = this.chunks.size
-    const memorySize = Array.from(this.chunks.values()).reduce((sum, chunk) => sum + chunk.byteLength, 0)
+    const memorySize = Array.from(this.chunks.values()).reduce(
+      (sum, chunk) => sum + chunk.byteLength,
+      0
+    )
 
     return {
       totalSize: this.totalSize,

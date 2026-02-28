@@ -14,7 +14,7 @@
  */
 
 // Search state
-let isSearching = false
+let _isSearching = false
 let shouldCancel = false
 
 // Search result limits
@@ -27,7 +27,7 @@ const MAX_HIGHLIGHT_BYTES = 100000
 function isSafeRegex(pattern) {
   if (pattern.length > 1000) return false
   // Detect nested quantifiers (catastrophic backtracking)
-  if (/(\+|\*|\?|\{)\s*\)[\+\*\?]|\)[\+\*\?]\s*\{/.test(pattern)) return false
+  if (/([+*?{])\s*\)[+*?]|\)[+*?]\s*\{/.test(pattern)) return false
   // Detect excessive repetition groups
   if (/(\{[0-9]{4,}\})/.test(pattern)) return false
   return true
@@ -38,13 +38,16 @@ function isSafeRegex(pattern) {
  */
 function searchHexPattern(data, pattern, onProgress) {
   const results = []
-  const patternBytes = pattern.trim().split(/\s+/).map(hex => {
-    const num = parseInt(hex, 16)
-    return isNaN(num) ? null : num
-  })
+  const patternBytes = pattern
+    .trim()
+    .split(/\s+/)
+    .map((hex) => {
+      const num = parseInt(hex, 16)
+      return isNaN(num) ? null : num
+    })
 
   // Validate pattern
-  if (patternBytes.some(b => b === null)) {
+  if (patternBytes.some((b) => b === null)) {
     throw new Error('Invalid hex pattern')
   }
 
@@ -92,7 +95,7 @@ function searchHexPattern(data, pattern, onProgress) {
  */
 function searchAsciiPattern(data, pattern, caseInsensitive, onProgress) {
   const results = []
-  const searchBytes = Array.from(pattern).map(char => char.charCodeAt(0))
+  const searchBytes = Array.from(pattern).map((char) => char.charCodeAt(0))
   const patternLength = searchBytes.length
   const dataLength = data.length
   const chunkSize = 1024 * 1024 // 1MB chunks for progress reporting
@@ -156,7 +159,9 @@ function searchRegexPattern(data, pattern, flags, onProgress) {
   try {
     // Validate regex safety before compilation
     if (!isSafeRegex(pattern)) {
-      throw new Error('Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition')
+      throw new Error(
+        'Unsafe regex pattern: pattern is too long, contains nested quantifiers, or excessive repetition'
+      )
     }
 
     // Convert data to string in chunks to avoid memory issues
@@ -201,7 +206,7 @@ function searchRegexPattern(data, pattern, flags, onProgress) {
  */
 function performSearch(data, searchType, pattern, options = {}) {
   shouldCancel = false
-  isSearching = true
+  _isSearching = true
 
   const onProgress = (progress) => {
     self.postMessage({
@@ -220,21 +225,11 @@ function performSearch(data, searchType, pattern, options = {}) {
 
       case 'ascii':
       case 'string':
-        result = searchAsciiPattern(
-          data,
-          pattern,
-          options.caseInsensitive || false,
-          onProgress
-        )
+        result = searchAsciiPattern(data, pattern, options.caseInsensitive || false, onProgress)
         break
 
       case 'regex':
-        result = searchRegexPattern(
-          data,
-          pattern,
-          options.regexFlags || 'g',
-          onProgress
-        )
+        result = searchRegexPattern(data, pattern, options.regexFlags || 'g', onProgress)
         break
 
       default:
@@ -248,14 +243,14 @@ function performSearch(data, searchType, pattern, options = {}) {
 
     return result
   } finally {
-    isSearching = false
+    _isSearching = false
   }
 }
 
 /**
  * Handle messages from main thread
  */
-self.onmessage = function(event) {
+self.onmessage = function (event) {
   // Validate message structure
   if (!event.data || typeof event.data.type !== 'string') {
     self.postMessage({ type: 'error', error: 'Invalid message format' })
@@ -269,7 +264,10 @@ self.onmessage = function(event) {
       try {
         // Validate search message data
         if (!data || !data.fileData || !data.searchType || !data.pattern) {
-          self.postMessage({ type: 'error', error: 'Invalid search message: missing fileData, searchType, or pattern' })
+          self.postMessage({
+            type: 'error',
+            error: 'Invalid search message: missing fileData, searchType, or pattern'
+          })
           return
         }
 
@@ -323,6 +321,6 @@ self.onmessage = function(event) {
       break
 
     default:
-      // console.warn('Unknown message type:', type)
+    // console.warn('Unknown message type:', type)
   }
 }

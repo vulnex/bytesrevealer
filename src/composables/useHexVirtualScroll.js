@@ -48,10 +48,7 @@ export function useHexVirtualScroll(props, baseOffset) {
     const visibleRowCount = Math.ceil((visibleRows.value * ROW_HEIGHT) / ROW_HEIGHT)
 
     const start = Math.max(0, currentRow - BUFFER_ROWS)
-    const end = Math.min(
-      totalRows.value,
-      currentRow + visibleRowCount + BUFFER_ROWS
-    )
+    const end = Math.min(totalRows.value, currentRow + visibleRowCount + BUFFER_ROWS)
 
     return { start, end }
   })
@@ -73,7 +70,12 @@ export function useHexVirtualScroll(props, baseOffset) {
 
       if (actualOffset >= props.fileBytes.length) break
 
-      const bytes = Array.from(props.fileBytes.slice(actualOffset, Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)))
+      const bytes = Array.from(
+        props.fileBytes.slice(
+          actualOffset,
+          Math.min(actualOffset + BYTES_PER_ROW, props.fileBytes.length)
+        )
+      )
 
       rows.push({
         offset: displayOffset,

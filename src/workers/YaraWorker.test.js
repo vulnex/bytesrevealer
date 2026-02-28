@@ -88,9 +88,7 @@ describe('YaraWorker extractResults', () => {
     const rawResult = {
       compileErrors: mockCollection([]),
       consoleLogs: mockCollection([]),
-      matchedRules: mockCollection([
-        { ruleName: 'Empty_Rule' }
-      ])
+      matchedRules: mockCollection([{ ruleName: 'Empty_Rule' }])
     }
 
     const result = extractResults(rawResult)

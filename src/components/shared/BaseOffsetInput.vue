@@ -1,27 +1,18 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: BaseOffsetInput.vue
- * Author: Simon Roses Femerling
- * Created: 2025-04-27
- * Last Modified: 2025-04-27
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: BaseOffsetInput.vue * Author: Simon Roses Femerling *
+Created: 2025-04-27 * Last Modified: 2025-04-27 * Version: 0.2 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="base-offset-input">
     <label>Base Offset:</label>
     <div class="input-group">
-      <input 
-        type="text"
+      <input
         v-model="offsetInput"
+        type="text"
+        placeholder="Enter hex offset"
+        :class="{ error: hasError }"
         @input="validateInput"
         @keydown.enter="updateOffset"
-        placeholder="Enter hex offset"
-        :class="{ 'error': hasError }"
       />
       <select v-model="offsetFormat" @change="handleFormatChange">
         <option value="hex">Hex</option>
@@ -48,18 +39,21 @@ export default {
     }
   },
   emits: ['update:modelValue'],
-  
+
   setup(props, { emit }) {
     const offsetInput = ref('')
     const offsetFormat = ref('hex')
     const hasError = ref(false)
 
     // Initialize the input with the current value
-    watch(() => props.modelValue, (newValue) => {
-      offsetInput.value = offsetFormat.value === 'hex' 
-        ? newValue.toString(16).toUpperCase()
-        : newValue.toString()
-    }, { immediate: true })
+    watch(
+      () => props.modelValue,
+      (newValue) => {
+        offsetInput.value =
+          offsetFormat.value === 'hex' ? newValue.toString(16).toUpperCase() : newValue.toString()
+      },
+      { immediate: true }
+    )
 
     const validateInput = () => {
       const value = offsetInput.value.trim()
@@ -69,10 +63,8 @@ export default {
       }
 
       try {
-        const parsed = offsetFormat.value === 'hex' 
-          ? parseInt(value, 16)
-          : parseInt(value, 10)
-        
+        const parsed = offsetFormat.value === 'hex' ? parseInt(value, 16) : parseInt(value, 10)
+
         hasError.value = isNaN(parsed) || parsed < 0 || parsed > props.maxOffset
       } catch {
         hasError.value = true
@@ -88,24 +80,24 @@ export default {
         return
       }
 
-      const parsed = offsetFormat.value === 'hex' 
-        ? parseInt(value, 16)
-        : parseInt(value, 10)
-      
+      const parsed = offsetFormat.value === 'hex' ? parseInt(value, 16) : parseInt(value, 10)
+
       if (!isNaN(parsed) && parsed >= 0 && parsed <= props.maxOffset) {
         emit('update:modelValue', parsed)
       }
     }
 
     const handleFormatChange = () => {
-      const currentValue = offsetFormat.value === 'hex' 
-        ? parseInt(offsetInput.value, 16)
-        : parseInt(offsetInput.value, 10)
-      
+      const currentValue =
+        offsetFormat.value === 'hex'
+          ? parseInt(offsetInput.value, 16)
+          : parseInt(offsetInput.value, 10)
+
       if (!isNaN(currentValue)) {
-        offsetInput.value = offsetFormat.value === 'hex' 
-          ? currentValue.toString(16).toUpperCase()
-          : currentValue.toString()
+        offsetInput.value =
+          offsetFormat.value === 'hex'
+            ? currentValue.toString(16).toUpperCase()
+            : currentValue.toString()
       }
       validateInput()
     }
@@ -181,4 +173,4 @@ select {
   border-color: var(--border-color);
   color: var(--text-primary);
 }
-</style> 
+</style>

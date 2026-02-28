@@ -64,11 +64,15 @@ export function useKaitaiIntegration(props, { hoveredByte, visibleRange, contain
     const complexFormats = ['zip', 'rar', '7z', 'tar', 'gz', 'bz2', 'xz']
     const currentFormat = formatId || detectedFormat.value
 
-    if (props.fileBytes &&
-        props.fileBytes.length > COMPLEX_FORMAT_SIZE_LIMIT &&
-        currentFormat &&
-        complexFormats.some(f => currentFormat.toLowerCase().includes(f))) {
-      logger.warn(`Large ${currentFormat} file (>${COMPLEX_FORMAT_SIZE_LIMIT / 1024 / 1024}MB) - parsing may be slow`)
+    if (
+      props.fileBytes &&
+      props.fileBytes.length > COMPLEX_FORMAT_SIZE_LIMIT &&
+      currentFormat &&
+      complexFormats.some((f) => currentFormat.toLowerCase().includes(f))
+    ) {
+      logger.warn(
+        `Large ${currentFormat} file (>${COMPLEX_FORMAT_SIZE_LIMIT / 1024 / 1024}MB) - parsing may be slow`
+      )
     }
 
     try {
@@ -89,7 +93,9 @@ export function useKaitaiIntegration(props, { hoveredByte, visibleRange, contain
         props.fileBytes.length
       )
 
-      logger.debug(`Parsing bytes ${startByte} to ${endByte} (max viewport: ${MAX_VIEWPORT_SIZE / 1024}KB) with format: ${formatId}`)
+      logger.debug(
+        `Parsing bytes ${startByte} to ${endByte} (max viewport: ${MAX_VIEWPORT_SIZE / 1024}KB) with format: ${formatId}`
+      )
 
       const fields = await kaitaiRuntime.value.parseViewport(
         props.fileBytes,
@@ -99,7 +105,7 @@ export function useKaitaiIntegration(props, { hoveredByte, visibleRange, contain
       )
 
       if (Array.isArray(fields)) {
-        const structures = fields.map(field => {
+        const structures = fields.map((field) => {
           const structure = {
             name: field.name,
             value: field.value,
@@ -107,7 +113,9 @@ export function useKaitaiIntegration(props, { hoveredByte, visibleRange, contain
             size: field.size,
             fields: field.fields || []
           }
-          logger.debug(`Creating structure for ${field.name}: offset=${structure.offset}, size=${structure.size}`)
+          logger.debug(
+            `Creating structure for ${field.name}: offset=${structure.offset}, size=${structure.size}`
+          )
           return structure
         })
         formatStore.setStructures(structures)
@@ -210,11 +218,14 @@ export function useKaitaiIntegration(props, { hoveredByte, visibleRange, contain
   }
 
   // Watch for file changes
-  watch(() => props.fileBytes, async () => {
-    if (kaitaiRuntime.value) {
-      await initializeKaitai()
+  watch(
+    () => props.fileBytes,
+    async () => {
+      if (kaitaiRuntime.value) {
+        await initializeKaitai()
+      }
     }
-  })
+  )
 
   return {
     kaitaiRuntime,

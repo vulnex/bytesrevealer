@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeEach } from 'vitest'
+import { describe, it, expect } from 'vitest'
 import { ref } from 'vue'
 import { useHexDisplay } from './useHexDisplay'
 
@@ -74,14 +74,14 @@ describe('useHexDisplay', () => {
       const { formatOffset } = useHexDisplay(makeProps(), makeDeps())
       expect(formatOffset(0)).toBe('00000000')
       expect(formatOffset(255)).toBe('000000FF')
-      expect(formatOffset(0x1A2B3C)).toBe('001A2B3C')
+      expect(formatOffset(0x1a2b3c)).toBe('001A2B3C')
     })
 
     it('formats as lowercase when useUppercase is false', () => {
       const { formatOffset, toggleCapitalization } = useHexDisplay(makeProps(), makeDeps())
       toggleCapitalization()
       expect(formatOffset(255)).toBe('000000ff')
-      expect(formatOffset(0x1A2B3C)).toBe('001a2b3c')
+      expect(formatOffset(0x1a2b3c)).toBe('001a2b3c')
     })
   })
 
@@ -90,14 +90,14 @@ describe('useHexDisplay', () => {
       const { formatByte } = useHexDisplay(makeProps(), makeDeps())
       expect(formatByte(0)).toBe('00')
       expect(formatByte(255)).toBe('FF')
-      expect(formatByte(0x0A)).toBe('0A')
+      expect(formatByte(0x0a)).toBe('0A')
     })
 
     it('formats as lowercase when useUppercase is false', () => {
       const { formatByte, toggleCapitalization } = useHexDisplay(makeProps(), makeDeps())
       toggleCapitalization()
       expect(formatByte(255)).toBe('ff')
-      expect(formatByte(0x0A)).toBe('0a')
+      expect(formatByte(0x0a)).toBe('0a')
     })
   })
 
@@ -111,25 +111,25 @@ describe('useHexDisplay', () => {
       const { getByteClass } = useHexDisplay(makeProps(), makeDeps())
       expect(getByteClass(0x20)).toBe('byte-printable')
       expect(getByteClass(0x41)).toBe('byte-printable') // 'A'
-      expect(getByteClass(0x7E)).toBe('byte-printable')
+      expect(getByteClass(0x7e)).toBe('byte-printable')
     })
 
     it('returns byte-ff for 0xFF', () => {
       const { getByteClass } = useHexDisplay(makeProps(), makeDeps())
-      expect(getByteClass(0xFF)).toBe('byte-ff')
+      expect(getByteClass(0xff)).toBe('byte-ff')
     })
 
     it('returns byte-control for control characters (0x01-0x1F)', () => {
       const { getByteClass } = useHexDisplay(makeProps(), makeDeps())
       expect(getByteClass(0x01)).toBe('byte-control')
-      expect(getByteClass(0x1F)).toBe('byte-control')
+      expect(getByteClass(0x1f)).toBe('byte-control')
     })
 
     it('returns byte-extended for extended ASCII (0x7F-0xFE)', () => {
       const { getByteClass } = useHexDisplay(makeProps(), makeDeps())
-      expect(getByteClass(0x7F)).toBe('byte-extended')
+      expect(getByteClass(0x7f)).toBe('byte-extended')
       expect(getByteClass(0x80)).toBe('byte-extended')
-      expect(getByteClass(0xFE)).toBe('byte-extended')
+      expect(getByteClass(0xfe)).toBe('byte-extended')
     })
 
     it('returns byte-null for 0x00 even when colors disabled', () => {
@@ -142,7 +142,7 @@ describe('useHexDisplay', () => {
       const { getByteClass, toggleColors } = useHexDisplay(makeProps(), makeDeps())
       toggleColors()
       expect(getByteClass(0x41)).toBe('byte-white')
-      expect(getByteClass(0xFF)).toBe('byte-white')
+      expect(getByteClass(0xff)).toBe('byte-white')
       expect(getByteClass(0x01)).toBe('byte-white')
       expect(getByteClass(0x80)).toBe('byte-white')
     })
@@ -153,15 +153,15 @@ describe('useHexDisplay', () => {
       const { byteToAscii } = useHexDisplay(makeProps(), makeDeps())
       expect(byteToAscii(0x41)).toBe('A')
       expect(byteToAscii(0x20)).toBe(' ')
-      expect(byteToAscii(0x7E)).toBe('~')
+      expect(byteToAscii(0x7e)).toBe('~')
     })
 
     it('returns dot for non-printable bytes', () => {
       const { byteToAscii } = useHexDisplay(makeProps(), makeDeps())
       expect(byteToAscii(0x00)).toBe('.')
-      expect(byteToAscii(0x1F)).toBe('.')
-      expect(byteToAscii(0x7F)).toBe('.')
-      expect(byteToAscii(0xFF)).toBe('.')
+      expect(byteToAscii(0x1f)).toBe('.')
+      expect(byteToAscii(0x7f)).toBe('.')
+      expect(byteToAscii(0xff)).toBe('.')
     })
   })
 
@@ -210,10 +210,7 @@ describe('useHexDisplay', () => {
     })
 
     it('returns true for offsets in highlightSet', () => {
-      const { isHighlighted } = useHexDisplay(
-        makeProps({ highlightedBytes: [5, 10] }),
-        makeDeps()
-      )
+      const { isHighlighted } = useHexDisplay(makeProps({ highlightedBytes: [5, 10] }), makeDeps())
       expect(isHighlighted(5)).toBe(true)
       expect(isHighlighted(10)).toBe(true)
       expect(isHighlighted(6)).toBe(false)
@@ -321,27 +318,18 @@ describe('useHexDisplay', () => {
 
   describe('getByteStyles', () => {
     it('returns empty object when byte is highlighted', () => {
-      const { getByteStyles } = useHexDisplay(
-        makeProps({ highlightedBytes: [5] }),
-        makeDeps()
-      )
+      const { getByteStyles } = useHexDisplay(makeProps({ highlightedBytes: [5] }), makeDeps())
       expect(getByteStyles(5)).toEqual({})
     })
 
     it('returns empty object when byte is hovered', () => {
-      const { getByteStyles } = useHexDisplay(
-        makeProps(),
-        makeDeps({ hoveredByte: ref(5) })
-      )
+      const { getByteStyles } = useHexDisplay(makeProps(), makeDeps({ hoveredByte: ref(5) }))
       expect(getByteStyles(5)).toEqual({})
     })
 
     it('returns annotation styles for annotated bytes', () => {
       const annotations = [{ startOffset: 0, endOffset: 10, color: '#ff0000' }]
-      const { getByteStyles } = useHexDisplay(
-        makeProps({ annotations }),
-        makeDeps()
-      )
+      const { getByteStyles } = useHexDisplay(makeProps({ annotations }), makeDeps())
       const styles = getByteStyles(5)
       expect(styles.backgroundColor).toBe('#ff000040')
       expect(styles.borderBottom).toBe('2px solid #ff0000')
@@ -349,20 +337,14 @@ describe('useHexDisplay', () => {
 
     it('returns color range styles for colored bytes', () => {
       const coloredBytes = [{ start: 0, end: 10, color: '#00ff00' }]
-      const { getByteStyles } = useHexDisplay(
-        makeProps({ coloredBytes }),
-        makeDeps()
-      )
+      const { getByteStyles } = useHexDisplay(makeProps({ coloredBytes }), makeDeps())
       const styles = getByteStyles(5)
       expect(styles.backgroundColor).toBe('#00ff00')
     })
 
     it('returns bookmark border style for bookmarked bytes', () => {
       const bookmarks = [{ offset: 5, color: '#0000ff' }]
-      const { getByteStyles } = useHexDisplay(
-        makeProps({ bookmarks }),
-        makeDeps()
-      )
+      const { getByteStyles } = useHexDisplay(makeProps({ bookmarks }), makeDeps())
       const styles = getByteStyles(5)
       expect(styles.borderTop).toBe('2px solid #0000ff')
     })

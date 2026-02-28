@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: zlib.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09

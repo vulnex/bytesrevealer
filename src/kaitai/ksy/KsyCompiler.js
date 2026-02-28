@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KsyCompiler.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -48,11 +48,11 @@ class KsyCompiler {
     try {
       // Parse YAML to check syntax
       const parsed = yaml.parse(ksyContent)
-      
+
       // Basic validation checks - only check for truly required fields
       const errors = []
       const warnings = []
-      
+
       if (!parsed.meta) {
         errors.push('Missing meta section')
       } else {
@@ -62,12 +62,12 @@ class KsyCompiler {
           warnings.push('Missing meta.endian - defaulting to little-endian')
         }
       }
-      
+
       // seq and instances are both optional - a KSY can have neither
       if (!parsed.seq && !parsed.instances) {
         warnings.push('No seq or instances section - file will be parsed as raw bytes')
       }
-      
+
       return {
         valid: errors.length === 0,
         errors,
@@ -93,7 +93,7 @@ class KsyCompiler {
     let hash = 0
     for (let i = 0; i < content.length; i++) {
       const char = content.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
+      hash = (hash << 5) - hash + char
       hash = hash & hash // Convert to 32bit integer
     }
     return Math.abs(hash).toString(16)
@@ -117,49 +117,49 @@ class KsyCompiler {
       // Try AdvancedKsyCompiler first for complex format support
       let compiler = getAdvancedKsyCompiler()
       let result = null
-      
+
       if (compiler) {
         logger.debug('Using AdvancedKsyCompiler for compilation')
         result = await compiler.compile(ksyContent)
       }
-      
+
       // Fall back to SimpleKsyCompiler if advanced fails
       if (!result) {
         logger.debug('Falling back to SimpleKsyCompiler')
         compiler = getSimpleKsyCompiler()
-        
+
         if (compiler) {
           result = await compiler.compile(ksyContent)
         }
       }
-      
+
       // Final fallback to TestKsyCompiler
       if (!result) {
         logger.debug('Final fallback to TestKsyCompiler')
         compiler = getTestKsyCompiler()
-        
+
         if (!compiler) {
           return {
             success: false,
             error: 'No compiler available'
           }
         }
-        
+
         result = await compiler.compile(ksyContent)
       }
-      
+
       if (!result) {
         return {
           success: false,
           error: 'Compilation failed - no result'
         }
       }
-      
+
       // Skip caching for now
       // if (result.success) {
       //   await this.cache.set(hash, result)
       // }
-      
+
       return result
     } catch (error) {
       return {
@@ -177,7 +177,7 @@ class KsyCompiler {
    */
   async compileToJS(ksyParsed) {
     const className = this.toPascalCase(ksyParsed.meta.id)
-    
+
     let js = `
 class ${className} {
   constructor(_io, _parent = null, _root = null) {
@@ -225,9 +225,9 @@ ${className};
   generateFieldReader(field, endian) {
     const fieldName = field.id
     const fieldType = field.type
-    
+
     let code = ''
-    
+
     if (typeof fieldType === 'string') {
       // Built-in types
       switch (fieldType) {
@@ -262,7 +262,7 @@ ${className};
           code = `    this.${fieldName} = new ${this.toPascalCase(fieldType)}(this._io, this, this._root);\n`
       }
     }
-    
+
     // Handle repeat
     if (field.repeat) {
       let loopCode = code.trim()
@@ -278,7 +278,7 @@ ${className};
         code += `    }\n`
       }
     }
-    
+
     return code
   }
 
@@ -295,24 +295,24 @@ ${className};
     if (this._m_${name} !== undefined)
       return this._m_${name};
 `
-    
+
     if (instance.pos !== undefined) {
       code += `    const _pos = this._io.pos;\n`
       code += `    this._io.seek(${instance.pos});\n`
     }
-    
+
     // Add instance reading logic based on type
     const readCode = this.generateFieldReader({ id: `_m_${name}`, ...instance }, endian)
     code += readCode.replace(`this._m_${name}`, `this._m_${name}`)
-    
+
     if (instance.pos !== undefined) {
       code += `    this._io.seek(_pos);\n`
     }
-    
+
     code += `    return this._m_${name};
   }
 `
-    
+
     return code
   }
 
@@ -350,14 +350,16 @@ ${className};
    * @returns {Function} Never returns — always throws
    * @throws {Error} Always throws indicating this path is disabled
    */
-  createParserFromCompiled(compiledJS) {
+  createParserFromCompiled(_compiledJS) {
     // SECURITY: new Function() / eval of arbitrary compiled JS has been removed.
     // This path is disabled to prevent arbitrary code execution from user-supplied
     // KSY format files. Use AdvancedKsyCompiler.compile() instead.
-    logger.warn('createParserFromCompiled() is disabled for security reasons — use AdvancedKsyCompiler instead')
+    logger.warn(
+      'createParserFromCompiled() is disabled for security reasons — use AdvancedKsyCompiler instead'
+    )
     throw new Error(
       'createParserFromCompiled() is disabled for security reasons: dynamic code execution ' +
-      'of compiled JavaScript is not allowed. Use AdvancedKsyCompiler which parses KSY fields directly.'
+        'of compiled JavaScript is not allowed. Use AdvancedKsyCompiler which parses KSY fields directly.'
     )
   }
 
@@ -369,7 +371,7 @@ ${className};
    */
   async compileInWorker(ksyContent) {
     // Delegate to the safe compile() path instead of executing compiled JS
-    return this.compile(ksyContent).then(result => {
+    return this.compile(ksyContent).then((result) => {
       if (result && result.success !== false) return result
       throw new Error('Compilation failed via compileInWorker — use compile() directly')
     })
@@ -388,7 +390,9 @@ ${className};
       const messageHandler = (event) => {
         if (event.data.type === 'compiled') {
           this.worker.removeEventListener('message', messageHandler)
-          reject(new Error('Dynamic code execution from worker compilation is disabled for security'))
+          reject(
+            new Error('Dynamic code execution from worker compilation is disabled for security')
+          )
         } else if (event.data.type === 'error') {
           this.worker.removeEventListener('message', messageHandler)
           reject(new Error(event.data.error))

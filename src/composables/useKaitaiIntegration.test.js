@@ -17,7 +17,12 @@ vi.mock('../kaitai/runtime/KaitaiRuntime', () => ({
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -152,10 +157,7 @@ describe('useKaitaiIntegration', () => {
     it('ignores null structure', () => {
       const containerRef = ref({ scrollTop: 0 })
       const [result, app] = withSetup(() =>
-        useKaitaiIntegration(
-          { fileBytes: new Uint8Array(64) },
-          makeContext({ containerRef })
-        )
+        useKaitaiIntegration({ fileBytes: new Uint8Array(64) }, makeContext({ containerRef }))
       )
       result.handleStructureSelect(null)
       expect(containerRef.value.scrollTop).toBe(0)
@@ -240,7 +242,11 @@ describe('useKaitaiIntegration', () => {
       const store = useFormatStore()
       expect(store.kaitaiStructures.length).toBe(2)
       expect(store.kaitaiStructures[0]).toEqual({
-        name: 'magic', value: 'MZ', offset: 0, size: 2, fields: []
+        name: 'magic',
+        value: 'MZ',
+        offset: 0,
+        size: 2,
+        fields: []
       })
       expect(store.kaitaiStructures[1].fields).toEqual([{ name: 'sub' }])
       app.unmount()

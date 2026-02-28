@@ -1,4 +1,4 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
  *
  * File: advancedFileDetection.js
@@ -10,121 +10,123 @@
  * https://www.vulnex.com
  */
 
-import { FILE_SIGNATURES, detectFileTypes, isFileType, isMachOFatBinary } from './fileSignatures';
-import { extractMetadata } from './metadataExtractor';
-import { createLogger } from './logger';
+import { detectFileTypes, isFileType, isMachOFatBinary } from './fileSignatures'
+import { extractMetadata } from './metadataExtractor'
+import { createLogger } from './logger'
 
-const logger = createLogger('AdvancedFileDetection');
+const logger = createLogger('AdvancedFileDetection')
 
 class FileAnalysisError extends Error {
   constructor(message, type = 'ANALYSIS_ERROR') {
-    super(message);
-    this.name = 'FileAnalysisError';
-    this.type = type;
+    super(message)
+    this.name = 'FileAnalysisError'
+    this.type = type
   }
 }
 
 // First define the container types
 const CONTAINER_TYPES = {
   ZIP: {
-    signature: [0x50, 0x4B, 0x03, 0x04],
+    signature: [0x50, 0x4b, 0x03, 0x04],
     name: 'ZIP Archive',
-    localFileHeaderSignature: [0x50, 0x4B, 0x03, 0x04],
-    centralDirSignature: [0x50, 0x4B, 0x01, 0x02],
-    endOfCentralDirSignature: [0x50, 0x4B, 0x05, 0x06]
+    localFileHeaderSignature: [0x50, 0x4b, 0x03, 0x04],
+    centralDirSignature: [0x50, 0x4b, 0x01, 0x02],
+    endOfCentralDirSignature: [0x50, 0x4b, 0x05, 0x06]
   },
   PDF: {
     signature: [0x25, 0x50, 0x44, 0x46],
     name: 'PDF Document',
-    streamStart: [0x73, 0x74, 0x72, 0x65, 0x61, 0x6D], // 'stream'
-    streamEnd: [0x65, 0x6E, 0x64, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6D] // 'endstream'
+    streamStart: [0x73, 0x74, 0x72, 0x65, 0x61, 0x6d], // 'stream'
+    streamEnd: [0x65, 0x6e, 0x64, 0x73, 0x74, 0x72, 0x65, 0x61, 0x6d] // 'endstream'
   },
   OFFICE: {
-    signature: [0x50, 0x4B, 0x03, 0x04],
+    signature: [0x50, 0x4b, 0x03, 0x04],
     name: 'Office Open XML',
-    contentTypes: [0x5B, 0x43, 0x6F, 0x6E, 0x74, 0x65, 0x6E, 0x74, 0x5F, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5D] // '[Content_Types]'
+    contentTypes: [
+      0x5b, 0x43, 0x6f, 0x6e, 0x74, 0x65, 0x6e, 0x74, 0x5f, 0x54, 0x79, 0x70, 0x65, 0x73, 0x5d
+    ] // '[Content_Types]'
   },
   ELF: {
-    signature: [0x7F, 0x45, 0x4C, 0x46],
+    signature: [0x7f, 0x45, 0x4c, 0x46],
     name: 'ELF Binary',
-    sectionHeaderSignature: [0x2E, 0x73, 0x68, 0x73, 0x74, 0x72, 0x74, 0x61, 0x62] // .shstrtab
+    sectionHeaderSignature: [0x2e, 0x73, 0x68, 0x73, 0x74, 0x72, 0x74, 0x61, 0x62] // .shstrtab
   },
   PE: {
-    signature: [0x4D, 0x5A],
+    signature: [0x4d, 0x5a],
     name: 'Windows PE',
     peHeaderSignature: [0x50, 0x45, 0x00, 0x00]
   },
   JPEG: {
-    signature: [0xFF, 0xD8, 0xFF],
+    signature: [0xff, 0xd8, 0xff],
     name: 'JPEG Image',
-    exifMarker: [0xFF, 0xE1],
-    app0Marker: [0xFF, 0xE0]
+    exifMarker: [0xff, 0xe1],
+    app0Marker: [0xff, 0xe0]
   },
   GIF: {
     signature: [0x47, 0x49, 0x46, 0x38],
     name: 'GIF Image',
-    applicationExt: [0x21, 0xFF, 0x0B]
+    applicationExt: [0x21, 0xff, 0x0b]
   },
   MACHO: {
-    signature: [0xFE, 0xED, 0xFA, 0xCF], // 64-bit
-    signature2: [0xFE, 0xED, 0xFA, 0xCE], // 32-bit
-    signature3: [0xCA, 0xFE, 0xBA, 0xBE], // Universal binary
+    signature: [0xfe, 0xed, 0xfa, 0xcf], // 64-bit
+    signature2: [0xfe, 0xed, 0xfa, 0xce], // 32-bit
+    signature3: [0xca, 0xfe, 0xba, 0xbe], // Universal binary
     name: 'Mach-O Executable',
     loadCommandSignature: [0x19, 0x00, 0x00, 0x00] // LC_SEGMENT_64
   }
-};
+}
 
 // Define core utility functions first
 function matchesPattern(bytes, pattern, offset) {
-  if (offset + pattern.length > bytes.length) return false;
-  
+  if (offset + pattern.length > bytes.length) return false
+
   for (let i = 0; i < pattern.length; i++) {
-    if (bytes[offset + i] !== pattern[i]) return false;
+    if (bytes[offset + i] !== pattern[i]) return false
   }
-  return true;
+  return true
 }
 
 function findPattern(bytes, pattern, startOffset) {
   for (let i = startOffset; i <= bytes.length - pattern.length; i++) {
-    if (matchesPattern(bytes, pattern, i)) return i;
+    if (matchesPattern(bytes, pattern, i)) return i
   }
-  return -1;
+  return -1
 }
 
 // First, define the PE analysis functions at the top level
 function findPEHeaderOffset(bytes) {
   try {
     if (!bytes || bytes.length < 64) {
-      return -1;
+      return -1
     }
-    
+
     // Check DOS signature (MZ)
-    if (bytes[0] !== 0x4D || bytes[1] !== 0x5A) {
-      return -1;
+    if (bytes[0] !== 0x4d || bytes[1] !== 0x5a) {
+      return -1
     }
 
     // Get PE header offset from DOS header
-    const peOffset = bytes[0x3C] | 
-                    (bytes[0x3D] << 8) | 
-                    (bytes[0x3E] << 16) | 
-                    (bytes[0x3F] << 24);
-                    
+    const peOffset = bytes[0x3c] | (bytes[0x3d] << 8) | (bytes[0x3e] << 16) | (bytes[0x3f] << 24)
+
     if (peOffset < 0 || peOffset > bytes.length - 4) {
-      return -1;
+      return -1
     }
-    
+
     // Verify PE signature
-    if (bytes[peOffset] === 0x50 && // P
-        bytes[peOffset + 1] === 0x45 && // E
-        bytes[peOffset + 2] === 0x00 && // \0
-        bytes[peOffset + 3] === 0x00) { // \0
-      return peOffset;
+    if (
+      bytes[peOffset] === 0x50 && // P
+      bytes[peOffset + 1] === 0x45 && // E
+      bytes[peOffset + 2] === 0x00 && // \0
+      bytes[peOffset + 3] === 0x00
+    ) {
+      // \0
+      return peOffset
     }
-    
-    return -1;
+
+    return -1
   } catch (error) {
-    logger.error('Error in findPEHeaderOffset:', error);
-    return -1;
+    logger.error('Error in findPEHeaderOffset:', error)
+    return -1
   }
 }
 
@@ -134,78 +136,80 @@ function findPEHeaderOffset(bytes) {
  * @returns {Array} Array of nested file findings
  */
 function detectNestedFiles(bytes) {
-  const findings = [];
-  
+  const findings = []
+
   // Scan for ZIP contents
   if (isFileType(bytes, 'ZIP')) {
-    const zipFindings = scanZipContents(bytes);
-    findings.push(...zipFindings);
+    const zipFindings = scanZipContents(bytes)
+    findings.push(...zipFindings)
   }
-  
+
   // Scan for PDF embedded files
   if (isFileType(bytes, 'PDF')) {
-    const pdfFindings = scanPdfContents(bytes);
-    findings.push(...pdfFindings);
+    const pdfFindings = scanPdfContents(bytes)
+    findings.push(...pdfFindings)
   }
-  
+
   // Scan for Office embedded objects
   if (isFileType(bytes, 'OFFICE')) {
-    const officeFindings = scanOfficeContents(bytes);
-    findings.push(...officeFindings);
+    const officeFindings = scanOfficeContents(bytes)
+    findings.push(...officeFindings)
   }
-  
-  return findings;
+
+  return findings
 }
 
 /**
  * Scans ZIP file structure for nested files
  */
 function scanZipContents(bytes) {
-  const findings = [];
-  let offset = 0;
-  
+  const findings = []
+  let offset = 0
+
   while (offset < bytes.length - 4) {
     // Look for local file header signature
     if (matchesPattern(bytes, CONTAINER_TYPES.ZIP.localFileHeaderSignature, offset)) {
       // Parse ZIP local file header
-      const fileNameLength = bytes[offset + 26] | (bytes[offset + 27] << 8);
-      const extraFieldLength = bytes[offset + 28] | (bytes[offset + 29] << 8);
-      const fileName = new TextDecoder().decode(bytes.slice(offset + 30, offset + 30 + fileNameLength));
-      
+      const fileNameLength = bytes[offset + 26] | (bytes[offset + 27] << 8)
+      const extraFieldLength = bytes[offset + 28] | (bytes[offset + 29] << 8)
+      const fileName = new TextDecoder().decode(
+        bytes.slice(offset + 30, offset + 30 + fileNameLength)
+      )
+
       findings.push({
         type: 'ZIP Entry',
         name: fileName,
         offset: offset,
         confidence: 'High'
-      });
-      
+      })
+
       // Skip to next potential header
-      offset += 30 + fileNameLength + extraFieldLength;
+      offset += 30 + fileNameLength + extraFieldLength
     } else {
-      offset++;
+      offset++
     }
   }
-  
-  return findings;
+
+  return findings
 }
 
 /**
  * Scans PDF file structure for embedded files
  */
 function scanPdfContents(bytes) {
-  const findings = [];
-  let offset = 0;
-  
+  const findings = []
+  let offset = 0
+
   while (offset < bytes.length - 6) {
     // Look for stream markers
     if (matchesPattern(bytes, CONTAINER_TYPES.PDF.streamStart, offset)) {
       // Search for endstream marker
-      let endOffset = findPattern(bytes, CONTAINER_TYPES.PDF.streamEnd, offset + 6);
+      let endOffset = findPattern(bytes, CONTAINER_TYPES.PDF.streamEnd, offset + 6)
       if (endOffset !== -1) {
         // Analyze stream content for embedded files
-        const streamContent = bytes.slice(offset + 6, endOffset);
-        const embeddedTypes = detectFileTypes(streamContent);
-        
+        const streamContent = bytes.slice(offset + 6, endOffset)
+        const embeddedTypes = detectFileTypes(streamContent)
+
         if (embeddedTypes.length > 0) {
           findings.push({
             type: 'PDF Embedded Object',
@@ -213,77 +217,86 @@ function scanPdfContents(bytes) {
             size: endOffset - offset,
             embeddedTypes: embeddedTypes,
             confidence: 'Medium'
-          });
+          })
         }
       }
-      offset = endOffset !== -1 ? endOffset : offset + 1;
+      offset = endOffset !== -1 ? endOffset : offset + 1
     } else {
-      offset++;
+      offset++
     }
   }
-  
-  return findings;
+
+  return findings
 }
 
 /**
  * Scans Office Open XML structure for embedded objects
  */
 function scanOfficeContents(bytes) {
-  const findings = [];
-  
+  const findings = []
+
   // Parse ZIP structure first (since OOXML is ZIP-based)
-  const zipEntries = scanZipContents(bytes);
-  
+  const zipEntries = scanZipContents(bytes)
+
   // Look for specific Office components
-  zipEntries.forEach(entry => {
-    if (entry.name.includes('word/embeddings/') || 
-        entry.name.includes('xl/embeddings/') ||
-        entry.name.includes('ppt/embeddings/')) {
+  zipEntries.forEach((entry) => {
+    if (
+      entry.name.includes('word/embeddings/') ||
+      entry.name.includes('xl/embeddings/') ||
+      entry.name.includes('ppt/embeddings/')
+    ) {
       findings.push({
         type: 'Office Embedded Object',
         name: entry.name,
         offset: entry.offset,
         confidence: 'High'
-      });
+      })
     }
-  });
-  
-  return findings;
+  })
+
+  return findings
 }
 
 // Update the analyzePEStructure function
 function analyzePEStructure(bytes) {
   try {
-    const peOffset = findPEHeaderOffset(bytes);
+    const peOffset = findPEHeaderOffset(bytes)
     if (peOffset === -1) {
-      throw new Error('Invalid PE header offset');
+      throw new Error('Invalid PE header offset')
     }
 
-    const hdr = getPEHeaderInfo(bytes);
-    const characteristics = getPECharacteristics(bytes, peOffset);
-    const subsystem = getPESubsystem(bytes, peOffset);
-    const timestamp = getPETimestamp(bytes, peOffset);
+    const hdr = getPEHeaderInfo(bytes)
+    const characteristics = getPECharacteristics(bytes, peOffset)
+    const subsystem = getPESubsystem(bytes, peOffset)
+    const timestamp = getPETimestamp(bytes, peOffset)
 
     const pesMachines = {
-      0x14c: 'x86', 0x8664: 'x86-64', 0x1c0: 'ARM', 0xaa64: 'ARM64',
+      0x14c: 'x86',
+      0x8664: 'x86-64',
+      0x1c0: 'ARM',
+      0xaa64: 'ARM64',
       0x1c4: 'ARMv7 Thumb-2'
-    };
-    const machine = hdr ? (pesMachines[hdr.machine] || `Unknown (0x${hdr.machine.toString(16)})`) : 'Unknown';
-    const is64bit = hdr ? hdr.is64 : false;
+    }
+    const machine = hdr
+      ? pesMachines[hdr.machine] || `Unknown (0x${hdr.machine.toString(16)})`
+      : 'Unknown'
+    const is64bit = hdr ? hdr.is64 : false
 
-    const sectionList = getPESections(bytes);
-    const sectionNames = sectionList.map(s => s.name);
-    const hasRWXSections = sectionList.some(s => s.isRWX);
+    const sectionList = getPESections(bytes)
+    const sectionNames = sectionList.map((s) => s.name)
+    const hasRWXSections = sectionList.some((s) => s.isRWX)
 
-    const importDlls = getPEImports(bytes);
-    const exports = getPEExports(bytes);
-    const security = getPESecurityFeatures(bytes);
-    const certInfo = getPECertificateInfo(bytes);
-    const debugInfo = getPEDebugInfo(bytes);
-    const isNet = getPEIsNet(bytes);
+    const importDlls = getPEImports(bytes)
+    const exports = getPEExports(bytes)
+    const security = getPESecurityFeatures(bytes)
+    const certInfo = getPECertificateInfo(bytes)
+    const debugInfo = getPEDebugInfo(bytes)
+    const isNet = getPEIsNet(bytes)
 
-    const entryPoint = hdr ? `0x${hdr.entryPoint.toString(16).padStart(8, '0')}` : 'Unknown';
-    const imageBase = hdr ? `0x${hdr.imageBase.toString(16).padStart(is64bit ? 16 : 8, '0')}` : 'Unknown';
+    const entryPoint = hdr ? `0x${hdr.entryPoint.toString(16).padStart(8, '0')}` : 'Unknown'
+    const imageBase = hdr
+      ? `0x${hdr.imageBase.toString(16).padStart(is64bit ? 16 : 8, '0')}`
+      : 'Unknown'
 
     return {
       offset: `0x${peOffset.toString(16).padStart(8, '0')}`,
@@ -305,10 +318,10 @@ function analyzePEStructure(bytes) {
       certificateSize: certInfo.certificateSize,
       hasDebugInfo: debugInfo.hasDebugInfo,
       isNet
-    };
+    }
   } catch (error) {
-    logger.error('Error analyzing PE structure:', error);
-    return { error: error.message };
+    logger.error('Error analyzing PE structure:', error)
+    return { error: error.message }
   }
 }
 
@@ -316,55 +329,55 @@ function analyzePEStructure(bytes) {
 function detectSpecificFileType(bytes) {
   try {
     if (!bytes || !bytes.length) {
-      throw new Error('No bytes provided for analysis');
+      throw new Error('No bytes provided for analysis')
     }
 
-    const basicTypes = detectFileTypes(bytes);
-    const enhancedTypes = [];
-    
+    const basicTypes = detectFileTypes(bytes)
+    const enhancedTypes = []
+
     for (const type of basicTypes) {
       const enhanced = {
         ...type,
         details: {},
         nestedFiles: []
-      };
-      
+      }
+
       try {
         if (type.name.includes('Windows Executable (PE)')) {
-          const peDetails = analyzePEStructure(bytes);
-          enhanced.details = peDetails;
-          enhanced.metadata = extractMetadata(bytes, type.name);
+          const peDetails = analyzePEStructure(bytes)
+          enhanced.details = peDetails
+          enhanced.metadata = extractMetadata(bytes, type.name)
         } else if (type.name.includes('Mach-O')) {
-          enhanced.details = analyzeMachOStructure(bytes);
-          enhanced.metadata = extractMetadata(bytes, type.name);
+          enhanced.details = analyzeMachOStructure(bytes)
+          enhanced.metadata = extractMetadata(bytes, type.name)
         } else if (type.name === 'PDF Document') {
-          enhanced.details = analyzePdfStructure(bytes);
+          enhanced.details = analyzePdfStructure(bytes)
         } else if (type.name === 'ZIP Archive') {
-          enhanced.details = analyzeZipStructure(bytes);
+          enhanced.details = analyzeZipStructure(bytes)
         } else if (type.name === 'Office Open XML Document') {
-          enhanced.details = analyzeZipStructure(bytes);
+          enhanced.details = analyzeZipStructure(bytes)
         } else if (type.name === 'PNG Image') {
-          enhanced.details = analyzePngStructure(bytes);
+          enhanced.details = analyzePngStructure(bytes)
         } else if (type.name === 'ELF Binary') {
-          enhanced.details = analyzeElfStructure(bytes);
-          enhanced.metadata = extractMetadata(bytes, type.name);
+          enhanced.details = analyzeElfStructure(bytes)
+          enhanced.metadata = extractMetadata(bytes, type.name)
         } else if (type.name === 'JPEG Image') {
-          enhanced.details = analyzeJpegStructure(bytes);
+          enhanced.details = analyzeJpegStructure(bytes)
         } else if (type.name === 'GIF Image') {
-          enhanced.details = analyzeGifStructure(bytes);
+          enhanced.details = analyzeGifStructure(bytes)
         }
       } catch (error) {
-        logger.error(`Error analyzing ${type.name}:`, error);
-        enhanced.details = { error: error.message };
+        logger.error(`Error analyzing ${type.name}:`, error)
+        enhanced.details = { error: error.message }
       }
-      
-      enhancedTypes.push(enhanced);
+
+      enhancedTypes.push(enhanced)
     }
-    
-    return enhancedTypes;
+
+    return enhancedTypes
   } catch (error) {
-    logger.error('Error in detectSpecificFileType:', error);
-    throw error;
+    logger.error('Error in detectSpecificFileType:', error)
+    throw error
   }
 }
 
@@ -374,7 +387,7 @@ function analyzePdfStructure(bytes) {
     version: extractPdfVersion(bytes),
     encrypted: isPdfEncrypted(bytes),
     objectCount: countPdfObjects(bytes)
-  };
+  }
 }
 
 function analyzeZipStructure(bytes) {
@@ -382,7 +395,7 @@ function analyzeZipStructure(bytes) {
     entryCount: countZipEntries(bytes),
     compressed: isZipCompressed(bytes),
     comment: extractZipComment(bytes)
-  };
+  }
 }
 
 function analyzePngStructure(bytes) {
@@ -390,7 +403,7 @@ function analyzePngStructure(bytes) {
     dimensions: extractPngDimensions(bytes),
     colorType: extractPngColorType(bytes),
     compression: extractPngCompression(bytes)
-  };
+  }
 }
 
 // Add implementation details for these helper functions...
@@ -398,69 +411,69 @@ function analyzePngStructure(bytes) {
 function extractPdfVersion(bytes) {
   try {
     // PDF version is typically in the first line: %PDF-1.x
-    const header = new TextDecoder().decode(bytes.slice(0, 8));
-    const match = header.match(/PDF-(\d+\.\d+)/);
-    return match ? match[1] : 'Unknown';
+    const header = new TextDecoder().decode(bytes.slice(0, 8))
+    const match = header.match(/PDF-(\d+\.\d+)/)
+    return match ? match[1] : 'Unknown'
   } catch (error) {
-    logger.error('Error extracting PDF version:', error);
-    return 'Unknown';
+    logger.error('Error extracting PDF version:', error)
+    return 'Unknown'
   }
 }
 
 function isPdfEncrypted(bytes) {
   try {
     // Look for /Encrypt in the first 1024 bytes
-    const header = new TextDecoder().decode(bytes.slice(0, 1024));
-    return header.includes('/Encrypt');
+    const header = new TextDecoder().decode(bytes.slice(0, 1024))
+    return header.includes('/Encrypt')
   } catch (error) {
-    logger.error('Error checking PDF encryption:', error);
-    return false;
+    logger.error('Error checking PDF encryption:', error)
+    return false
   }
 }
 
 function countPdfObjects(bytes) {
   try {
     // Count occurrences of "obj" in the file
-    let count = 0;
-    const pattern = [0x6F, 0x62, 0x6A]; // "obj"
+    let count = 0
+    const pattern = [0x6f, 0x62, 0x6a] // "obj"
     for (let i = 0; i < bytes.length - 3; i++) {
-      if (matchesPattern(bytes, pattern, i)) count++;
+      if (matchesPattern(bytes, pattern, i)) count++
     }
-    return count;
+    return count
   } catch (error) {
-    logger.error('Error counting PDF objects:', error);
-    return 0;
+    logger.error('Error counting PDF objects:', error)
+    return 0
   }
 }
 
 function countZipEntries(bytes) {
   try {
-    let count = 0;
-    let offset = 0;
+    let count = 0
+    let offset = 0
     while (offset < bytes.length - 4) {
       if (matchesPattern(bytes, CONTAINER_TYPES.ZIP.localFileHeaderSignature, offset)) {
-        count++;
-        offset += 4;
+        count++
+        offset += 4
       } else {
-        offset++;
+        offset++
       }
     }
-    return count;
+    return count
   } catch (error) {
-    logger.error('Error counting ZIP entries:', error);
-    return 0;
+    logger.error('Error counting ZIP entries:', error)
+    return 0
   }
 }
 
 function isZipCompressed(bytes) {
   try {
     // Check compression method in local file header
-    if (bytes.length < 10) return false;
-    const compressionMethod = bytes[8] | (bytes[9] << 8);
-    return compressionMethod !== 0; // 0 = no compression
+    if (bytes.length < 10) return false
+    const compressionMethod = bytes[8] | (bytes[9] << 8)
+    return compressionMethod !== 0 // 0 = no compression
   } catch (error) {
-    logger.error('Error checking ZIP compression:', error);
-    return false;
+    logger.error('Error checking ZIP compression:', error)
+    return false
   }
 }
 
@@ -469,72 +482,72 @@ function extractZipComment(bytes) {
     // Look for end of central directory record
     for (let i = bytes.length - 22; i >= 0; i--) {
       if (matchesPattern(bytes, CONTAINER_TYPES.ZIP.endOfCentralDirSignature, i)) {
-        const commentLength = bytes[i + 20] | (bytes[i + 21] << 8);
+        const commentLength = bytes[i + 20] | (bytes[i + 21] << 8)
         if (commentLength > 0) {
-          return new TextDecoder().decode(bytes.slice(i + 22, i + 22 + commentLength));
+          return new TextDecoder().decode(bytes.slice(i + 22, i + 22 + commentLength))
         }
-        break;
+        break
       }
     }
-    return '';
+    return ''
   } catch (error) {
-    logger.error('Error extracting ZIP comment:', error);
-    return '';
+    logger.error('Error extracting ZIP comment:', error)
+    return ''
   }
 }
 
 function extractPngDimensions(bytes) {
   try {
-    if (bytes.length < 24) return 'Unknown';
-    const width = bytes[16] << 24 | bytes[17] << 16 | bytes[18] << 8 | bytes[19];
-    const height = bytes[20] << 24 | bytes[21] << 16 | bytes[22] << 8 | bytes[23];
-    return `${width}x${height}`;
+    if (bytes.length < 24) return 'Unknown'
+    const width = (bytes[16] << 24) | (bytes[17] << 16) | (bytes[18] << 8) | bytes[19]
+    const height = (bytes[20] << 24) | (bytes[21] << 16) | (bytes[22] << 8) | bytes[23]
+    return `${width}x${height}`
   } catch (error) {
-    logger.error('Error extracting PNG dimensions:', error);
-    return 'Unknown';
+    logger.error('Error extracting PNG dimensions:', error)
+    return 'Unknown'
   }
 }
 
 function extractPngColorType(bytes) {
   try {
-    if (bytes.length < 25) return 'Unknown';
-    const colorType = bytes[25];
+    if (bytes.length < 25) return 'Unknown'
+    const colorType = bytes[25]
     const types = {
       0: 'Grayscale',
       2: 'RGB',
       3: 'Palette',
       4: 'Grayscale+Alpha',
       6: 'RGBA'
-    };
-    return types[colorType] || 'Unknown';
+    }
+    return types[colorType] || 'Unknown'
   } catch (error) {
-    logger.error('Error extracting PNG color type:', error);
-    return 'Unknown';
+    logger.error('Error extracting PNG color type:', error)
+    return 'Unknown'
   }
 }
 
 function extractPngCompression(bytes) {
   try {
-    if (bytes.length < 24) return 'Unknown';
-    const compression = bytes[24];
-    return compression === 0 ? 'Deflate' : 'Unknown';
+    if (bytes.length < 24) return 'Unknown'
+    const compression = bytes[24]
+    return compression === 0 ? 'Deflate' : 'Unknown'
   } catch (error) {
-    logger.error('Error extracting PNG compression:', error);
-    return 'Unknown';
+    logger.error('Error extracting PNG compression:', error)
+    return 'Unknown'
   }
 }
 
 // Add these new analyzer functions
 function analyzeElfStructure(bytes) {
   try {
-    const sectionList = getElfSections(bytes);
-    const sectionNames = sectionList.map(s => s.name).filter(n => n.length > 0);
-    const interpreter = getElfInterpreter(bytes);
-    const dependencies = getElfDependencies(bytes);
-    const { segments, hasRWX } = getElfSegmentPermissions(bytes);
-    const security = getElfSecurityFeatures(bytes);
-    const { rpath, runpath } = getElfRpath(bytes);
-    const isStripped = getElfIsStripped(bytes);
+    const sectionList = getElfSections(bytes)
+    const sectionNames = sectionList.map((s) => s.name).filter((n) => n.length > 0)
+    const interpreter = getElfInterpreter(bytes)
+    const dependencies = getElfDependencies(bytes)
+    const { segments, hasRWX } = getElfSegmentPermissions(bytes)
+    const security = getElfSecurityFeatures(bytes)
+    const { rpath, runpath } = getElfRpath(bytes)
+    const isStripped = getElfIsStripped(bytes)
 
     return {
       class: getElfClass(bytes),
@@ -555,10 +568,10 @@ function analyzeElfStructure(bytes) {
       isStripped,
       rpath,
       runpath
-    };
+    }
   } catch (error) {
-    logger.error('Error analyzing ELF structure:', error);
-    return { error: 'Failed to analyze ELF structure' };
+    logger.error('Error analyzing ELF structure:', error)
+    return { error: 'Failed to analyze ELF structure' }
   }
 }
 
@@ -570,10 +583,10 @@ function analyzeJpegStructure(bytes) {
       compression: getJpegCompression(bytes),
       colorSpace: getJpegColorSpace(bytes),
       thumbnails: checkJpegThumbnails(bytes)
-    };
+    }
   } catch (error) {
-    logger.error('Error analyzing JPEG structure:', error);
-    return { error: 'Failed to analyze JPEG structure' };
+    logger.error('Error analyzing JPEG structure:', error)
+    return { error: 'Failed to analyze JPEG structure' }
   }
 }
 
@@ -585,180 +598,215 @@ function analyzeGifStructure(bytes) {
       frameCount: countGifFrames(bytes),
       hasAnimation: checkGifAnimation(bytes),
       colorDepth: getGifColorDepth(bytes)
-    };
+    }
   } catch (error) {
-    logger.error('Error analyzing GIF structure:', error);
-    return { error: 'Failed to analyze GIF structure' };
+    logger.error('Error analyzing GIF structure:', error)
+    return { error: 'Failed to analyze GIF structure' }
   }
 }
 
 // ── ELF Core Utilities ──
 
-function isElfBigEndian(bytes) { return bytes[5] === 2; }
-function isElf64bit(bytes) { return bytes[4] === 2; }
+function isElfBigEndian(bytes) {
+  return bytes[5] === 2
+}
+function isElf64bit(bytes) {
+  return bytes[4] === 2
+}
 
 function readElfUint16(bytes, offset, bigEndian) {
-  if (offset + 2 > bytes.length) return 0;
-  if (bigEndian) return (bytes[offset] << 8) | bytes[offset + 1];
-  return bytes[offset] | (bytes[offset + 1] << 8);
+  if (offset + 2 > bytes.length) return 0
+  if (bigEndian) return (bytes[offset] << 8) | bytes[offset + 1]
+  return bytes[offset] | (bytes[offset + 1] << 8)
 }
 
 function readElfUint32(bytes, offset, bigEndian) {
-  if (offset + 4 > bytes.length) return 0;
+  if (offset + 4 > bytes.length) return 0
   if (bigEndian) {
-    return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
-            (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+    return (
+      ((bytes[offset] << 24) |
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3]) >>>
+      0
+    )
   }
-  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
-          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  return (
+    (bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)) >>>
+    0
+  )
 }
 
 function readElfUint64(bytes, offset, bigEndian) {
-  if (offset + 8 > bytes.length) return 0;
-  const lo = readElfUint32(bytes, offset, bigEndian);
-  const hi = readElfUint32(bytes, offset + 4, bigEndian);
-  if (bigEndian) return hi + lo * 0x100000000;
-  return lo + hi * 0x100000000;
+  if (offset + 8 > bytes.length) return 0
+  const lo = readElfUint32(bytes, offset, bigEndian)
+  const hi = readElfUint32(bytes, offset + 4, bigEndian)
+  if (bigEndian) return hi + lo * 0x100000000
+  return lo + hi * 0x100000000
 }
 
 // ── PE Core Utilities (always little-endian) ──
 
 function readPEUint16(bytes, offset) {
-  if (offset + 2 > bytes.length) return 0;
-  return bytes[offset] | (bytes[offset + 1] << 8);
+  if (offset + 2 > bytes.length) return 0
+  return bytes[offset] | (bytes[offset + 1] << 8)
 }
 
 function readPEUint32(bytes, offset) {
-  if (offset + 4 > bytes.length) return 0;
-  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
-          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  if (offset + 4 > bytes.length) return 0
+  return (
+    (bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)) >>>
+    0
+  )
 }
 
 function readPEUint64(bytes, offset) {
-  if (offset + 8 > bytes.length) return 0;
-  const lo = readPEUint32(bytes, offset);
-  const hi = readPEUint32(bytes, offset + 4);
-  return lo + hi * 0x100000000;
+  if (offset + 8 > bytes.length) return 0
+  const lo = readPEUint32(bytes, offset)
+  const hi = readPEUint32(bytes, offset + 4)
+  return lo + hi * 0x100000000
 }
 
 function isPE64bit(bytes, peOffset) {
-  const magic = readPEUint16(bytes, peOffset + 24);
-  return magic === 0x20b; // PE32+ = 0x20b, PE32 = 0x10b
+  const magic = readPEUint16(bytes, peOffset + 24)
+  return magic === 0x20b // PE32+ = 0x20b, PE32 = 0x10b
 }
 
 function getPEHeaderInfo(bytes) {
   try {
-    const peOffset = findPEHeaderOffset(bytes);
-    if (peOffset === -1) return null;
+    const peOffset = findPEHeaderOffset(bytes)
+    if (peOffset === -1) return null
 
-    const is64 = isPE64bit(bytes, peOffset);
-    const coffBase = peOffset + 4;
-    const optBase = peOffset + 24;
+    const is64 = isPE64bit(bytes, peOffset)
+    const coffBase = peOffset + 4
+    const optBase = peOffset + 24
 
-    const machine = readPEUint16(bytes, coffBase);
-    const numberOfSections = readPEUint16(bytes, coffBase + 2);
-    const timeDateStamp = readPEUint32(bytes, coffBase + 4);
-    const characteristics = readPEUint16(bytes, coffBase + 18);
+    const machine = readPEUint16(bytes, coffBase)
+    const numberOfSections = readPEUint16(bytes, coffBase + 2)
+    const timeDateStamp = readPEUint32(bytes, coffBase + 4)
+    const characteristics = readPEUint16(bytes, coffBase + 18)
 
-    const optMagic = readPEUint16(bytes, optBase);
-    const entryPoint = readPEUint32(bytes, optBase + 16);
-    const imageBase = is64
-      ? readPEUint64(bytes, optBase + 24)
-      : readPEUint32(bytes, optBase + 28);
-    const sectionAlignment = readPEUint32(bytes, optBase + 32);
-    const fileAlignment = readPEUint32(bytes, optBase + 36);
-    const subsystem = readPEUint16(bytes, optBase + 68);
-    const dllCharacteristics = readPEUint16(bytes, optBase + 70);
-    const numberOfRvaAndSizes = readPEUint32(bytes, is64 ? optBase + 108 : optBase + 92);
+    const _optMagic = readPEUint16(bytes, optBase)
+    const entryPoint = readPEUint32(bytes, optBase + 16)
+    const imageBase = is64 ? readPEUint64(bytes, optBase + 24) : readPEUint32(bytes, optBase + 28)
+    const sectionAlignment = readPEUint32(bytes, optBase + 32)
+    const fileAlignment = readPEUint32(bytes, optBase + 36)
+    const subsystem = readPEUint16(bytes, optBase + 68)
+    const dllCharacteristics = readPEUint16(bytes, optBase + 70)
+    const numberOfRvaAndSizes = readPEUint32(bytes, is64 ? optBase + 108 : optBase + 92)
 
-    const dataDirectoryOffset = is64 ? optBase + 112 : optBase + 96;
-    const optionalHeaderSize = readPEUint16(bytes, coffBase + 16);
-    const sectionHeadersOffset = optBase + optionalHeaderSize;
+    const dataDirectoryOffset = is64 ? optBase + 112 : optBase + 96
+    const optionalHeaderSize = readPEUint16(bytes, coffBase + 16)
+    const sectionHeadersOffset = optBase + optionalHeaderSize
 
     return {
-      peOffset, is64, machine, numberOfSections, timeDateStamp,
-      characteristics, entryPoint, imageBase, sectionAlignment,
-      fileAlignment, subsystem, dllCharacteristics,
-      numberOfRvaAndSizes, dataDirectoryOffset, sectionHeadersOffset
-    };
+      peOffset,
+      is64,
+      machine,
+      numberOfSections,
+      timeDateStamp,
+      characteristics,
+      entryPoint,
+      imageBase,
+      sectionAlignment,
+      fileAlignment,
+      subsystem,
+      dllCharacteristics,
+      numberOfRvaAndSizes,
+      dataDirectoryOffset,
+      sectionHeadersOffset
+    }
   } catch (error) {
-    logger.error('Error in getPEHeaderInfo:', error);
-    return null;
+    logger.error('Error in getPEHeaderInfo:', error)
+    return null
   }
 }
 
 function rvaToFileOffset(bytes, hdr, rva) {
-  if (rva === 0) return -1;
+  if (rva === 0) return -1
   for (let i = 0; i < hdr.numberOfSections; i++) {
-    const secOff = hdr.sectionHeadersOffset + i * 40;
-    if (secOff + 40 > bytes.length) break;
-    const virtualAddress = readPEUint32(bytes, secOff + 12);
-    const sizeOfRawData = readPEUint32(bytes, secOff + 16);
-    const pointerToRawData = readPEUint32(bytes, secOff + 20);
-    const virtualSize = readPEUint32(bytes, secOff + 8);
-    const sectionSize = Math.max(virtualSize, sizeOfRawData);
+    const secOff = hdr.sectionHeadersOffset + i * 40
+    if (secOff + 40 > bytes.length) break
+    const virtualAddress = readPEUint32(bytes, secOff + 12)
+    const sizeOfRawData = readPEUint32(bytes, secOff + 16)
+    const pointerToRawData = readPEUint32(bytes, secOff + 20)
+    const virtualSize = readPEUint32(bytes, secOff + 8)
+    const sectionSize = Math.max(virtualSize, sizeOfRawData)
     if (rva >= virtualAddress && rva < virtualAddress + sectionSize) {
-      return pointerToRawData + (rva - virtualAddress);
+      return pointerToRawData + (rva - virtualAddress)
     }
   }
-  return -1;
+  return -1
 }
 
 function getPEDataDirectories(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return [];
-    const dirs = [];
-    const count = Math.min(hdr.numberOfRvaAndSizes, 16);
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return []
+    const dirs = []
+    const count = Math.min(hdr.numberOfRvaAndSizes, 16)
     for (let i = 0; i < count; i++) {
-      const off = hdr.dataDirectoryOffset + i * 8;
-      if (off + 8 > bytes.length) break;
+      const off = hdr.dataDirectoryOffset + i * 8
+      if (off + 8 > bytes.length) break
       dirs.push({
         rva: readPEUint32(bytes, off),
         size: readPEUint32(bytes, off + 4)
-      });
+      })
     }
-    return dirs;
+    return dirs
   } catch (error) {
-    logger.error('Error in getPEDataDirectories:', error);
-    return [];
+    logger.error('Error in getPEDataDirectories:', error)
+    return []
   }
 }
 
 function getPESections(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return [];
-    const sections = [];
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return []
+    const sections = []
     for (let i = 0; i < hdr.numberOfSections; i++) {
-      const off = hdr.sectionHeadersOffset + i * 40;
-      if (off + 40 > bytes.length) break;
+      const off = hdr.sectionHeadersOffset + i * 40
+      if (off + 40 > bytes.length) break
 
-      let end = off;
-      while (end < off + 8 && end < bytes.length && bytes[end] !== 0) end++;
-      const name = new TextDecoder().decode(bytes.slice(off, end));
+      let end = off
+      while (end < off + 8 && end < bytes.length && bytes[end] !== 0) end++
+      const name = new TextDecoder().decode(bytes.slice(off, end))
 
-      const virtualSize = readPEUint32(bytes, off + 8);
-      const virtualAddress = readPEUint32(bytes, off + 12);
-      const sizeOfRawData = readPEUint32(bytes, off + 16);
-      const pointerToRawData = readPEUint32(bytes, off + 20);
-      const chars = readPEUint32(bytes, off + 36);
+      const virtualSize = readPEUint32(bytes, off + 8)
+      const virtualAddress = readPEUint32(bytes, off + 12)
+      const sizeOfRawData = readPEUint32(bytes, off + 16)
+      const pointerToRawData = readPEUint32(bytes, off + 20)
+      const chars = readPEUint32(bytes, off + 36)
 
-      const r = (chars & 0x40000000) ? 'r' : '-';
-      const w = (chars & 0x80000000) ? 'w' : '-';
-      const x = (chars & 0x20000000) ? 'x' : '-';
-      const flags = r + w + x;
-      const isRWX = (chars & 0x40000000) !== 0 && (chars & 0x80000000) !== 0 && (chars & 0x20000000) !== 0;
+      const r = chars & 0x40000000 ? 'r' : '-'
+      const w = chars & 0x80000000 ? 'w' : '-'
+      const x = chars & 0x20000000 ? 'x' : '-'
+      const flags = r + w + x
+      const isRWX =
+        (chars & 0x40000000) !== 0 && (chars & 0x80000000) !== 0 && (chars & 0x20000000) !== 0
 
       sections.push({
-        name, virtualSize, virtualAddress, sizeOfRawData,
-        pointerToRawData, characteristics: chars, flags, isRWX
-      });
+        name,
+        virtualSize,
+        virtualAddress,
+        sizeOfRawData,
+        pointerToRawData,
+        characteristics: chars,
+        flags,
+        isRWX
+      })
     }
-    return sections;
+    return sections
   } catch (error) {
-    logger.error('Error in getPESections:', error);
-    return [];
+    logger.error('Error in getPESections:', error)
+    return []
   }
 }
 
@@ -766,9 +814,18 @@ function getPESections(bytes) {
 
 function getPESecurityFeatures(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return { aslr: false, highEntropyVA: false, dep: false, cfg: false, noSEH: false, forceIntegrity: false, appContainer: false };
-    const dc = hdr.dllCharacteristics;
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr)
+      return {
+        aslr: false,
+        highEntropyVA: false,
+        dep: false,
+        cfg: false,
+        noSEH: false,
+        forceIntegrity: false,
+        appContainer: false
+      }
+    const dc = hdr.dllCharacteristics
     return {
       aslr: (dc & 0x0040) !== 0,
       highEntropyVA: (dc & 0x0020) !== 0,
@@ -777,145 +834,154 @@ function getPESecurityFeatures(bytes) {
       noSEH: (dc & 0x0400) !== 0,
       forceIntegrity: (dc & 0x0080) !== 0,
       appContainer: (dc & 0x1000) !== 0
-    };
+    }
   } catch (error) {
-    logger.error('Error in getPESecurityFeatures:', error);
-    return { aslr: false, highEntropyVA: false, dep: false, cfg: false, noSEH: false, forceIntegrity: false, appContainer: false };
+    logger.error('Error in getPESecurityFeatures:', error)
+    return {
+      aslr: false,
+      highEntropyVA: false,
+      dep: false,
+      cfg: false,
+      noSEH: false,
+      forceIntegrity: false,
+      appContainer: false
+    }
   }
 }
 
-function getPESectionPermissions(bytes) {
+function _getPESectionPermissions(bytes) {
   try {
-    const sections = getPESections(bytes);
-    const hasRWX = sections.some(s => s.isRWX);
-    return { sections, hasRWX };
+    const sections = getPESections(bytes)
+    const hasRWX = sections.some((s) => s.isRWX)
+    return { sections, hasRWX }
   } catch (error) {
-    logger.error('Error in getPESectionPermissions:', error);
-    return { sections: [], hasRWX: false };
+    logger.error('Error in getPESectionPermissions:', error)
+    return { sections: [], hasRWX: false }
   }
 }
 
 function getPEImports(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return [];
-    const dirs = getPEDataDirectories(bytes);
-    if (dirs.length < 2 || dirs[1].rva === 0) return [];
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return []
+    const dirs = getPEDataDirectories(bytes)
+    if (dirs.length < 2 || dirs[1].rva === 0) return []
 
-    const importRVA = dirs[1].rva;
-    const importFileOffset = rvaToFileOffset(bytes, hdr, importRVA);
-    if (importFileOffset < 0 || importFileOffset >= bytes.length) return [];
+    const importRVA = dirs[1].rva
+    const importFileOffset = rvaToFileOffset(bytes, hdr, importRVA)
+    if (importFileOffset < 0 || importFileOffset >= bytes.length) return []
 
-    const dlls = [];
-    let offset = importFileOffset;
+    const dlls = []
+    let offset = importFileOffset
     while (offset + 20 <= bytes.length) {
-      const nameRVA = readPEUint32(bytes, offset + 12);
-      const firstThunk = readPEUint32(bytes, offset + 16);
-      if (nameRVA === 0 && firstThunk === 0) break;
+      const nameRVA = readPEUint32(bytes, offset + 12)
+      const firstThunk = readPEUint32(bytes, offset + 16)
+      if (nameRVA === 0 && firstThunk === 0) break
 
       if (nameRVA !== 0) {
-        const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA);
+        const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA)
         if (nameOffset >= 0 && nameOffset < bytes.length) {
-          let end = nameOffset;
-          while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++;
-          const dllName = new TextDecoder().decode(bytes.slice(nameOffset, end));
-          if (dllName.length > 0) dlls.push(dllName);
+          let end = nameOffset
+          while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++
+          const dllName = new TextDecoder().decode(bytes.slice(nameOffset, end))
+          if (dllName.length > 0) dlls.push(dllName)
         }
       }
-      offset += 20;
+      offset += 20
     }
-    return dlls;
+    return dlls
   } catch (error) {
-    logger.error('Error in getPEImports:', error);
-    return [];
+    logger.error('Error in getPEImports:', error)
+    return []
   }
 }
 
 function getPEExports(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return null;
-    const dirs = getPEDataDirectories(bytes);
-    if (dirs.length < 1 || dirs[0].rva === 0) return null;
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return null
+    const dirs = getPEDataDirectories(bytes)
+    if (dirs.length < 1 || dirs[0].rva === 0) return null
 
-    const exportRVA = dirs[0].rva;
-    const exportOffset = rvaToFileOffset(bytes, hdr, exportRVA);
-    if (exportOffset < 0 || exportOffset + 40 > bytes.length) return null;
+    const exportRVA = dirs[0].rva
+    const exportOffset = rvaToFileOffset(bytes, hdr, exportRVA)
+    if (exportOffset < 0 || exportOffset + 40 > bytes.length) return null
 
-    const nameRVA = readPEUint32(bytes, exportOffset + 12);
-    const numberOfFunctions = readPEUint32(bytes, exportOffset + 20);
-    const numberOfNames = readPEUint32(bytes, exportOffset + 24);
+    const nameRVA = readPEUint32(bytes, exportOffset + 12)
+    const numberOfFunctions = readPEUint32(bytes, exportOffset + 20)
+    const numberOfNames = readPEUint32(bytes, exportOffset + 24)
 
-    let dllName = '';
+    let dllName = ''
     if (nameRVA !== 0) {
-      const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA);
+      const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA)
       if (nameOffset >= 0 && nameOffset < bytes.length) {
-        let end = nameOffset;
-        while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++;
-        dllName = new TextDecoder().decode(bytes.slice(nameOffset, end));
+        let end = nameOffset
+        while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++
+        dllName = new TextDecoder().decode(bytes.slice(nameOffset, end))
       }
     }
 
-    return { dllName, numberOfFunctions, numberOfNames };
+    return { dllName, numberOfFunctions, numberOfNames }
   } catch (error) {
-    logger.error('Error in getPEExports:', error);
-    return null;
+    logger.error('Error in getPEExports:', error)
+    return null
   }
 }
 
 function getPECertificateInfo(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return { hasCertificate: false, certificateSize: 0 };
-    const dirs = getPEDataDirectories(bytes);
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return { hasCertificate: false, certificateSize: 0 }
+    const dirs = getPEDataDirectories(bytes)
     // Certificate table is Data Directory[4] and uses file offset, not RVA
     if (dirs.length < 5 || dirs[4].rva === 0 || dirs[4].size === 0) {
-      return { hasCertificate: false, certificateSize: 0 };
+      return { hasCertificate: false, certificateSize: 0 }
     }
-    return { hasCertificate: true, certificateSize: dirs[4].size };
+    return { hasCertificate: true, certificateSize: dirs[4].size }
   } catch (error) {
-    logger.error('Error in getPECertificateInfo:', error);
-    return { hasCertificate: false, certificateSize: 0 };
+    logger.error('Error in getPECertificateInfo:', error)
+    return { hasCertificate: false, certificateSize: 0 }
   }
 }
 
 function getPEDebugInfo(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return { hasDebugInfo: false };
-    const dirs = getPEDataDirectories(bytes);
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return { hasDebugInfo: false }
+    const dirs = getPEDataDirectories(bytes)
     if (dirs.length < 7 || dirs[6].rva === 0 || dirs[6].size === 0) {
-      return { hasDebugInfo: false };
+      return { hasDebugInfo: false }
     }
-    return { hasDebugInfo: true };
+    return { hasDebugInfo: true }
   } catch (error) {
-    logger.error('Error in getPEDebugInfo:', error);
-    return { hasDebugInfo: false };
+    logger.error('Error in getPEDebugInfo:', error)
+    return { hasDebugInfo: false }
   }
 }
 
 function getPEIsNet(bytes) {
   try {
-    const hdr = getPEHeaderInfo(bytes);
-    if (!hdr) return false;
-    const dirs = getPEDataDirectories(bytes);
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return false
+    const dirs = getPEDataDirectories(bytes)
     if (dirs.length < 15 || dirs[14].rva === 0 || dirs[14].size === 0) {
-      return false;
+      return false
     }
-    return true;
+    return true
   } catch (error) {
-    logger.error('Error in getPEIsNet:', error);
-    return false;
+    logger.error('Error in getPEIsNet:', error)
+    return false
   }
 }
 
 function getElfHeaderInfo(bytes) {
-  const is64 = isElf64bit(bytes);
-  const bigEndian = isElfBigEndian(bytes);
+  const is64 = isElf64bit(bytes)
+  const bigEndian = isElfBigEndian(bytes)
   if (is64) {
-    if (bytes.length < 64) return null;
+    if (bytes.length < 64) return null
     return {
-      is64, bigEndian,
+      is64,
+      bigEndian,
       type: readElfUint16(bytes, 16, bigEndian),
       machine: readElfUint16(bytes, 18, bigEndian),
       entry: readElfUint64(bytes, 24, bigEndian),
@@ -927,11 +993,12 @@ function getElfHeaderInfo(bytes) {
       shentsize: readElfUint16(bytes, 58, bigEndian),
       shnum: readElfUint16(bytes, 60, bigEndian),
       shstrndx: readElfUint16(bytes, 62, bigEndian)
-    };
+    }
   }
-  if (bytes.length < 52) return null;
+  if (bytes.length < 52) return null
   return {
-    is64, bigEndian,
+    is64,
+    bigEndian,
     type: readElfUint16(bytes, 16, bigEndian),
     machine: readElfUint16(bytes, 18, bigEndian),
     entry: readElfUint32(bytes, 24, bigEndian),
@@ -943,41 +1010,49 @@ function getElfHeaderInfo(bytes) {
     shentsize: readElfUint16(bytes, 46, bigEndian),
     shnum: readElfUint16(bytes, 48, bigEndian),
     shstrndx: readElfUint16(bytes, 50, bigEndian)
-  };
+  }
 }
 
 // ── ELF Program Header Helpers ──
 
 const ELF_PT_NAMES = {
-  0: 'PT_NULL', 1: 'PT_LOAD', 2: 'PT_DYNAMIC', 3: 'PT_INTERP',
-  4: 'PT_NOTE', 5: 'PT_SHLIB', 6: 'PT_PHDR', 7: 'PT_TLS',
-  0x6474E550: 'PT_GNU_EH_FRAME', 0x6474E551: 'PT_GNU_STACK',
-  0x6474E552: 'PT_GNU_RELRO', 0x6474E553: 'PT_GNU_PROPERTY'
-};
+  0: 'PT_NULL',
+  1: 'PT_LOAD',
+  2: 'PT_DYNAMIC',
+  3: 'PT_INTERP',
+  4: 'PT_NOTE',
+  5: 'PT_SHLIB',
+  6: 'PT_PHDR',
+  7: 'PT_TLS',
+  0x6474e550: 'PT_GNU_EH_FRAME',
+  0x6474e551: 'PT_GNU_STACK',
+  0x6474e552: 'PT_GNU_RELRO',
+  0x6474e553: 'PT_GNU_PROPERTY'
+}
 
 function getElfProgramHeaders(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr || hdr.phoff === 0 || hdr.phnum === 0) return [];
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr || hdr.phoff === 0 || hdr.phnum === 0) return []
 
-    const headers = [];
+    const headers = []
     for (let i = 0; i < hdr.phnum; i++) {
-      const off = hdr.phoff + i * hdr.phentsize;
-      if (off + hdr.phentsize > bytes.length) break;
+      const off = hdr.phoff + i * hdr.phentsize
+      if (off + hdr.phentsize > bytes.length) break
 
-      let pType, pFlags, pOffset, pFilesz, pMemsz;
+      let pType, pFlags, pOffset, pFilesz, pMemsz
       if (hdr.is64) {
-        pType = readElfUint32(bytes, off, hdr.bigEndian);
-        pFlags = readElfUint32(bytes, off + 4, hdr.bigEndian);
-        pOffset = readElfUint64(bytes, off + 8, hdr.bigEndian);
-        pFilesz = readElfUint64(bytes, off + 32, hdr.bigEndian);
-        pMemsz = readElfUint64(bytes, off + 40, hdr.bigEndian);
+        pType = readElfUint32(bytes, off, hdr.bigEndian)
+        pFlags = readElfUint32(bytes, off + 4, hdr.bigEndian)
+        pOffset = readElfUint64(bytes, off + 8, hdr.bigEndian)
+        pFilesz = readElfUint64(bytes, off + 32, hdr.bigEndian)
+        pMemsz = readElfUint64(bytes, off + 40, hdr.bigEndian)
       } else {
-        pType = readElfUint32(bytes, off, hdr.bigEndian);
-        pOffset = readElfUint32(bytes, off + 4, hdr.bigEndian);
-        pFilesz = readElfUint32(bytes, off + 16, hdr.bigEndian);
-        pMemsz = readElfUint32(bytes, off + 20, hdr.bigEndian);
-        pFlags = readElfUint32(bytes, off + 24, hdr.bigEndian);
+        pType = readElfUint32(bytes, off, hdr.bigEndian)
+        pOffset = readElfUint32(bytes, off + 4, hdr.bigEndian)
+        pFilesz = readElfUint32(bytes, off + 16, hdr.bigEndian)
+        pMemsz = readElfUint32(bytes, off + 20, hdr.bigEndian)
+        pFlags = readElfUint32(bytes, off + 24, hdr.bigEndian)
       }
 
       headers.push({
@@ -987,62 +1062,62 @@ function getElfProgramHeaders(bytes) {
         offset: pOffset,
         filesz: pFilesz,
         memsz: pMemsz
-      });
+      })
     }
-    return headers;
+    return headers
   } catch (error) {
-    logger.error('Error getting ELF program headers:', error);
-    return [];
+    logger.error('Error getting ELF program headers:', error)
+    return []
   }
 }
 
 function getElfSections(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr || hdr.shoff === 0 || hdr.shnum === 0) return [];
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr || hdr.shoff === 0 || hdr.shnum === 0) return []
 
     // Read section name string table (.shstrtab)
-    let strtabData = null;
+    let strtabData = null
     if (hdr.shstrndx > 0 && hdr.shstrndx < hdr.shnum) {
-      const strtabOff = hdr.shoff + hdr.shstrndx * hdr.shentsize;
+      const strtabOff = hdr.shoff + hdr.shstrndx * hdr.shentsize
       if (strtabOff + hdr.shentsize <= bytes.length) {
-        let shOffset, shSize;
+        let shOffset, shSize
         if (hdr.is64) {
-          shOffset = readElfUint64(bytes, strtabOff + 24, hdr.bigEndian);
-          shSize = readElfUint64(bytes, strtabOff + 32, hdr.bigEndian);
+          shOffset = readElfUint64(bytes, strtabOff + 24, hdr.bigEndian)
+          shSize = readElfUint64(bytes, strtabOff + 32, hdr.bigEndian)
         } else {
-          shOffset = readElfUint32(bytes, strtabOff + 16, hdr.bigEndian);
-          shSize = readElfUint32(bytes, strtabOff + 20, hdr.bigEndian);
+          shOffset = readElfUint32(bytes, strtabOff + 16, hdr.bigEndian)
+          shSize = readElfUint32(bytes, strtabOff + 20, hdr.bigEndian)
         }
         if (shOffset + shSize <= bytes.length) {
-          strtabData = bytes.slice(shOffset, shOffset + shSize);
+          strtabData = bytes.slice(shOffset, shOffset + shSize)
         }
       }
     }
 
     const readSectionName = (nameIdx) => {
-      if (!strtabData || nameIdx >= strtabData.length) return '';
-      let end = nameIdx;
-      while (end < strtabData.length && strtabData[end] !== 0) end++;
-      return new TextDecoder().decode(strtabData.slice(nameIdx, end));
-    };
+      if (!strtabData || nameIdx >= strtabData.length) return ''
+      let end = nameIdx
+      while (end < strtabData.length && strtabData[end] !== 0) end++
+      return new TextDecoder().decode(strtabData.slice(nameIdx, end))
+    }
 
-    const sections = [];
+    const sections = []
     for (let i = 0; i < hdr.shnum; i++) {
-      const off = hdr.shoff + i * hdr.shentsize;
-      if (off + hdr.shentsize > bytes.length) break;
+      const off = hdr.shoff + i * hdr.shentsize
+      if (off + hdr.shentsize > bytes.length) break
 
-      const shName = readElfUint32(bytes, off, hdr.bigEndian);
-      const shType = readElfUint32(bytes, off + 4, hdr.bigEndian);
-      let shFlags, shAddr, shSize;
+      const shName = readElfUint32(bytes, off, hdr.bigEndian)
+      const shType = readElfUint32(bytes, off + 4, hdr.bigEndian)
+      let shFlags, shAddr, shSize
       if (hdr.is64) {
-        shFlags = readElfUint64(bytes, off + 8, hdr.bigEndian);
-        shAddr = readElfUint64(bytes, off + 16, hdr.bigEndian);
-        shSize = readElfUint64(bytes, off + 32, hdr.bigEndian);
+        shFlags = readElfUint64(bytes, off + 8, hdr.bigEndian)
+        shAddr = readElfUint64(bytes, off + 16, hdr.bigEndian)
+        shSize = readElfUint64(bytes, off + 32, hdr.bigEndian)
       } else {
-        shFlags = readElfUint32(bytes, off + 8, hdr.bigEndian);
-        shAddr = readElfUint32(bytes, off + 12, hdr.bigEndian);
-        shSize = readElfUint32(bytes, off + 20, hdr.bigEndian);
+        shFlags = readElfUint32(bytes, off + 8, hdr.bigEndian)
+        shAddr = readElfUint32(bytes, off + 12, hdr.bigEndian)
+        shSize = readElfUint32(bytes, off + 20, hdr.bigEndian)
       }
 
       sections.push({
@@ -1051,219 +1126,224 @@ function getElfSections(bytes) {
         flags: shFlags,
         addr: shAddr,
         size: shSize
-      });
+      })
     }
-    return sections;
+    return sections
   } catch (error) {
-    logger.error('Error getting ELF sections:', error);
-    return [];
+    logger.error('Error getting ELF sections:', error)
+    return []
   }
 }
 
 function getElfDynamicEntries(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr) return { entries: [], strtab: null };
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr) return { entries: [], strtab: null }
 
     // Find PT_DYNAMIC program header
-    const phdrs = getElfProgramHeaders(bytes);
-    const dynPhdr = phdrs.find(p => p.typeValue === 2); // PT_DYNAMIC
-    if (!dynPhdr || dynPhdr.offset + dynPhdr.filesz > bytes.length) return { entries: [], strtab: null };
+    const phdrs = getElfProgramHeaders(bytes)
+    const dynPhdr = phdrs.find((p) => p.typeValue === 2) // PT_DYNAMIC
+    if (!dynPhdr || dynPhdr.offset + dynPhdr.filesz > bytes.length)
+      return { entries: [], strtab: null }
 
     // Read all dynamic entries
-    const entries = [];
-    const entrySize = hdr.is64 ? 16 : 8;
-    let off = dynPhdr.offset;
-    const end = dynPhdr.offset + dynPhdr.filesz;
+    const entries = []
+    const entrySize = hdr.is64 ? 16 : 8
+    let off = dynPhdr.offset
+    const end = dynPhdr.offset + dynPhdr.filesz
 
     while (off + entrySize <= end && off + entrySize <= bytes.length) {
-      let tag, val;
+      let tag, val
       if (hdr.is64) {
-        tag = readElfUint64(bytes, off, hdr.bigEndian);
-        val = readElfUint64(bytes, off + 8, hdr.bigEndian);
+        tag = readElfUint64(bytes, off, hdr.bigEndian)
+        val = readElfUint64(bytes, off + 8, hdr.bigEndian)
       } else {
-        tag = readElfUint32(bytes, off, hdr.bigEndian);
-        val = readElfUint32(bytes, off + 4, hdr.bigEndian);
+        tag = readElfUint32(bytes, off, hdr.bigEndian)
+        val = readElfUint32(bytes, off + 4, hdr.bigEndian)
       }
-      if (tag === 0) break; // DT_NULL
-      entries.push({ tag, val });
-      off += entrySize;
+      if (tag === 0) break // DT_NULL
+      entries.push({ tag, val })
+      off += entrySize
     }
 
     // Find DT_STRTAB (tag 5) offset and DT_STRSZ (tag 10) for string resolution
-    const strtabEntry = entries.find(e => e.tag === 5);
-    const strszEntry = entries.find(e => e.tag === 10);
-    let strtab = null;
+    const strtabEntry = entries.find((e) => e.tag === 5)
+    const strszEntry = entries.find((e) => e.tag === 10)
+    let strtab = null
 
     if (strtabEntry) {
       // DT_STRTAB is a virtual address; we need to find which PT_LOAD segment maps it
-      const strtabVA = strtabEntry.val;
-      const strsz = strszEntry ? strszEntry.val : 4096; // fallback size
-      const loadSeg = phdrs.find(p => p.typeValue === 1 && strtabVA >= p.offset &&
-                                       strtabVA < p.offset + p.filesz);
+      const strtabVA = strtabEntry.val
+      const strsz = strszEntry ? strszEntry.val : 4096 // fallback size
+      const _loadSeg = phdrs.find(
+        (p) => p.typeValue === 1 && strtabVA >= p.offset && strtabVA < p.offset + p.filesz
+      )
       // Try direct file offset first (works when VA == file offset, common for non-PIE)
       // Then try mapping through PT_LOAD segments
-      let fileOffset = null;
+      let fileOffset = null
       for (const seg of phdrs) {
-        if (seg.typeValue !== 1) continue; // PT_LOAD only
+        if (seg.typeValue !== 1) continue // PT_LOAD only
         // VA range for this segment: [seg.vaddr, seg.vaddr + seg.filesz)
         // We need the vaddr, which we parse fresh here
-        const segOff = hdr.phoff + phdrs.indexOf(seg) * hdr.phentsize;
-        let vaddr;
+        const segOff = hdr.phoff + phdrs.indexOf(seg) * hdr.phentsize
+        let vaddr
         if (hdr.is64) {
-          vaddr = readElfUint64(bytes, segOff + 16, hdr.bigEndian);
+          vaddr = readElfUint64(bytes, segOff + 16, hdr.bigEndian)
         } else {
-          vaddr = readElfUint32(bytes, segOff + 8, hdr.bigEndian);
+          vaddr = readElfUint32(bytes, segOff + 8, hdr.bigEndian)
         }
         if (strtabVA >= vaddr && strtabVA < vaddr + seg.filesz) {
-          fileOffset = seg.offset + (strtabVA - vaddr);
-          break;
+          fileOffset = seg.offset + (strtabVA - vaddr)
+          break
         }
       }
 
       if (fileOffset !== null && fileOffset < bytes.length) {
-        const tabEnd = Math.min(fileOffset + strsz, bytes.length);
-        strtab = bytes.slice(fileOffset, tabEnd);
+        const tabEnd = Math.min(fileOffset + strsz, bytes.length)
+        strtab = bytes.slice(fileOffset, tabEnd)
       }
     }
 
-    return { entries, strtab };
+    return { entries, strtab }
   } catch (error) {
-    logger.error('Error getting ELF dynamic entries:', error);
-    return { entries: [], strtab: null };
+    logger.error('Error getting ELF dynamic entries:', error)
+    return { entries: [], strtab: null }
   }
 }
 
 function readDynString(strtab, nameIdx) {
-  if (!strtab || nameIdx >= strtab.length) return null;
-  let end = nameIdx;
-  while (end < strtab.length && strtab[end] !== 0) end++;
-  return new TextDecoder().decode(strtab.slice(nameIdx, end));
+  if (!strtab || nameIdx >= strtab.length) return null
+  let end = nameIdx
+  while (end < strtab.length && strtab[end] !== 0) end++
+  return new TextDecoder().decode(strtab.slice(nameIdx, end))
 }
 
 function getElfDependencies(bytes) {
   try {
-    const { entries, strtab } = getElfDynamicEntries(bytes);
-    const deps = [];
+    const { entries, strtab } = getElfDynamicEntries(bytes)
+    const deps = []
     for (const e of entries) {
-      if (e.tag === 1) { // DT_NEEDED
-        const name = readDynString(strtab, e.val);
-        if (name) deps.push(name);
+      if (e.tag === 1) {
+        // DT_NEEDED
+        const name = readDynString(strtab, e.val)
+        if (name) deps.push(name)
       }
     }
-    return deps;
+    return deps
   } catch (error) {
-    logger.error('Error getting ELF dependencies:', error);
-    return [];
+    logger.error('Error getting ELF dependencies:', error)
+    return []
   }
 }
 
 function getElfSecurityFeatures(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr) return { pie: false, executableStack: false, relro: 'none', textrel: false };
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr) return { pie: false, executableStack: false, relro: 'none', textrel: false }
 
-    const phdrs = getElfProgramHeaders(bytes);
-    const { entries } = getElfDynamicEntries(bytes);
+    const phdrs = getElfProgramHeaders(bytes)
+    const { entries } = getElfDynamicEntries(bytes)
 
     // PIE: e_type === ET_DYN (3) AND has PT_INTERP
-    const pie = hdr.type === 3 && phdrs.some(p => p.typeValue === 3);
+    const pie = hdr.type === 3 && phdrs.some((p) => p.typeValue === 3)
 
     // Executable stack: PT_GNU_STACK with PF_X (bit 0) set
-    const gnuStack = phdrs.find(p => p.typeValue === 0x6474E551);
-    const executableStack = gnuStack ? (gnuStack.flags & 1) !== 0 : false;
+    const gnuStack = phdrs.find((p) => p.typeValue === 0x6474e551)
+    const executableStack = gnuStack ? (gnuStack.flags & 1) !== 0 : false
 
     // RELRO: PT_GNU_RELRO present → partial; also DT_BIND_NOW → full
-    const hasRelro = phdrs.some(p => p.typeValue === 0x6474E552);
-    const hasBindNow = entries.some(e => e.tag === 24); // DT_BIND_NOW
+    const hasRelro = phdrs.some((p) => p.typeValue === 0x6474e552)
+    const hasBindNow = entries.some((e) => e.tag === 24) // DT_BIND_NOW
     // Also check DT_FLAGS (tag 30) for DF_BIND_NOW (0x8)
-    const flagsEntry = entries.find(e => e.tag === 30);
-    const dfBindNow = flagsEntry ? (flagsEntry.val & 0x8) !== 0 : false;
-    const relro = hasRelro ? ((hasBindNow || dfBindNow) ? 'full' : 'partial') : 'none';
+    const flagsEntry = entries.find((e) => e.tag === 30)
+    const dfBindNow = flagsEntry ? (flagsEntry.val & 0x8) !== 0 : false
+    const relro = hasRelro ? (hasBindNow || dfBindNow ? 'full' : 'partial') : 'none'
 
     // TEXTREL: DT_TEXTREL (tag 22) present
-    const textrel = entries.some(e => e.tag === 22);
+    const textrel = entries.some((e) => e.tag === 22)
 
-    return { pie, executableStack, relro, textrel };
+    return { pie, executableStack, relro, textrel }
   } catch (error) {
-    logger.error('Error getting ELF security features:', error);
-    return { pie: false, executableStack: false, relro: 'none', textrel: false };
+    logger.error('Error getting ELF security features:', error)
+    return { pie: false, executableStack: false, relro: 'none', textrel: false }
   }
 }
 
 function getElfRpath(bytes) {
   try {
-    const { entries, strtab } = getElfDynamicEntries(bytes);
-    let rpath = null;
-    let runpath = null;
+    const { entries, strtab } = getElfDynamicEntries(bytes)
+    let rpath = null
+    let runpath = null
     for (const e of entries) {
-      if (e.tag === 15) { // DT_RPATH
-        rpath = readDynString(strtab, e.val);
-      } else if (e.tag === 29) { // DT_RUNPATH
-        runpath = readDynString(strtab, e.val);
+      if (e.tag === 15) {
+        // DT_RPATH
+        rpath = readDynString(strtab, e.val)
+      } else if (e.tag === 29) {
+        // DT_RUNPATH
+        runpath = readDynString(strtab, e.val)
       }
     }
-    return { rpath, runpath };
+    return { rpath, runpath }
   } catch (error) {
-    logger.error('Error getting ELF rpath:', error);
-    return { rpath: null, runpath: null };
+    logger.error('Error getting ELF rpath:', error)
+    return { rpath: null, runpath: null }
   }
 }
 
 function getElfIsStripped(bytes) {
   try {
-    const sections = getElfSections(bytes);
-    return !sections.some(s => s.name === '.symtab');
+    const sections = getElfSections(bytes)
+    return !sections.some((s) => s.name === '.symtab')
   } catch (error) {
-    logger.error('Error checking if ELF is stripped:', error);
-    return false;
+    logger.error('Error checking if ELF is stripped:', error)
+    return false
   }
 }
 
 function getElfInterpreter(bytes) {
   try {
-    const phdrs = getElfProgramHeaders(bytes);
-    const interp = phdrs.find(p => p.typeValue === 3); // PT_INTERP
-    if (!interp || interp.offset + interp.filesz > bytes.length) return null;
+    const phdrs = getElfProgramHeaders(bytes)
+    const interp = phdrs.find((p) => p.typeValue === 3) // PT_INTERP
+    if (!interp || interp.offset + interp.filesz > bytes.length) return null
 
-    let end = interp.offset;
-    const limit = Math.min(interp.offset + interp.filesz, bytes.length);
-    while (end < limit && bytes[end] !== 0) end++;
-    return new TextDecoder().decode(bytes.slice(interp.offset, end));
+    let end = interp.offset
+    const limit = Math.min(interp.offset + interp.filesz, bytes.length)
+    while (end < limit && bytes[end] !== 0) end++
+    return new TextDecoder().decode(bytes.slice(interp.offset, end))
   } catch (error) {
-    logger.error('Error getting ELF interpreter:', error);
-    return null;
+    logger.error('Error getting ELF interpreter:', error)
+    return null
   }
 }
 
 function getElfSegmentPermissions(bytes) {
   try {
-    const phdrs = getElfProgramHeaders(bytes);
-    const segments = [];
-    let hasRWX = false;
+    const phdrs = getElfProgramHeaders(bytes)
+    const segments = []
+    let hasRWX = false
 
     for (const p of phdrs) {
-      if (p.typeValue !== 1) continue; // PT_LOAD only
-      const r = (p.flags & 4) ? 'r' : '-';
-      const w = (p.flags & 2) ? 'w' : '-';
-      const x = (p.flags & 1) ? 'x' : '-';
-      const flagsStr = r + w + x;
-      if ((p.flags & 7) === 7) hasRWX = true;
-      segments.push({ type: 'PT_LOAD', flags: flagsStr, memsz: p.memsz });
+      if (p.typeValue !== 1) continue // PT_LOAD only
+      const r = p.flags & 4 ? 'r' : '-'
+      const w = p.flags & 2 ? 'w' : '-'
+      const x = p.flags & 1 ? 'x' : '-'
+      const flagsStr = r + w + x
+      if ((p.flags & 7) === 7) hasRWX = true
+      segments.push({ type: 'PT_LOAD', flags: flagsStr, memsz: p.memsz })
     }
 
-    return { segments, hasRWX };
+    return { segments, hasRWX }
   } catch (error) {
-    logger.error('Error getting ELF segment permissions:', error);
-    return { segments: [], hasRWX: false };
+    logger.error('Error getting ELF segment permissions:', error)
+    return { segments: [], hasRWX: false }
   }
 }
 
 // ── ELF Basic Field Helpers (fixed for endianness) ──
 
 function getElfClass(bytes) {
-  const elfClass = bytes[4];
-  return elfClass === 1 ? '32-bit' : elfClass === 2 ? '64-bit' : 'Unknown';
+  const elfClass = bytes[4]
+  return elfClass === 1 ? '32-bit' : elfClass === 2 ? '64-bit' : 'Unknown'
 }
 
 function getElfType(bytes) {
@@ -1272,34 +1352,33 @@ function getElfType(bytes) {
     2: 'Executable',
     3: 'Shared object',
     4: 'Core dump'
-  };
-  const bigEndian = isElfBigEndian(bytes);
-  const type = readElfUint16(bytes, 16, bigEndian);
-  return types[type] || 'Unknown';
+  }
+  const bigEndian = isElfBigEndian(bytes)
+  const type = readElfUint16(bytes, 16, bigEndian)
+  return types[type] || 'Unknown'
 }
 
 function getElfMachine(bytes) {
   const machines = {
     0x03: 'x86',
-    0x3E: 'x86-64',
+    0x3e: 'x86-64',
     0x28: 'ARM',
-    0xB7: 'AArch64'
-  };
-  const bigEndian = isElfBigEndian(bytes);
-  const machine = readElfUint16(bytes, 18, bigEndian);
-  return machines[machine] || `Unknown (0x${machine.toString(16)})`;
+    0xb7: 'AArch64'
+  }
+  const bigEndian = isElfBigEndian(bytes)
+  const machine = readElfUint16(bytes, 18, bigEndian)
+  return machines[machine] || `Unknown (0x${machine.toString(16)})`
 }
 
 // Helper functions for PE analysis
 function getPESubsystem(bytes, peOffset) {
   try {
     // Optional header offset is PE header + 24
-    const optionalHeaderOffset = peOffset + 24;
-    if (optionalHeaderOffset + 68 >= bytes.length) return 'Unknown';
-    
-    const subsystem = bytes[optionalHeaderOffset + 68] | 
-                     (bytes[optionalHeaderOffset + 69] << 8);
-    
+    const optionalHeaderOffset = peOffset + 24
+    if (optionalHeaderOffset + 68 >= bytes.length) return 'Unknown'
+
+    const subsystem = bytes[optionalHeaderOffset + 68] | (bytes[optionalHeaderOffset + 69] << 8)
+
     const subsystems = {
       0: 'Unknown',
       1: 'Native',
@@ -1313,311 +1392,339 @@ function getPESubsystem(bytes, peOffset) {
       13: 'EFI ROM',
       14: 'XBOX',
       16: 'Windows Boot Application'
-    };
-    
-    return subsystems[subsystem] || `Unknown (${subsystem})`;
+    }
+
+    return subsystems[subsystem] || `Unknown (${subsystem})`
   } catch (error) {
-    throw new FileAnalysisError('Failed to get PE subsystem: ' + error.message);
+    throw new FileAnalysisError('Failed to get PE subsystem: ' + error.message)
   }
 }
 
 function getPECharacteristics(bytes, peOffset) {
-  const characteristics = [];
-  if (peOffset === -1) return [];
+  const characteristics = []
+  if (peOffset === -1) return []
 
-  const flags = bytes[peOffset + 22] | (bytes[peOffset + 23] << 8);
-  if (flags & 0x0001) characteristics.push('Relocations Stripped');
-  if (flags & 0x0002) characteristics.push('Executable');
-  if (flags & 0x0020) characteristics.push('Large Address Aware');
-  if (flags & 0x0100) characteristics.push('32-Bit Machine');
-  if (flags & 0x0200) characteristics.push('Debug Stripped');
-  if (flags & 0x1000) characteristics.push('System File');
-  if (flags & 0x2000) characteristics.push('DLL');
+  const flags = bytes[peOffset + 22] | (bytes[peOffset + 23] << 8)
+  if (flags & 0x0001) characteristics.push('Relocations Stripped')
+  if (flags & 0x0002) characteristics.push('Executable')
+  if (flags & 0x0020) characteristics.push('Large Address Aware')
+  if (flags & 0x0100) characteristics.push('32-Bit Machine')
+  if (flags & 0x0200) characteristics.push('Debug Stripped')
+  if (flags & 0x1000) characteristics.push('System File')
+  if (flags & 0x2000) characteristics.push('DLL')
 
-  return characteristics;
+  return characteristics
 }
 
 // Helper functions for JPEG analysis
 function getJpegDimensions(bytes) {
-  let offset = 2;
+  let offset = 2
   while (offset < bytes.length - 8) {
-    if (bytes[offset] === 0xFF && bytes[offset + 1] === 0xC0) {
-      const height = bytes[offset + 5] << 8 | bytes[offset + 6];
-      const width = bytes[offset + 7] << 8 | bytes[offset + 8];
-      return `${width}x${height}`;
+    if (bytes[offset] === 0xff && bytes[offset + 1] === 0xc0) {
+      const height = (bytes[offset + 5] << 8) | bytes[offset + 6]
+      const width = (bytes[offset + 7] << 8) | bytes[offset + 8]
+      return `${width}x${height}`
     }
-    offset++;
+    offset++
   }
-  return 'Unknown';
+  return 'Unknown'
 }
 
 function checkJpegExif(bytes) {
   for (let i = 0; i < bytes.length - 10; i++) {
-    if (bytes[i] === 0xFF && bytes[i + 1] === 0xE1) {
-      const exif = new TextDecoder().decode(bytes.slice(i + 4, i + 8));
-      return exif === 'Exif';
+    if (bytes[i] === 0xff && bytes[i + 1] === 0xe1) {
+      const exif = new TextDecoder().decode(bytes.slice(i + 4, i + 8))
+      return exif === 'Exif'
     }
   }
-  return false;
+  return false
 }
 
 // Helper functions for GIF analysis
 function getGifVersion(bytes) {
   try {
-    const version = new TextDecoder().decode(bytes.slice(3, 6));
-    return version === '87a' ? 'GIF87a' : version === '89a' ? 'GIF89a' : 'Unknown';
+    const version = new TextDecoder().decode(bytes.slice(3, 6))
+    return version === '87a' ? 'GIF87a' : version === '89a' ? 'GIF89a' : 'Unknown'
   } catch {
-    return 'Unknown';
+    return 'Unknown'
   }
 }
 
 function countGifFrames(bytes) {
-  let frames = 0;
-  let offset = 13; // Skip header
-  
+  let frames = 0
+  let offset = 13 // Skip header
+
   while (offset < bytes.length) {
-    if (bytes[offset] === 0x2C) { // Image descriptor
-      frames++;
-      offset += 11;
-    } else if (bytes[offset] === 0x21) { // Extension
-      offset += 2;
-    } else if (bytes[offset] === 0x3B) { // Trailer
-      break;
+    if (bytes[offset] === 0x2c) {
+      // Image descriptor
+      frames++
+      offset += 11
+    } else if (bytes[offset] === 0x21) {
+      // Extension
+      offset += 2
+    } else if (bytes[offset] === 0x3b) {
+      // Trailer
+      break
     }
-    offset++;
+    offset++
   }
-  
-  return frames;
+
+  return frames
 }
 
 function checkGifAnimation(bytes) {
   for (let i = 0; i < bytes.length - 3; i++) {
-    if (bytes[i] === 0x21 && bytes[i + 1] === 0xF9) {
-      return true; // Found Graphics Control Extension
+    if (bytes[i] === 0x21 && bytes[i + 1] === 0xf9) {
+      return true // Found Graphics Control Extension
     }
   }
-  return false;
+  return false
 }
 
 function getPETimestamp(bytes, peOffset) {
   try {
-    if (peOffset === -1) return 'Unknown';
-    
-    const timestamp = bytes[peOffset + 8] |
-                     (bytes[peOffset + 9] << 8) |
-                     (bytes[peOffset + 10] << 16) |
-                     (bytes[peOffset + 11] << 24);
-    
-    return new Date(timestamp * 1000).toISOString();
+    if (peOffset === -1) return 'Unknown'
+
+    const timestamp =
+      bytes[peOffset + 8] |
+      (bytes[peOffset + 9] << 8) |
+      (bytes[peOffset + 10] << 16) |
+      (bytes[peOffset + 11] << 24)
+
+    return new Date(timestamp * 1000).toISOString()
   } catch (error) {
-    logger.error('Error getting PE timestamp:', error);
-    return 'Unknown';
+    logger.error('Error getting PE timestamp:', error)
+    return 'Unknown'
   }
 }
 
-function countPESections(bytes, peOffset) {
+function _countPESections(bytes, peOffset) {
   try {
-    if (peOffset === -1) return 0;
-    
-    return bytes[peOffset + 6] | (bytes[peOffset + 7] << 8);
+    if (peOffset === -1) return 0
+
+    return bytes[peOffset + 6] | (bytes[peOffset + 7] << 8)
   } catch (error) {
-    logger.error('Error counting PE sections:', error);
-    return 0;
+    logger.error('Error counting PE sections:', error)
+    return 0
   }
 }
 
-function getPEImportCount(bytes, peOffset) {
+function _getPEImportCount(bytes, peOffset) {
   try {
-    if (peOffset === -1) return 0;
-    
+    if (peOffset === -1) return 0
+
     // Get import directory RVA
-    const importRVA = bytes[peOffset + 0x80] |
-                     (bytes[peOffset + 0x81] << 8) |
-                     (bytes[peOffset + 0x82] << 16) |
-                     (bytes[peOffset + 0x83] << 24);
-    
-    if (importRVA === 0) return 0;
-    
+    const importRVA =
+      bytes[peOffset + 0x80] |
+      (bytes[peOffset + 0x81] << 8) |
+      (bytes[peOffset + 0x82] << 16) |
+      (bytes[peOffset + 0x83] << 24)
+
+    if (importRVA === 0) return 0
+
     // Count non-null import directory entries
-    let count = 0;
-    let offset = importRVA;
-    
+    let count = 0
+    let offset = importRVA
+
     while (offset < bytes.length - 20) {
-      const firstThunk = bytes[offset + 16] |
-                        (bytes[offset + 17] << 8) |
-                        (bytes[offset + 18] << 16) |
-                        (bytes[offset + 19] << 24);
-      
-      if (firstThunk === 0) break;
-      count++;
-      offset += 20;
+      const firstThunk =
+        bytes[offset + 16] |
+        (bytes[offset + 17] << 8) |
+        (bytes[offset + 18] << 16) |
+        (bytes[offset + 19] << 24)
+
+      if (firstThunk === 0) break
+      count++
+      offset += 20
     }
-    
-    return count;
+
+    return count
   } catch (error) {
-    logger.error('Error counting PE imports:', error);
-    return 0;
+    logger.error('Error counting PE imports:', error)
+    return 0
   }
 }
 
 // JPEG Analysis Helper Functions
 function getJpegColorSpace(bytes) {
   try {
-    let offset = 2;
+    let offset = 2
     while (offset < bytes.length - 8) {
-      if (bytes[offset] === 0xFF && bytes[offset + 1] === 0xC0) {
-        const components = bytes[offset + 9];
+      if (bytes[offset] === 0xff && bytes[offset + 1] === 0xc0) {
+        const components = bytes[offset + 9]
         switch (components) {
-          case 1: return 'Grayscale';
-          case 3: return 'YCbCr';
-          case 4: return 'CMYK';
-          default: return 'Unknown';
+          case 1:
+            return 'Grayscale'
+          case 3:
+            return 'YCbCr'
+          case 4:
+            return 'CMYK'
+          default:
+            return 'Unknown'
         }
       }
-      offset++;
+      offset++
     }
-    return 'Unknown';
+    return 'Unknown'
   } catch (error) {
-    logger.error('Error getting JPEG color space:', error);
-    return 'Unknown';
+    logger.error('Error getting JPEG color space:', error)
+    return 'Unknown'
   }
 }
 
 function getJpegCompression(bytes) {
   try {
-    let offset = 2;
+    let offset = 2
     while (offset < bytes.length - 8) {
-      if (bytes[offset] === 0xFF && bytes[offset + 1] === 0xC0) {
-        return 'Baseline DCT';
-      } else if (bytes[offset] === 0xFF && bytes[offset + 1] === 0xC2) {
-        return 'Progressive DCT';
+      if (bytes[offset] === 0xff && bytes[offset + 1] === 0xc0) {
+        return 'Baseline DCT'
+      } else if (bytes[offset] === 0xff && bytes[offset + 1] === 0xc2) {
+        return 'Progressive DCT'
       }
-      offset++;
+      offset++
     }
-    return 'Unknown';
+    return 'Unknown'
   } catch (error) {
-    logger.error('Error getting JPEG compression:', error);
-    return 'Unknown';
+    logger.error('Error getting JPEG compression:', error)
+    return 'Unknown'
   }
 }
 
 function checkJpegThumbnails(bytes) {
   try {
     for (let i = 0; i < bytes.length - 10; i++) {
-      if (bytes[i] === 0xFF && bytes[i + 1] === 0xE1) {
-        const exif = new TextDecoder().decode(bytes.slice(i + 4, i + 8));
+      if (bytes[i] === 0xff && bytes[i + 1] === 0xe1) {
+        const exif = new TextDecoder().decode(bytes.slice(i + 4, i + 8))
         if (exif === 'Exif') {
           // Check for thumbnail IFD
-          const tiffHeader = i + 10;
-          const ifdOffset = bytes[tiffHeader + 4] |
-                          (bytes[tiffHeader + 5] << 8) |
-                          (bytes[tiffHeader + 6] << 16) |
-                          (bytes[tiffHeader + 7] << 24);
-          return ifdOffset > 0;
+          const tiffHeader = i + 10
+          const ifdOffset =
+            bytes[tiffHeader + 4] |
+            (bytes[tiffHeader + 5] << 8) |
+            (bytes[tiffHeader + 6] << 16) |
+            (bytes[tiffHeader + 7] << 24)
+          return ifdOffset > 0
         }
       }
     }
-    return false;
+    return false
   } catch (error) {
-    logger.error('Error checking JPEG thumbnails:', error);
-    return false;
+    logger.error('Error checking JPEG thumbnails:', error)
+    return false
   }
 }
 
 // GIF Analysis Helper Functions
 function getGifColorDepth(bytes) {
   try {
-    if (bytes.length < 10) return 'Unknown';
-    const packedField = bytes[10];
-    const bitsPerPixel = (packedField & 0x07) + 1;
-    return `${bitsPerPixel} bits`;
+    if (bytes.length < 10) return 'Unknown'
+    const packedField = bytes[10]
+    const bitsPerPixel = (packedField & 0x07) + 1
+    return `${bitsPerPixel} bits`
   } catch (error) {
-    logger.error('Error getting GIF color depth:', error);
-    return 'Unknown';
+    logger.error('Error getting GIF color depth:', error)
+    return 'Unknown'
   }
 }
 
 function getGifDimensions(bytes) {
   try {
-    if (bytes.length < 8) return 'Unknown';
-    const width = bytes[6] | (bytes[7] << 8);
-    const height = bytes[8] | (bytes[9] << 8);
-    return `${width}x${height}`;
+    if (bytes.length < 8) return 'Unknown'
+    const width = bytes[6] | (bytes[7] << 8)
+    const height = bytes[8] | (bytes[9] << 8)
+    return `${width}x${height}`
   } catch (error) {
-    logger.error('Error getting GIF dimensions:', error);
-    return 'Unknown';
+    logger.error('Error getting GIF dimensions:', error)
+    return 'Unknown'
   }
 }
 
 function countElfSections(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr) return 0;
-    return hdr.shnum;
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr) return 0
+    return hdr.shnum
   } catch (error) {
-    logger.error('Error counting ELF sections:', error);
-    return 0;
+    logger.error('Error counting ELF sections:', error)
+    return 0
   }
 }
 
 function getElfEntryPoint(bytes) {
   try {
-    const hdr = getElfHeaderInfo(bytes);
-    if (!hdr) return 'Unknown';
-    const padLen = hdr.is64 ? 16 : 8;
-    return `0x${hdr.entry.toString(16).padStart(padLen, '0')}`;
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr) return 'Unknown'
+    const padLen = hdr.is64 ? 16 : 8
+    return `0x${hdr.entry.toString(16).padStart(padLen, '0')}`
   } catch (error) {
-    logger.error('Error getting ELF entry point:', error);
-    return 'Unknown';
+    logger.error('Error getting ELF entry point:', error)
+    return 'Unknown'
   }
 }
 
 // Mach-O endianness helpers
 function isMachOBigEndian(bytes) {
-  return bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA &&
-         (bytes[3] === 0xCE || bytes[3] === 0xCF);
+  return (
+    bytes[0] === 0xfe &&
+    bytes[1] === 0xed &&
+    bytes[2] === 0xfa &&
+    (bytes[3] === 0xce || bytes[3] === 0xcf)
+  )
 }
 
 function isMachOUniversal(bytes) {
-  return bytes.length >= 4 &&
-         bytes[0] === 0xCA && bytes[1] === 0xFE &&
-         bytes[2] === 0xBA && bytes[3] === 0xBE &&
-         isMachOFatBinary(bytes);
+  return (
+    bytes.length >= 4 &&
+    bytes[0] === 0xca &&
+    bytes[1] === 0xfe &&
+    bytes[2] === 0xba &&
+    bytes[3] === 0xbe &&
+    isMachOFatBinary(bytes)
+  )
 }
 
 function readMachOUint32(bytes, offset, bigEndian) {
   if (bigEndian) {
-    return ((bytes[offset] << 24) | (bytes[offset + 1] << 16) |
-            (bytes[offset + 2] << 8) | bytes[offset + 3]) >>> 0;
+    return (
+      ((bytes[offset] << 24) |
+        (bytes[offset + 1] << 16) |
+        (bytes[offset + 2] << 8) |
+        bytes[offset + 3]) >>>
+      0
+    )
   }
-  return ((bytes[offset]) | (bytes[offset + 1] << 8) |
-          (bytes[offset + 2] << 16) | (bytes[offset + 3] << 24)) >>> 0;
+  return (
+    (bytes[offset] |
+      (bytes[offset + 1] << 8) |
+      (bytes[offset + 2] << 16) |
+      (bytes[offset + 3] << 24)) >>>
+    0
+  )
 }
 
 function isMachO64bit(bytes) {
   // 64-bit big-endian: FE ED FA CF, 64-bit little-endian: CF FA ED FE
-  return (bytes[0] === 0xFE && bytes[3] === 0xCF) ||
-         (bytes[0] === 0xCF && bytes[3] === 0xFE);
+  return (bytes[0] === 0xfe && bytes[3] === 0xcf) || (bytes[0] === 0xcf && bytes[3] === 0xfe)
 }
 
 function getMachOHeaderSize(bytes) {
-  return isMachO64bit(bytes) ? 32 : 28;
+  return isMachO64bit(bytes) ? 32 : 28
 }
 
 // Add Mach-O analysis functions
 function analyzeMachOStructure(bytes) {
   try {
-    const isUniversal = isMachOUniversal(bytes);
+    const isUniversal = isMachOUniversal(bytes)
 
     // Helper to extract full details from a single-arch Mach-O binary
     const extractFullDetails = (b) => {
-      const { dylibs, weakDylibs } = getMachODylibs(b);
-      const { hasCodeSignature, codeSignatureSize } = getMachOCodeSignature(b);
-      const { isEncrypted } = getMachOEncryptionInfo(b);
-      const flags = getMachOFlags(b);
-      const segments = getMachOSegments(b);
-      const hasRWXSegments = segments.some(s => s.isRWX);
-      const buildVersion = getMachOBuildVersion(b);
+      const { dylibs, weakDylibs } = getMachODylibs(b)
+      const { hasCodeSignature, codeSignatureSize } = getMachOCodeSignature(b)
+      const { isEncrypted } = getMachOEncryptionInfo(b)
+      const flags = getMachOFlags(b)
+      const segments = getMachOSegments(b)
+      const hasRWXSegments = segments.some((s) => s.isRWX)
+      const buildVersion = getMachOBuildVersion(b)
 
       return {
         fileType: getMachOFileType(b),
@@ -1636,23 +1743,23 @@ function analyzeMachOStructure(bytes) {
         allowStackExecution: flags.allowStackExecution,
         noHeapExecution: flags.noHeapExecution,
         hasRWXSegments
-      };
-    };
+      }
+    }
 
     if (isUniversal) {
-      const architectures = getUniversalArchitectures(bytes);
-      const nfat_arch = readMachOUint32(bytes, 4, true);
+      const architectures = getUniversalArchitectures(bytes)
+      const nfat_arch = readMachOUint32(bytes, 4, true)
 
       // Parse the first architecture slice for detailed analysis
-      let sliceDetails = {};
+      let sliceDetails = {}
       if (bytes.length >= 28) {
-        const firstSliceOffset = readMachOUint32(bytes, 16, true);
-        const firstSliceSize = readMachOUint32(bytes, 20, true);
+        const firstSliceOffset = readMachOUint32(bytes, 16, true)
+        const firstSliceSize = readMachOUint32(bytes, 20, true)
         if (firstSliceOffset > 0 && firstSliceOffset < bytes.length) {
-          const sliceEnd = Math.min(firstSliceOffset + firstSliceSize, bytes.length);
-          const sliceBytes = bytes.slice(firstSliceOffset, sliceEnd);
+          const sliceEnd = Math.min(firstSliceOffset + firstSliceSize, bytes.length)
+          const sliceBytes = bytes.slice(firstSliceOffset, sliceEnd)
           if (sliceBytes.length > 32) {
-            sliceDetails = extractFullDetails(sliceBytes);
+            sliceDetails = extractFullDetails(sliceBytes)
           }
         }
       }
@@ -1662,100 +1769,108 @@ function analyzeMachOStructure(bytes) {
         architectureCount: nfat_arch,
         architectures: architectures,
         ...sliceDetails
-      };
+      }
     }
 
     return {
       type: getMachOType(bytes),
       architecture: getMachOArchitecture(bytes),
       ...extractFullDetails(bytes)
-    };
+    }
   } catch (error) {
-    logger.error('Error analyzing Mach-O structure:', error);
-    return { error: error.message };
+    logger.error('Error analyzing Mach-O structure:', error)
+    return { error: error.message }
   }
 }
 
 function getMachOType(bytes) {
   try {
-    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 'Universal Binary';
-    if (bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA && bytes[3] === 0xCF) return '64-bit Executable (Big-Endian)';
-    if (bytes[0] === 0xFE && bytes[1] === 0xED && bytes[2] === 0xFA && bytes[3] === 0xCE) return '32-bit Executable (Big-Endian)';
-    if (bytes[0] === 0xCF && bytes[1] === 0xFA && bytes[2] === 0xED && bytes[3] === 0xFE) return '64-bit Executable';
-    if (bytes[0] === 0xCE && bytes[1] === 0xFA && bytes[2] === 0xED && bytes[3] === 0xFE) return '32-bit Executable';
-    return 'Unknown';
+    if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe)
+      return 'Universal Binary'
+    if (bytes[0] === 0xfe && bytes[1] === 0xed && bytes[2] === 0xfa && bytes[3] === 0xcf)
+      return '64-bit Executable (Big-Endian)'
+    if (bytes[0] === 0xfe && bytes[1] === 0xed && bytes[2] === 0xfa && bytes[3] === 0xce)
+      return '32-bit Executable (Big-Endian)'
+    if (bytes[0] === 0xcf && bytes[1] === 0xfa && bytes[2] === 0xed && bytes[3] === 0xfe)
+      return '64-bit Executable'
+    if (bytes[0] === 0xce && bytes[1] === 0xfa && bytes[2] === 0xed && bytes[3] === 0xfe)
+      return '32-bit Executable'
+    return 'Unknown'
   } catch (error) {
-    logger.error('Error getting Mach-O type:', error);
-    return 'Unknown';
+    logger.error('Error getting Mach-O type:', error)
+    return 'Unknown'
   }
 }
 
 function getMachOArchitecture(bytes) {
   try {
     if (isMachOUniversal(bytes)) {
-      return getUniversalArchitectures(bytes);
+      return getUniversalArchitectures(bytes)
     }
 
-    const bigEndian = isMachOBigEndian(bytes);
-    const cputype = readMachOUint32(bytes, 4, bigEndian);
+    const bigEndian = isMachOBigEndian(bytes)
+    const cputype = readMachOUint32(bytes, 4, bigEndian)
     const cpuNames = {
       0x7: 'x86',
       0x01000007: 'x86_64',
-      0xC: 'ARM',
-      0x0100000C: 'ARM64'
-    };
-    return cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`;
+      0xc: 'ARM',
+      0x0100000c: 'ARM64'
+    }
+    return cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`
   } catch (error) {
-    logger.error('Error getting Mach-O architecture:', error);
-    return 'Unknown';
+    logger.error('Error getting Mach-O architecture:', error)
+    return 'Unknown'
   }
 }
 
 function countMachOLoadCommands(bytes) {
   try {
-    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 0;
-    const bigEndian = isMachOBigEndian(bytes);
-    return readMachOUint32(bytes, 16, bigEndian);
+    if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe) return 0
+    const bigEndian = isMachOBigEndian(bytes)
+    return readMachOUint32(bytes, 16, bigEndian)
   } catch (error) {
-    logger.error('Error counting Mach-O load commands:', error);
-    return 0;
+    logger.error('Error counting Mach-O load commands:', error)
+    return 0
   }
 }
 
 function getMachOSegments(bytes) {
   try {
-    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return [];
-    const bigEndian = isMachOBigEndian(bytes);
-    const is64 = isMachO64bit(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const segments = [];
-    let offset = headerSize;
-    const ncmds = countMachOLoadCommands(bytes);
+    if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe) return []
+    const bigEndian = isMachOBigEndian(bytes)
+    const is64 = isMachO64bit(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const segments = []
+    let offset = headerSize
+    const ncmds = countMachOLoadCommands(bytes)
 
     const formatProt = (p) => {
-      return ((p & 1) ? 'r' : '-') + ((p & 2) ? 'w' : '-') + ((p & 4) ? 'x' : '-');
-    };
+      return (p & 1 ? 'r' : '-') + (p & 2 ? 'w' : '-') + (p & 4 ? 'x' : '-')
+    }
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
-      if (cmd === 0x19 || cmd === 0x01) { // LC_SEGMENT_64 or LC_SEGMENT
-        const segname = new TextDecoder().decode(bytes.slice(offset + 8, offset + 24)).replace(/\0/g, '');
-        let vmsize, maxprot, initprot;
+      if (cmd === 0x19 || cmd === 0x01) {
+        // LC_SEGMENT_64 or LC_SEGMENT
+        const segname = new TextDecoder()
+          .decode(bytes.slice(offset + 8, offset + 24))
+          .replace(/\0/g, '')
+        let vmsize, maxprot, initprot
         if (is64) {
           // LC_SEGMENT_64: vmsize at +24 (8 bytes), maxprot at +48, initprot at +52
-          const vmsizeLo = readMachOUint32(bytes, offset + 24, bigEndian);
-          const vmsizeHi = readMachOUint32(bytes, offset + 28, bigEndian);
-          vmsize = bigEndian ? (vmsizeHi + vmsizeLo * 0x100000000) : (vmsizeLo + vmsizeHi * 0x100000000);
-          maxprot = readMachOUint32(bytes, offset + 48, bigEndian);
-          initprot = readMachOUint32(bytes, offset + 52, bigEndian);
+          const vmsizeLo = readMachOUint32(bytes, offset + 24, bigEndian)
+          const vmsizeHi = readMachOUint32(bytes, offset + 28, bigEndian)
+          vmsize = bigEndian ? vmsizeHi + vmsizeLo * 0x100000000 : vmsizeLo + vmsizeHi * 0x100000000
+          maxprot = readMachOUint32(bytes, offset + 48, bigEndian)
+          initprot = readMachOUint32(bytes, offset + 52, bigEndian)
         } else {
           // LC_SEGMENT: vmsize at +20 (4 bytes), maxprot at +32, initprot at +36
-          vmsize = readMachOUint32(bytes, offset + 20, bigEndian);
-          maxprot = readMachOUint32(bytes, offset + 32, bigEndian);
-          initprot = readMachOUint32(bytes, offset + 36, bigEndian);
+          vmsize = readMachOUint32(bytes, offset + 20, bigEndian)
+          maxprot = readMachOUint32(bytes, offset + 32, bigEndian)
+          initprot = readMachOUint32(bytes, offset + 36, bigEndian)
         }
         segments.push({
           name: segname,
@@ -1763,115 +1878,118 @@ function getMachOSegments(bytes) {
           maxprot: formatProt(maxprot),
           initprot: formatProt(initprot),
           isRWX: (initprot & 7) === 7
-        });
+        })
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return segments;
+    return segments
   } catch (error) {
-    logger.error('Error getting Mach-O segments:', error);
-    return [];
+    logger.error('Error getting Mach-O segments:', error)
+    return []
   }
 }
 
 function checkMachODynamicLinking(bytes) {
   try {
-    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return false;
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    let offset = headerSize;
-    const ncmds = countMachOLoadCommands(bytes);
+    if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe)
+      return false
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    let offset = headerSize
+    const ncmds = countMachOLoadCommands(bytes)
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
-      if (cmd === 0x0C || cmd === 0x0D) { // LC_LOAD_DYLIB or LC_LOAD_WEAK_DYLIB
-        return true;
+      if (cmd === 0x0c || cmd === 0x0d) {
+        // LC_LOAD_DYLIB or LC_LOAD_WEAK_DYLIB
+        return true
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return false;
+    return false
   } catch (error) {
-    logger.error('Error checking Mach-O dynamic linking:', error);
-    return false;
+    logger.error('Error checking Mach-O dynamic linking:', error)
+    return false
   }
 }
 
 function getMachOMinVersion(bytes) {
   try {
-    if (bytes[0] === 0xCA && bytes[1] === 0xFE && bytes[2] === 0xBA && bytes[3] === 0xBE) return 'Unknown';
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    let offset = headerSize;
-    const ncmds = countMachOLoadCommands(bytes);
+    if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe)
+      return 'Unknown'
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    let offset = headerSize
+    const ncmds = countMachOLoadCommands(bytes)
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
       // LC_VERSION_MIN_MACOSX (0x24) or LC_BUILD_VERSION (0x32)
       if (cmd === 0x24) {
-        const version = readMachOUint32(bytes, offset + 8, bigEndian);
-        const major = (version >> 16) & 0xFF;
-        const minor = (version >> 8) & 0xFF;
-        const patch = version & 0xFF;
-        return `${major}.${minor}.${patch}`;
+        const version = readMachOUint32(bytes, offset + 8, bigEndian)
+        const major = (version >> 16) & 0xff
+        const minor = (version >> 8) & 0xff
+        const patch = version & 0xff
+        return `${major}.${minor}.${patch}`
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return 'Unknown';
+    return 'Unknown'
   } catch (error) {
-    logger.error('Error getting Mach-O minimum version:', error);
-    return 'Unknown';
+    logger.error('Error getting Mach-O minimum version:', error)
+    return 'Unknown'
   }
 }
 
 function getUniversalArchitectures(bytes) {
   try {
-    if (!isMachOUniversal(bytes)) return [];
+    if (!isMachOUniversal(bytes)) return []
 
     // Fat header is always big-endian
-    const nfat_arch = readMachOUint32(bytes, 4, true);
-    const architectures = [];
+    const nfat_arch = readMachOUint32(bytes, 4, true)
+    const architectures = []
 
     for (let i = 0; i < nfat_arch; i++) {
-      const offset = 8 + (i * 20);
-      const cputype = readMachOUint32(bytes, offset, true);
+      const offset = 8 + i * 20
+      const cputype = readMachOUint32(bytes, offset, true)
 
       const cpuNames = {
         0x00000007: 'x86',
         0x01000007: 'x86_64',
-        0x0000000C: 'ARM',
-        0x0100000C: 'ARM64',
-        0x0200000C: 'ARM64_32',
+        0x0000000c: 'ARM',
+        0x0100000c: 'ARM64',
+        0x0200000c: 'ARM64_32',
         0x00000012: 'PowerPC',
         0x01000012: 'PowerPC64'
-      };
+      }
 
-      architectures.push(cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`);
+      architectures.push(cpuNames[cputype] || `Unknown (0x${cputype.toString(16)})`)
     }
 
-    return architectures;
+    return architectures
   } catch (error) {
-    logger.error('Error getting Universal Binary architectures:', error);
-    return [];
+    logger.error('Error getting Universal Binary architectures:', error)
+    return []
   }
 }
 
 // Mach-O file type from mach_header filetype field
 function getMachOFileType(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const filetype = readMachOUint32(bytes, 12, bigEndian);
+    const bigEndian = isMachOBigEndian(bytes)
+    const filetype = readMachOUint32(bytes, 12, bigEndian)
     const fileTypes = {
       1: 'Object',
       2: 'Executable',
@@ -1884,199 +2002,203 @@ function getMachOFileType(bytes) {
       9: 'Dylib Stub',
       10: 'Debug Symbols',
       11: 'Kext'
-    };
-    return fileTypes[filetype] || `Unknown (${filetype})`;
+    }
+    return fileTypes[filetype] || `Unknown (${filetype})`
   } catch (error) {
-    logger.error('Error getting Mach-O file type:', error);
-    return 'Unknown';
+    logger.error('Error getting Mach-O file type:', error)
+    return 'Unknown'
   }
 }
 
 // Mach-O flags from mach_header
 function getMachOFlags(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const is64 = isMachO64bit(bytes);
+    const bigEndian = isMachOBigEndian(bytes)
+    const _is64 = isMachO64bit(bytes)
     // flags is at offset 24 for both 32-bit and 64-bit mach_header
-    const flagsOffset = 24;
-    const flags = readMachOUint32(bytes, flagsOffset, bigEndian);
+    const flagsOffset = 24
+    const flags = readMachOUint32(bytes, flagsOffset, bigEndian)
     return {
       pie: (flags & 0x200000) !== 0,
       allowStackExecution: (flags & 0x20000) !== 0,
       noHeapExecution: (flags & 0x1000000) !== 0,
       raw: flags
-    };
+    }
   } catch (error) {
-    logger.error('Error getting Mach-O flags:', error);
-    return { pie: false, allowStackExecution: false, noHeapExecution: false, raw: 0 };
+    logger.error('Error getting Mach-O flags:', error)
+    return { pie: false, allowStackExecution: false, noHeapExecution: false, raw: 0 }
   }
 }
 
 // Walk load commands for dylib paths
 function getMachODylibs(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const ncmds = countMachOLoadCommands(bytes);
-    let offset = headerSize;
-    const dylibs = [];
-    const weakDylibs = [];
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    let offset = headerSize
+    const dylibs = []
+    const weakDylibs = []
 
-    const LC_LOAD_DYLIB = 0x0C;
-    const LC_LOAD_WEAK_DYLIB = 0x18;
-    const LC_REEXPORT_DYLIB = 0x1F;
-    const LC_LAZY_LOAD_DYLIB = 0x20;
+    const LC_LOAD_DYLIB = 0x0c
+    const LC_LOAD_WEAK_DYLIB = 0x18
+    const LC_REEXPORT_DYLIB = 0x1f
+    const LC_LAZY_LOAD_DYLIB = 0x20
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
-      if (cmd === LC_LOAD_DYLIB || cmd === LC_REEXPORT_DYLIB || cmd === LC_LAZY_LOAD_DYLIB ||
-          cmd === LC_LOAD_WEAK_DYLIB) {
+      if (
+        cmd === LC_LOAD_DYLIB ||
+        cmd === LC_REEXPORT_DYLIB ||
+        cmd === LC_LAZY_LOAD_DYLIB ||
+        cmd === LC_LOAD_WEAK_DYLIB
+      ) {
         // String offset is at cmd+8 (lc_str offset within the load command)
-        const strOffset = readMachOUint32(bytes, offset + 8, bigEndian);
+        const strOffset = readMachOUint32(bytes, offset + 8, bigEndian)
         if (strOffset > 0 && strOffset < cmdsize) {
-          let end = offset + strOffset;
-          while (end < offset + cmdsize && end < bytes.length && bytes[end] !== 0) end++;
-          const path = new TextDecoder().decode(bytes.slice(offset + strOffset, end));
+          let end = offset + strOffset
+          while (end < offset + cmdsize && end < bytes.length && bytes[end] !== 0) end++
+          const path = new TextDecoder().decode(bytes.slice(offset + strOffset, end))
           if (cmd === LC_LOAD_WEAK_DYLIB) {
-            weakDylibs.push(path);
+            weakDylibs.push(path)
           } else {
-            dylibs.push(path);
+            dylibs.push(path)
           }
         }
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return { dylibs, weakDylibs };
+    return { dylibs, weakDylibs }
   } catch (error) {
-    logger.error('Error getting Mach-O dylibs:', error);
-    return { dylibs: [], weakDylibs: [] };
+    logger.error('Error getting Mach-O dylibs:', error)
+    return { dylibs: [], weakDylibs: [] }
   }
 }
 
 // Check for LC_CODE_SIGNATURE
 function getMachOCodeSignature(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const ncmds = countMachOLoadCommands(bytes);
-    let offset = headerSize;
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    let offset = headerSize
 
-    const LC_CODE_SIGNATURE = 0x1D;
+    const LC_CODE_SIGNATURE = 0x1d
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
       if (cmd === LC_CODE_SIGNATURE) {
-        const dataoff = readMachOUint32(bytes, offset + 8, bigEndian);
-        const datasize = readMachOUint32(bytes, offset + 12, bigEndian);
-        return { hasCodeSignature: true, codeSignatureSize: datasize };
+        const _dataoff = readMachOUint32(bytes, offset + 8, bigEndian)
+        const datasize = readMachOUint32(bytes, offset + 12, bigEndian)
+        return { hasCodeSignature: true, codeSignatureSize: datasize }
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return { hasCodeSignature: false, codeSignatureSize: 0 };
+    return { hasCodeSignature: false, codeSignatureSize: 0 }
   } catch (error) {
-    logger.error('Error getting Mach-O code signature:', error);
-    return { hasCodeSignature: false, codeSignatureSize: 0 };
+    logger.error('Error getting Mach-O code signature:', error)
+    return { hasCodeSignature: false, codeSignatureSize: 0 }
   }
 }
 
 // Check for LC_ENCRYPTION_INFO / LC_ENCRYPTION_INFO_64
 function getMachOEncryptionInfo(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const ncmds = countMachOLoadCommands(bytes);
-    let offset = headerSize;
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    let offset = headerSize
 
-    const LC_ENCRYPTION_INFO = 0x21;
-    const LC_ENCRYPTION_INFO_64 = 0x2C;
+    const LC_ENCRYPTION_INFO = 0x21
+    const LC_ENCRYPTION_INFO_64 = 0x2c
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
       if (cmd === LC_ENCRYPTION_INFO || cmd === LC_ENCRYPTION_INFO_64) {
         // cryptid is at offset+16 for both variants
-        const cryptid = readMachOUint32(bytes, offset + 16, bigEndian);
-        return { isEncrypted: cryptid !== 0 };
+        const cryptid = readMachOUint32(bytes, offset + 16, bigEndian)
+        return { isEncrypted: cryptid !== 0 }
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return { isEncrypted: false };
+    return { isEncrypted: false }
   } catch (error) {
-    logger.error('Error getting Mach-O encryption info:', error);
-    return { isEncrypted: false };
+    logger.error('Error getting Mach-O encryption info:', error)
+    return { isEncrypted: false }
   }
 }
 
 // Parse LC_MAIN or LC_UNIXTHREAD for entry point
 function getMachOEntryPoint(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const ncmds = countMachOLoadCommands(bytes);
-    let offset = headerSize;
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    let offset = headerSize
 
-    const LC_MAIN = 0x80000028;
-    const LC_UNIXTHREAD = 0x05;
+    const LC_MAIN = 0x80000028
+    const LC_UNIXTHREAD = 0x05
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
       if (cmd === LC_MAIN) {
         // entryoff is a 64-bit value at offset+8
-        const lo = readMachOUint32(bytes, offset + 8, bigEndian);
-        const hi = readMachOUint32(bytes, offset + 12, bigEndian);
-        const entry = bigEndian ? (hi + lo * 0x100000000) : (lo + hi * 0x100000000);
-        return `0x${entry.toString(16)}`;
+        const lo = readMachOUint32(bytes, offset + 8, bigEndian)
+        const hi = readMachOUint32(bytes, offset + 12, bigEndian)
+        const entry = bigEndian ? hi + lo * 0x100000000 : lo + hi * 0x100000000
+        return `0x${entry.toString(16)}`
       }
 
       if (cmd === LC_UNIXTHREAD) {
         // Thread state; entry point location varies by arch. For x86_64: offset+144, ARM64: offset+272
         // Use a simplified approach: read the first non-zero 64-bit value after the thread state header
-        const is64 = isMachO64bit(bytes);
+        const is64 = isMachO64bit(bytes)
         if (is64 && offset + 144 + 8 <= bytes.length) {
-          const lo = readMachOUint32(bytes, offset + 144, bigEndian);
-          const hi = readMachOUint32(bytes, offset + 148, bigEndian);
-          const entry = bigEndian ? (hi + lo * 0x100000000) : (lo + hi * 0x100000000);
-          if (entry !== 0) return `0x${entry.toString(16)}`;
+          const lo = readMachOUint32(bytes, offset + 144, bigEndian)
+          const hi = readMachOUint32(bytes, offset + 148, bigEndian)
+          const entry = bigEndian ? hi + lo * 0x100000000 : lo + hi * 0x100000000
+          if (entry !== 0) return `0x${entry.toString(16)}`
         }
-        return 'Unknown (LC_UNIXTHREAD)';
+        return 'Unknown (LC_UNIXTHREAD)'
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return 'Unknown';
+    return 'Unknown'
   } catch (error) {
-    logger.error('Error getting Mach-O entry point:', error);
-    return 'Unknown';
+    logger.error('Error getting Mach-O entry point:', error)
+    return 'Unknown'
   }
 }
 
 // Parse LC_BUILD_VERSION for platform/minos/sdk
 function getMachOBuildVersion(bytes) {
   try {
-    const bigEndian = isMachOBigEndian(bytes);
-    const headerSize = getMachOHeaderSize(bytes);
-    const ncmds = countMachOLoadCommands(bytes);
-    let offset = headerSize;
+    const bigEndian = isMachOBigEndian(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    let offset = headerSize
 
-    const LC_BUILD_VERSION = 0x32;
+    const LC_BUILD_VERSION = 0x32
     const platformNames = {
       1: 'macOS',
       2: 'iOS',
@@ -2090,41 +2212,36 @@ function getMachOBuildVersion(bytes) {
       10: 'DriverKit',
       11: 'visionOS',
       12: 'visionOSSimulator'
-    };
+    }
 
     for (let i = 0; i < ncmds && offset < bytes.length - 8; i++) {
-      const cmd = readMachOUint32(bytes, offset, bigEndian);
-      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian);
-      if (cmdsize === 0) break;
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0) break
 
       if (cmd === LC_BUILD_VERSION) {
-        const platform = readMachOUint32(bytes, offset + 8, bigEndian);
-        const minos = readMachOUint32(bytes, offset + 12, bigEndian);
-        const sdk = readMachOUint32(bytes, offset + 16, bigEndian);
+        const platform = readMachOUint32(bytes, offset + 8, bigEndian)
+        const minos = readMachOUint32(bytes, offset + 12, bigEndian)
+        const sdk = readMachOUint32(bytes, offset + 16, bigEndian)
 
-        const fmtVer = (v) => `${(v >> 16) & 0xFFFF}.${(v >> 8) & 0xFF}.${v & 0xFF}`;
+        const fmtVer = (v) => `${(v >> 16) & 0xffff}.${(v >> 8) & 0xff}.${v & 0xff}`
 
         return {
           platform: platformNames[platform] || `Unknown (${platform})`,
           minos: fmtVer(minos),
           sdk: fmtVer(sdk)
-        };
+        }
       }
 
-      offset += cmdsize;
+      offset += cmdsize
     }
 
-    return null;
+    return null
   } catch (error) {
-    logger.error('Error getting Mach-O build version:', error);
-    return null;
+    logger.error('Error getting Mach-O build version:', error)
+    return null
   }
 }
 
 // Export the functions
-export {
-  findPEHeaderOffset,
-  analyzePEStructure,
-  detectSpecificFileType,
-  detectNestedFiles
-}; 
+export { findPEHeaderOffset, analyzePEStructure, detectSpecificFileType, detectNestedFiles }

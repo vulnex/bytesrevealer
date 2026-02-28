@@ -1,35 +1,24 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: SettingsView.vue
- * Author: Simon Roses Femerling
- * Created: 2025-04-27
- * Last Modified: 2025-04-27
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: SettingsView.vue * Author: Simon Roses Femerling * Created:
+2025-04-27 * Last Modified: 2025-04-27 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="settings-view">
     <div class="settings-section">
       <h3>View Settings</h3>
-      
+
       <div class="setting-group">
         <h4>Navigation</h4>
         <div class="setting-item">
           <label class="setting-label">Base Offset</label>
-          <BaseOffsetInput
-            v-model="baseOffset"
-            :max-offset="maxOffset"
-          />
+          <BaseOffsetInput v-model="baseOffset" :max-offset="maxOffset" />
           <div class="setting-description">
-            Change the starting offset for viewing file content (current: {{ formatOffset(baseOffset) }})
+            Change the starting offset for viewing file content (current:
+            {{ formatOffset(baseOffset) }})
           </div>
         </div>
       </div>
-      
+
       <!-- Other settings... -->
     </div>
   </div>
@@ -45,10 +34,10 @@ export default {
   components: {
     BaseOffsetInput
   },
-  
+
   setup() {
     const settingsStore = useSettingsStore()
-    
+
     const baseOffset = computed({
       get: () => settingsStore.baseOffset,
       set: (value) => settingsStore.updateBaseOffset(value)
@@ -123,4 +112,4 @@ h4 {
 :root[class='dark-mode'] .settings-section {
   background-color: var(--bg-secondary);
 }
-</style> 
+</style>

@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: YaraPanel.vue
- * Author: Simon Roses Femerling
- * Created: 2026-02-10
- * Last Modified: 2026-02-10
- * Version: 0.4
- * License: Apache-2.0
- * Copyright (c) 2025-2026 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: YaraPanel.vue * Author: Simon Roses Femerling * Created:
+2026-02-10 * Last Modified: 2026-02-10 * Version: 0.4 * License: Apache-2.0 * Copyright (c)
+2025-2026 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="yara-panel">
@@ -22,7 +13,10 @@
     <!-- Large file warning -->
     <div v-if="isLargeFile" class="warning-banner">
       <span class="warning-icon">!</span>
-      <span>File is larger than 50 MB. YARA scanning may be slow and could cause browser performance issues.</span>
+      <span
+        >File is larger than 50 MB. YARA scanning may be slow and could cause browser performance
+        issues.</span
+      >
     </div>
 
     <!-- Rule Editor Section -->
@@ -30,13 +24,13 @@
       <div class="editor-controls">
         <div class="control-row">
           <label class="control-label">Rule Set:</label>
-          <select v-model="selectedBuiltIn" @change="onBuiltInChange" class="rule-select">
+          <select v-model="selectedBuiltIn" class="rule-select" @change="onBuiltInChange">
             <option value="">-- Custom / Manual --</option>
             <option v-for="rs in builtinRuleSets" :key="rs.id" :value="rs.id">
               {{ rs.name }}
             </option>
           </select>
-          <button class="import-btn" @click="triggerImport" title="Import .yar file from disk">
+          <button class="import-btn" title="Import .yar file from disk" @click="triggerImport">
             Import .yar
           </button>
           <input
@@ -45,7 +39,7 @@
             accept=".yar,.yara,.txt"
             class="hidden-input"
             @change="handleImport"
-          >
+          />
         </div>
         <div v-if="yaraStore.importedFileName" class="imported-info">
           Imported: {{ yaraStore.importedFileName }}
@@ -65,8 +59,8 @@
     <div class="action-bar">
       <button
         class="scan-btn"
-        @click="runScan"
         :disabled="yaraStore.isScanning || !rulesText.trim()"
+        @click="runScan"
       >
         {{ yaraStore.isScanning ? 'Scanning...' : 'Scan' }}
       </button>
@@ -78,7 +72,7 @@
         Clear Results
       </button>
       <label class="highlight-toggle">
-        <input type="checkbox" v-model="highlightInHex">
+        <input v-model="highlightInHex" type="checkbox" />
         <span>Highlight matches in Hex View</span>
       </label>
     </div>
@@ -136,15 +130,15 @@
 
       <!-- Results Detail -->
       <div class="results-detail">
-        <div
-          v-for="(rule, rIdx) in yaraStore.matchedRules"
-          :key="rIdx"
-          class="rule-card"
-        >
+        <div v-for="(rule, rIdx) in yaraStore.matchedRules" :key="rIdx" class="rule-card">
           <div class="rule-header" @click="toggleRule(rIdx)">
             <span class="collapse-icon">{{ expandedRules[rIdx] ? '&#9660;' : '&#9654;' }}</span>
             <span class="rule-name">{{ rule.ruleName }}</span>
-            <span class="match-count">{{ rule.matches ? rule.matches.length : 0 }} match{{ (rule.matches && rule.matches.length !== 1) ? 'es' : '' }}</span>
+            <span class="match-count"
+              >{{ rule.matches ? rule.matches.length : 0 }} match{{
+                rule.matches && rule.matches.length !== 1 ? 'es' : ''
+              }}</span
+            >
           </div>
 
           <div v-if="expandedRules[rIdx]" class="rule-body">
@@ -185,17 +179,41 @@
     </div>
 
     <!-- No matches found after scan -->
-    <div v-if="!yaraStore.hasResults && !yaraStore.hasCompileErrors && !yaraStore.isScanning && !yaraStore.error && yaraStore.lastScanTimestamp" class="no-results-banner">
+    <div
+      v-if="
+        !yaraStore.hasResults &&
+        !yaraStore.hasCompileErrors &&
+        !yaraStore.isScanning &&
+        !yaraStore.error &&
+        yaraStore.lastScanTimestamp
+      "
+      class="no-results-banner"
+    >
       <div class="no-results-icon">0</div>
       <div class="no-results-text">
         <strong>No matches found</strong>
-        <p>The scan completed in {{ formatDuration(yaraStore.lastScanDuration) }} with no rule matches.</p>
+        <p>
+          The scan completed in {{ formatDuration(yaraStore.lastScanDuration) }} with no rule
+          matches.
+        </p>
       </div>
     </div>
 
     <!-- Empty state (never scanned yet) -->
-    <div v-if="!yaraStore.hasResults && !yaraStore.hasCompileErrors && !yaraStore.isScanning && !yaraStore.error && !yaraStore.lastScanTimestamp" class="empty-state">
-      <p>Enter or select YARA rules above, then click <strong>Scan</strong> to analyze the loaded file.</p>
+    <div
+      v-if="
+        !yaraStore.hasResults &&
+        !yaraStore.hasCompileErrors &&
+        !yaraStore.isScanning &&
+        !yaraStore.error &&
+        !yaraStore.lastScanTimestamp
+      "
+      class="empty-state"
+    >
+      <p>
+        Enter or select YARA rules above, then click <strong>Scan</strong> to analyze the loaded
+        file.
+      </p>
     </div>
   </div>
 </template>
@@ -244,19 +262,19 @@ export default {
     }
   },
 
-  created() {
-    this.yaraStore = useYaraStore()
-    // Sync initial rules from store
-    if (this.yaraStore.currentRules) {
-      this.rulesText = this.yaraStore.currentRules
-    }
-  },
-
   watch: {
     'yaraStore.currentRules'(val) {
       if (val !== this.rulesText) {
         this.rulesText = val
       }
+    }
+  },
+
+  created() {
+    this.yaraStore = useYaraStore()
+    // Sync initial rules from store
+    if (this.yaraStore.currentRules) {
+      this.rulesText = this.yaraStore.currentRules
     }
   },
 
@@ -274,7 +292,7 @@ export default {
         this.rulesText = ''
         return
       }
-      const ruleSet = this.builtinRuleSets.find(rs => rs.id === this.selectedBuiltIn)
+      const ruleSet = this.builtinRuleSets.find((rs) => rs.id === this.selectedBuiltIn)
       if (ruleSet) {
         this.yaraStore.selectBuiltInRuleSet(ruleSet.id, ruleSet.rules)
         this.rulesText = ruleSet.rules
@@ -323,16 +341,14 @@ export default {
 
       // Lazily create worker
       if (!this.worker) {
-        this.worker = new Worker(
-          new URL('../workers/YaraWorker.js', import.meta.url),
-          { type: 'module' }
-        )
+        this.worker = new Worker(new URL('../workers/YaraWorker.js', import.meta.url), {
+          type: 'module'
+        })
       }
 
       // Get file data as Uint8Array
-      const fileData = this.fileBytes instanceof Uint8Array
-        ? this.fileBytes
-        : new Uint8Array(this.fileBytes)
+      const fileData =
+        this.fileBytes instanceof Uint8Array ? this.fileBytes : new Uint8Array(this.fileBytes)
 
       try {
         await new Promise((resolve) => {
@@ -610,7 +626,7 @@ export default {
   margin-left: auto;
 }
 
-.highlight-toggle input[type="checkbox"] {
+.highlight-toggle input[type='checkbox'] {
   cursor: pointer;
 }
 

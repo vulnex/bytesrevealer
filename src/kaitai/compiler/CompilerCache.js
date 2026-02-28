@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: CompilerCache.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27
@@ -46,10 +46,10 @@ class CompilerCache {
       const stored = localStorage.getItem(this.cachePrefix + hash)
       if (stored) {
         const entry = JSON.parse(stored)
-        
+
         // Add to memory cache
         this.addToMemoryCache(hash, entry.content)
-        
+
         return entry.content
       }
     } catch (error) {
@@ -170,7 +170,7 @@ class CompilerCache {
             timestamp: item.timestamp || 0,
             size: item.size || 0
           })
-        } catch (error) {
+        } catch (_error) {
           // Remove corrupted entry
           localStorage.removeItem(key)
         }

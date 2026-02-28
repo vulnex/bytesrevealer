@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: VisualView.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-16
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: VisualView.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-02-16 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="hex-view-container">
@@ -17,11 +8,11 @@
       <div class="controls-bar">
         <div class="jump-control">
           <input
-            type="text"
             v-model="jumpOffset"
+            type="text"
             placeholder="Jump to offset (hex/dec)"
-            @keyup.enter="handleJump"
             class="jump-input"
+            @keyup.enter="handleJump"
           />
           <button class="jump-button" @click="handleJump">Jump</button>
         </div>
@@ -29,8 +20,10 @@
           <button
             class="color-scheme-button"
             :class="{ 'hex-colors': useHexColors }"
+            :title="
+              useHexColors ? 'Switch to blue color scheme' : 'Switch to hex view color scheme'
+            "
             @click="toggleColorScheme"
-            :title="useHexColors ? 'Switch to blue color scheme' : 'Switch to hex view color scheme'"
           >
             <span class="color-icon">{{ useHexColors ? '🎨' : '🔵' }}</span>
           </button>
@@ -41,29 +34,19 @@
       </div>
       <div class="content-area">
         <ColorPalette @color-selected="handleColorSelected" />
-        <div 
+        <div
           ref="containerRef"
           class="visual-content"
           @mousedown="startSelection"
           @mousemove="updateSelection"
           @mouseup="endSelection"
         >
-          <div 
-            class="virtual-scroll-content"
-            :style="{ height: `${totalHeight}px` }"
-          >
-            <div
-              class="visible-window"
-              :style="{ transform: `translateY(${startOffset}px)` }"
-            >
-              <div 
-                v-for="row in visibleData" 
-                :key="row.offset"
-                class="byte-row"
-              >
+          <div class="virtual-scroll-content" :style="{ height: `${totalHeight}px` }">
+            <div class="visible-window" :style="{ transform: `translateY(${startOffset}px)` }">
+              <div v-for="row in visibleData" :key="row.offset" class="byte-row">
                 <!-- Offset column -->
                 <span class="offset">{{ formatOffset(row.offset) }}</span>
-                
+
                 <!-- Byte squares grid -->
                 <div class="squares-container">
                   <div
@@ -72,16 +55,16 @@
                     :data-byte-index="row.offset + index"
                     class="byte-square"
                     :class="{
-                      'highlighted': isHighlighted(row.offset + index),
-                      'hovered': !inspectorLocked && hoveredByte === (row.offset + index),
+                      highlighted: isHighlighted(row.offset + index),
+                      hovered: !inspectorLocked && hoveredByte === row.offset + index,
                       'ascii-byte': !useHexColors && isAsciiByte(byte),
-                      'selected': isSelected(row.offset + index),
-                      'locked': inspectorLocked && lockedByte === (row.offset + index),
+                      selected: isSelected(row.offset + index),
+                      locked: inspectorLocked && lockedByte === row.offset + index,
                       'byte-null': useHexColors && byte === 0x00,
-                      'byte-printable': useHexColors && byte >= 0x20 && byte <= 0x7E,
-                      'byte-control': useHexColors && byte >= 0x01 && byte <= 0x1F,
-                      'byte-extended': useHexColors && byte >= 0x7F && byte <= 0xFE,
-                      'byte-ff': useHexColors && byte === 0xFF
+                      'byte-printable': useHexColors && byte >= 0x20 && byte <= 0x7e,
+                      'byte-control': useHexColors && byte >= 0x01 && byte <= 0x1f,
+                      'byte-extended': useHexColors && byte >= 0x7f && byte <= 0xfe,
+                      'byte-ff': useHexColors && byte === 0xff
                     }"
                     :style="getByteStyles(row.offset + index)"
                     @mouseenter="onByteHover(row.offset + index, $event)"
@@ -92,20 +75,21 @@
 
                 <!-- ASCII representation -->
                 <div class="ascii-column">
-                  |<span 
-                    v-for="(byte, index) in row.bytes" 
+                  |<span
+                    v-for="(byte, index) in row.bytes"
                     :key="index"
                     :data-byte-index="row.offset + index"
                     class="ascii-char"
-                    :class="{ 
-                      'highlighted': isHighlighted(row.offset + index),
-                      'hovered': !inspectorLocked && hoveredByte === (row.offset + index),
-                      'selected': isSelected(row.offset + index)
+                    :class="{
+                      highlighted: isHighlighted(row.offset + index),
+                      hovered: !inspectorLocked && hoveredByte === row.offset + index,
+                      selected: isSelected(row.offset + index)
                     }"
                     :style="getByteStyles(row.offset + index)"
                     @mouseenter="onByteHover(row.offset + index, $event)"
                     @mouseleave="onByteLeave"
-                  >{{ byteToAscii(byte) }}</span>|
+                    >{{ byteToAscii(byte) }}</span
+                  >|
                 </div>
               </div>
             </div>
@@ -115,13 +99,19 @@
     </div>
     <DataInspector
       :offset="getDisplayOffset(inspectorLocked ? lockedByte : (hoveredByte ?? 0))"
-      :value="inspectorLocked ? (fileBytes[lockedByte] ?? 0) : (hoveredByte !== null ? fileBytes[hoveredByte] : 0)"
-      :fileBytes="fileBytes"
-      :isLocked="inspectorLocked"
-      :actualOffset="inspectorLocked ? lockedByte : (hoveredByte ?? 0)"
+      :value="
+        inspectorLocked
+          ? (fileBytes[lockedByte] ?? 0)
+          : hoveredByte !== null
+            ? fileBytes[hoveredByte]
+            : 0
+      "
+      :file-bytes="fileBytes"
+      :is-locked="inspectorLocked"
+      :actual-offset="inspectorLocked ? lockedByte : (hoveredByte ?? 0)"
       class="inspector-panel"
     />
-    
+
     <!-- Byte information tooltip -->
     <ByteTooltip
       :show="!!hoveredByte"
@@ -132,10 +122,7 @@
     />
 
     <!-- Chunk Loading Indicator -->
-    <ChunkLoadingIndicator
-      :chunk-manager="chunkManager"
-      :file-bytes="fileBytes"
-    />
+    <ChunkLoadingIndicator :chunk-manager="chunkManager" :file-bytes="fileBytes" />
   </div>
 </template>
 

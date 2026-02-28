@@ -33,12 +33,17 @@ vi.mock('../services/SessionManager', () => ({
 import { sessionManager } from '../services/SessionManager'
 
 function flushPromises() {
-  return new Promise(resolve => setTimeout(resolve, 0))
+  return new Promise((resolve) => setTimeout(resolve, 0))
 }
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -67,7 +72,11 @@ describe('useSessionActions', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     sessionManager.listSessions.mockResolvedValue([])
-    sessionManager.extractMetadata.mockImplementation(s => ({ id: s.id, name: s.name, modified: s.modified }))
+    sessionManager.extractMetadata.mockImplementation((s) => ({
+      id: s.id,
+      name: s.name,
+      modified: s.modified
+    }))
   })
 
   afterEach(() => {
@@ -401,10 +410,18 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       const savedSession = { id: 's1', name: 'Test', modified: '2025-01-01' }
       sessionManager.saveSession.mockResolvedValue(savedSession)
-      sessionManager.extractMetadata.mockReturnValue({ id: 's1', name: 'Test', modified: '2025-01-01' })
+      sessionManager.extractMetadata.mockReturnValue({
+        id: 's1',
+        name: 'Test',
+        modified: '2025-01-01'
+      })
 
       const [result, app] = withSetup(() =>
-        useSessionActions(makeProps({ hasFileLoaded: true, appState: { data: 'test' } }), emit, makeCallbacks())
+        useSessionActions(
+          makeProps({ hasFileLoaded: true, appState: { data: 'test' } }),
+          emit,
+          makeCallbacks()
+        )
       )
       await flushPromises()
 
@@ -423,7 +440,11 @@ describe('useSessionActions', () => {
 
     it('trims session name', async () => {
       const emit = makeEmit()
-      sessionManager.saveSession.mockResolvedValue({ id: 's1', name: 'Trimmed', modified: '2025-01-01' })
+      sessionManager.saveSession.mockResolvedValue({
+        id: 's1',
+        name: 'Trimmed',
+        modified: '2025-01-01'
+      })
       sessionManager.extractMetadata.mockReturnValue({ id: 's1', name: 'Trimmed' })
 
       const [result, app] = withSetup(() =>
@@ -485,9 +506,7 @@ describe('useSessionActions', () => {
   describe('saveCurrentSession', () => {
     it('does nothing when no current session', async () => {
       const emit = makeEmit()
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.saveCurrentSession()
@@ -500,7 +519,11 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       const updatedSession = { id: 's1', name: 'Updated', modified: '2025-01-02' }
       sessionManager.updateSession.mockResolvedValue(updatedSession)
-      sessionManager.extractMetadata.mockReturnValue({ id: 's1', name: 'Updated', modified: '2025-01-02' })
+      sessionManager.extractMetadata.mockReturnValue({
+        id: 's1',
+        name: 'Updated',
+        modified: '2025-01-02'
+      })
 
       const [result, app] = withSetup(() =>
         useSessionActions(makeProps({ appState: { data: 'updated' } }), emit, makeCallbacks())
@@ -523,9 +546,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.updateSession.mockRejectedValue(new Error('Update failed'))
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       const store = useSessionStore()
@@ -546,9 +567,7 @@ describe('useSessionActions', () => {
       const fullSession = { id: 's1', name: 'Loaded', state: { data: 'loaded' } }
       sessionManager.loadSession.mockResolvedValue(fullSession)
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.loadSession({ id: 's1' })
@@ -567,9 +586,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.loadSession.mockRejectedValue(new Error('Load failed'))
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.loadSession({ id: 's1' })
@@ -590,9 +607,7 @@ describe('useSessionActions', () => {
       })
 
       const emit = makeEmit()
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.loadSession({ id: 's1' })
@@ -620,7 +635,10 @@ describe('useSessionActions', () => {
     })
 
     it('confirms before closing dirty session', async () => {
-      vi.stubGlobal('confirm', vi.fn(() => true))
+      vi.stubGlobal(
+        'confirm',
+        vi.fn(() => true)
+      )
 
       const [result, app] = withSetup(() =>
         useSessionActions(makeProps(), makeEmit(), makeCallbacks())
@@ -640,7 +658,10 @@ describe('useSessionActions', () => {
     })
 
     it('does not close when user cancels confirm', async () => {
-      vi.stubGlobal('confirm', vi.fn(() => false))
+      vi.stubGlobal(
+        'confirm',
+        vi.fn(() => false)
+      )
 
       const [result, app] = withSetup(() =>
         useSessionActions(makeProps(), makeEmit(), makeCallbacks())
@@ -689,9 +710,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.exportSession.mockRejectedValue(new Error('Export failed'))
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.exportSession({ id: 's1' })
@@ -759,9 +778,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.importSession.mockRejectedValue(new Error('Invalid format'))
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       const event = {
@@ -823,9 +840,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.deleteSession.mockRejectedValue(new Error('Delete failed'))
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       await result.deleteSession({ id: 's1', name: 'Test' })
@@ -860,9 +875,7 @@ describe('useSessionActions', () => {
       const emit = makeEmit()
       sessionManager.loadSession.mockResolvedValue({ id: 's1', name: 'Pending' })
 
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       result.pendingSession.value = { id: 's1' }
@@ -880,9 +893,7 @@ describe('useSessionActions', () => {
 
     it('does nothing when no pending session', async () => {
       const emit = makeEmit()
-      const [result, app] = withSetup(() =>
-        useSessionActions(makeProps(), emit, makeCallbacks())
-      )
+      const [result, app] = withSetup(() => useSessionActions(makeProps(), emit, makeCallbacks()))
       await flushPromises()
 
       result.verificationWarning.value = { warnings: ['Test'] }
@@ -916,11 +927,9 @@ describe('useSessionActions', () => {
 
   describe('onMounted', () => {
     it('calls refreshSessions on mount', async () => {
-      sessionManager.listSessions.mockResolvedValue([
-        { id: 's1', name: 'Session 1' }
-      ])
+      sessionManager.listSessions.mockResolvedValue([{ id: 's1', name: 'Session 1' }])
 
-      const [result, app] = withSetup(() =>
+      const [_result, app] = withSetup(() =>
         useSessionActions(makeProps(), makeEmit(), makeCallbacks())
       )
       await flushPromises()

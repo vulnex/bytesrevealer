@@ -18,24 +18,34 @@ class MockWorker {
 }
 
 vi.stubGlobal('Worker', MockWorker)
-vi.stubGlobal('Blob', class MockBlob { constructor() {} })
+vi.stubGlobal(
+  'Blob',
+  class MockBlob {
+    constructor() {}
+  }
+)
 globalThis.URL.createObjectURL = vi.fn(() => 'blob:mock')
 globalThis.URL.revokeObjectURL = vi.fn()
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
 
 function simulateWorkerMessage(data) {
-  messageListeners.forEach(handler => handler({ data }))
+  messageListeners.forEach((handler) => handler({ data }))
 }
 
 // Helper: build Uint8Array from ASCII string
 function asciiBytes(str) {
-  return new Uint8Array([...str].map(c => c.charCodeAt(0)))
+  return new Uint8Array([...str].map((c) => c.charCodeAt(0)))
 }
 
 describe('useStringExtraction', () => {
@@ -107,10 +117,9 @@ describe('useStringExtraction', () => {
     })
 
     it('extracts multiple strings separated by non-printable bytes', async () => {
-      const bytes = ref(new Uint8Array([
-        ...asciiBytes('Hello'), 0x00,
-        ...asciiBytes('World'), 0x00
-      ]))
+      const bytes = ref(
+        new Uint8Array([...asciiBytes('Hello'), 0x00, ...asciiBytes('World'), 0x00])
+      )
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 
@@ -122,11 +131,7 @@ describe('useStringExtraction', () => {
 
     it('records correct offsets for multiple strings', async () => {
       // null + "AAAA" + null + "BBBB"
-      const bytes = ref(new Uint8Array([
-        0x00,
-        ...asciiBytes('AAAA'), 0x00,
-        ...asciiBytes('BBBB')
-      ]))
+      const bytes = ref(new Uint8Array([0x00, ...asciiBytes('AAAA'), 0x00, ...asciiBytes('BBBB')]))
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 
@@ -146,7 +151,7 @@ describe('useStringExtraction', () => {
     })
 
     it('handles file with no extractable strings', async () => {
-      const bytes = ref(new Uint8Array([0x00, 0x01, 0x02, 0x03, 0xFF, 0xFE]))
+      const bytes = ref(new Uint8Array([0x00, 0x01, 0x02, 0x03, 0xff, 0xfe]))
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 
@@ -168,11 +173,7 @@ describe('useStringExtraction', () => {
 
     it('trims strings and requires trimmed length > 3', async () => {
       // 4 spaces + "ab" — trimmed length is 2
-      const bytes = ref(new Uint8Array([
-        0x00,
-        0x20, 0x20, 0x20, 0x20, 0x61, 0x62,
-        0x00
-      ]))
+      const bytes = ref(new Uint8Array([0x00, 0x20, 0x20, 0x20, 0x20, 0x61, 0x62, 0x00]))
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 
@@ -246,7 +247,7 @@ describe('useStringExtraction', () => {
   describe('worker path (large files)', () => {
     it('uses worker for files > 10MB', async () => {
       // Create a ref with length > 10MB
-      const largeBytes = ref({ length: 10 * 1024 * 1024 + 1, value: null })
+      const _largeBytes = ref({ length: 10 * 1024 * 1024 + 1, value: null })
       // We need it to look like a real array to pass length check
       const bigArray = new Uint8Array(10 * 1024 * 1024 + 1)
       bigArray[0] = 0x48 // 'H'
@@ -255,14 +256,16 @@ describe('useStringExtraction', () => {
       await nextTick()
 
       expect(result.isLoading.value).toBe(true)
-      expect(mockPostMessage).toHaveBeenCalledWith(expect.objectContaining({
-        type: 'analyze',
-        options: expect.objectContaining({
-          minLength: 4,
-          maxResults: 10000,
-          encoding: 'all'
+      expect(mockPostMessage).toHaveBeenCalledWith(
+        expect.objectContaining({
+          type: 'analyze',
+          options: expect.objectContaining({
+            minLength: 4,
+            maxResults: 10000,
+            encoding: 'all'
+          })
         })
-      }))
+      )
       app.unmount()
     })
 
@@ -318,12 +321,8 @@ describe('useStringExtraction', () => {
         type: 'complete',
         results: {
           ascii: [],
-          utf16le: [
-            { offset: 0, length: 4, value: 'Test', encoding: 'UTF-16LE' }
-          ],
-          utf16be: [
-            { offset: 100, length: 6, value: 'Sample', encoding: 'UTF-16BE' }
-          ]
+          utf16le: [{ offset: 0, length: 4, value: 'Test', encoding: 'UTF-16LE' }],
+          utf16be: [{ offset: 100, length: 6, value: 'Sample', encoding: 'UTF-16BE' }]
         }
       })
 
@@ -344,9 +343,7 @@ describe('useStringExtraction', () => {
       simulateWorkerMessage({
         type: 'complete',
         results: {
-          ascii: [
-            { offset: 0, length: 6, value: 'AB\x01CD' }
-          ],
+          ascii: [{ offset: 0, length: 6, value: 'AB\x01CD' }],
           utf16le: [],
           utf16be: []
         }
@@ -382,7 +379,7 @@ describe('useStringExtraction', () => {
     it('terminates worker on complete', async () => {
       const bigArray = new Uint8Array(10 * 1024 * 1024 + 1)
       const bytes = ref(bigArray)
-      const [result, app] = await loadComposable(bytes)
+      const [_result, app] = await loadComposable(bytes)
       await nextTick()
 
       simulateWorkerMessage({
@@ -430,7 +427,7 @@ describe('useStringExtraction', () => {
 
     it('does not error on unmount when no worker exists', async () => {
       const bytes = ref(asciiBytes('Hello'))
-      const [result, app] = await loadComposable(bytes)
+      const [_result, app] = await loadComposable(bytes)
       await nextTick()
 
       // No worker for small files, unmount should not throw
@@ -517,7 +514,7 @@ describe('useStringExtraction', () => {
 
     it('handles bytes at ASCII boundary (0x20 and 0x7E)', async () => {
       // 0x20 = space, 0x7E = ~; need trimmed length > 3
-      const bytes = ref(new Uint8Array([0x00, 0x7E, 0x20, 0x7E, 0x20, 0x7E, 0x00]))
+      const bytes = ref(new Uint8Array([0x00, 0x7e, 0x20, 0x7e, 0x20, 0x7e, 0x00]))
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 
@@ -528,7 +525,7 @@ describe('useStringExtraction', () => {
 
     it('does not include byte 0x7F (DEL) in strings', async () => {
       // 0x7F is not printable, should break the string
-      const bytes = ref(new Uint8Array([...asciiBytes('AB'), 0x7F, ...asciiBytes('CD')]))
+      const bytes = ref(new Uint8Array([...asciiBytes('AB'), 0x7f, ...asciiBytes('CD')]))
       const [result, app] = await loadComposable(bytes)
       await nextTick()
 

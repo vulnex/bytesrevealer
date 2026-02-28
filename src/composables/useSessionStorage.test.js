@@ -15,7 +15,12 @@ import { sessionManager } from '../services/SessionManager'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -26,7 +31,11 @@ function withSetup(fn) {
 describe('useSessionStorage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+    sessionManager.getStorageUsage.mockResolvedValue({
+      sessionsUsed: 0,
+      sessionsCount: 0,
+      totalUsed: 0
+    })
     sessionManager.getFileCacheSize.mockResolvedValue(0)
   })
 
@@ -79,7 +88,11 @@ describe('useSessionStorage', () => {
     })
 
     it('updates values on subsequent calls', async () => {
-      sessionManager.getStorageUsage.mockResolvedValueOnce({ sessionsUsed: 100, sessionsCount: 1, totalUsed: 100 })
+      sessionManager.getStorageUsage.mockResolvedValueOnce({
+        sessionsUsed: 100,
+        sessionsCount: 1,
+        totalUsed: 100
+      })
       sessionManager.getFileCacheSize.mockResolvedValueOnce(50)
 
       const storage = useSessionStorage()
@@ -88,7 +101,11 @@ describe('useSessionStorage', () => {
       expect(storage.storageUsage.value.sessionsUsed).toBe(100)
       expect(storage.fileCacheSize.value).toBe(50)
 
-      sessionManager.getStorageUsage.mockResolvedValueOnce({ sessionsUsed: 200, sessionsCount: 2, totalUsed: 200 })
+      sessionManager.getStorageUsage.mockResolvedValueOnce({
+        sessionsUsed: 200,
+        sessionsCount: 2,
+        totalUsed: 200
+      })
       sessionManager.getFileCacheSize.mockResolvedValueOnce(75)
 
       await storage.updateStorageUsage()
@@ -122,7 +139,11 @@ describe('useSessionStorage', () => {
     it('clears cache successfully with cleared=true', async () => {
       vi.useFakeTimers()
       sessionManager.clearFileCache.mockResolvedValue({ cleared: true, message: 'Cache cleared' })
-      sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+      sessionManager.getStorageUsage.mockResolvedValue({
+        sessionsUsed: 0,
+        sessionsCount: 0,
+        totalUsed: 0
+      })
       sessionManager.getFileCacheSize.mockResolvedValue(0)
 
       const storage = useSessionStorage()
@@ -142,8 +163,15 @@ describe('useSessionStorage', () => {
 
     it('sets info type when cleared=false', async () => {
       vi.useFakeTimers()
-      sessionManager.clearFileCache.mockResolvedValue({ cleared: false, message: 'Nothing to clear' })
-      sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+      sessionManager.clearFileCache.mockResolvedValue({
+        cleared: false,
+        message: 'Nothing to clear'
+      })
+      sessionManager.getStorageUsage.mockResolvedValue({
+        sessionsUsed: 0,
+        sessionsCount: 0,
+        totalUsed: 0
+      })
       sessionManager.getFileCacheSize.mockResolvedValue(0)
 
       const storage = useSessionStorage()
@@ -157,7 +185,11 @@ describe('useSessionStorage', () => {
 
     it('refreshes storage usage after clearing', async () => {
       sessionManager.clearFileCache.mockResolvedValue({ cleared: true, message: 'Done' })
-      sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+      sessionManager.getStorageUsage.mockResolvedValue({
+        sessionsUsed: 0,
+        sessionsCount: 0,
+        totalUsed: 0
+      })
       sessionManager.getFileCacheSize.mockResolvedValue(0)
 
       const storage = useSessionStorage()
@@ -181,10 +213,17 @@ describe('useSessionStorage', () => {
 
     it('prevents concurrent clearing', async () => {
       let resolveFirst
-      sessionManager.clearFileCache.mockImplementationOnce(() =>
-        new Promise(resolve => { resolveFirst = resolve })
+      sessionManager.clearFileCache.mockImplementationOnce(
+        () =>
+          new Promise((resolve) => {
+            resolveFirst = resolve
+          })
       )
-      sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+      sessionManager.getStorageUsage.mockResolvedValue({
+        sessionsUsed: 0,
+        sessionsCount: 0,
+        totalUsed: 0
+      })
       sessionManager.getFileCacheSize.mockResolvedValue(0)
 
       const storage = useSessionStorage()
@@ -202,7 +241,11 @@ describe('useSessionStorage', () => {
 
     it('resets cacheMessage before clearing', async () => {
       sessionManager.clearFileCache.mockResolvedValue({ cleared: true, message: 'New message' })
-      sessionManager.getStorageUsage.mockResolvedValue({ sessionsUsed: 0, sessionsCount: 0, totalUsed: 0 })
+      sessionManager.getStorageUsage.mockResolvedValue({
+        sessionsUsed: 0,
+        sessionsCount: 0,
+        totalUsed: 0
+      })
       sessionManager.getFileCacheSize.mockResolvedValue(0)
 
       const storage = useSessionStorage()

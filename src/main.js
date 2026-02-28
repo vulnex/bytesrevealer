@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: main.js
  * Author: Simon Roses Femerling
  * Created: 2025-02-12
@@ -30,8 +30,9 @@ app.mount('#app')
 // Register Service Worker for PWA capabilities
 if ('serviceWorker' in navigator && import.meta.env.PROD) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/service-worker.js')
-      .then(registration => {
+    navigator.serviceWorker
+      .register('/service-worker.js')
+      .then((registration) => {
         // console.log('Service Worker registered:', registration.scope)
 
         // Check for updates periodically
@@ -51,7 +52,7 @@ if ('serviceWorker' in navigator && import.meta.env.PROD) {
           })
         })
       })
-      .catch(error => {
+      .catch((_error) => {
         // console.error('Service Worker registration failed:', error)
       })
   })

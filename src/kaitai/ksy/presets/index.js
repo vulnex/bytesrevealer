@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: presets/index.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -90,7 +90,7 @@ export const builtinPresets = [
       fileExtensions: ['png'],
       signature: {
         offset: 0,
-        bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+        bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
       }
     }
   },
@@ -104,7 +104,7 @@ export const builtinPresets = [
       fileExtensions: ['zip', 'jar', 'apk', 'docx', 'xlsx', 'pptx'],
       signature: {
         offset: 0,
-        bytes: [0x50, 0x4B]
+        bytes: [0x50, 0x4b]
       }
     }
   },
@@ -118,7 +118,7 @@ export const builtinPresets = [
       fileExtensions: ['exe', 'dll', 'sys'],
       signature: {
         offset: 0,
-        bytes: [0x4D, 0x5A]
+        bytes: [0x4d, 0x5a]
       }
     }
   }
@@ -128,9 +128,7 @@ export const builtinPresets = [
  * All preset formats (built-in + generated)
  * Note: generatedFormats are loaded lazily
  */
-export const presetFormats = [
-  ...builtinPresets
-]
+export const presetFormats = [...builtinPresets]
 
 /**
  * Load all preset formats (including lazy-loaded generated formats)
@@ -143,7 +141,7 @@ export async function getPresetFormats() {
     const { categoryMetadata } = await import('../categories/index.js')
 
     // Load all categories in parallel
-    const loadPromises = Object.entries(categoryMetadata).map(async ([key, meta]) => {
+    const loadPromises = Object.entries(categoryMetadata).map(async ([_key, meta]) => {
       const module = await meta.loader()
       return module.default.formats
     })
@@ -161,11 +159,11 @@ export async function getPresetFormats() {
  */
 export async function getPresetFormat(id) {
   // Check built-in presets first
-  const builtIn = builtinPresets.find(f => f.id === id)
+  const builtIn = builtinPresets.find((f) => f.id === id)
   if (builtIn) return builtIn
 
   // Check if we already have it cached
-  const cached = generatedFormats.find(f => f.id === id)
+  const cached = generatedFormats.find((f) => f.id === id)
   if (cached) return cached
 
   // Smart loading - only load the category containing this format
@@ -177,7 +175,7 @@ export async function getPresetFormat(id) {
   for (const guess of categoryGuesses) {
     if (categoryMetadata[guess]) {
       const module = await categoryMetadata[guess].loader()
-      const format = module.default.formats.find(f => f.id === id)
+      const format = module.default.formats.find((f) => f.id === id)
       if (format) {
         // Cache for future use
         generatedFormats.push(...module.default.formats)
@@ -188,7 +186,7 @@ export async function getPresetFormat(id) {
 
   // If not found in guessed categories, load all (fallback)
   await getPresetFormats()
-  return generatedFormats.find(f => f.id === id) || null
+  return generatedFormats.find((f) => f.id === id) || null
 }
 
 // Helper to guess category from format ID
@@ -222,9 +220,7 @@ function guessCategory(id) {
  */
 export function getPresetFormatByExtension(extension) {
   const ext = extension.toLowerCase()
-  return presetFormats.find(f => 
-    f.metadata.fileExtensions?.includes(ext)
-  ) || null
+  return presetFormats.find((f) => f.metadata.fileExtensions?.includes(ext)) || null
 }
 
 export default {

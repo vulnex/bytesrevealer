@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest'
 import formatter from './ByteFormatter.js'
 
-const bytes = new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF])
+const bytes = new Uint8Array([0xde, 0xad, 0xbe, 0xef])
 const empty = new Uint8Array([])
 
 describe('ByteFormatter', () => {
@@ -249,7 +249,7 @@ describe('ByteFormatter', () => {
     })
 
     it('binary', () => {
-      const result = formatter.format(new Uint8Array([0xFF, 0x00]), 'binary')
+      const result = formatter.format(new Uint8Array([0xff, 0x00]), 'binary')
       expect(result).toContain('11111111')
       expect(result).toContain('00000000')
     })
@@ -326,7 +326,7 @@ describe('ByteFormatter', () => {
     })
 
     it('clang-string', () => {
-      const result = formatter.format(new Uint8Array([0x41, 0x42, 0x00, 0xFF]), 'clang-string')
+      const result = formatter.format(new Uint8Array([0x41, 0x42, 0x00, 0xff]), 'clang-string')
       expect(result).toContain('AB')
       expect(result).toContain('\\x00')
       expect(result).toContain('\\xff')
@@ -342,7 +342,7 @@ describe('ByteFormatter', () => {
   // ── Multi-line splitting ──
 
   describe('Multi-line splitting', () => {
-    const big = new Uint8Array(32).fill(0xAA)
+    const big = new Uint8Array(32).fill(0xaa)
 
     it('JS Uint8Array splits across lines', () => {
       const result = formatter.format(big, 'js-uint8', { lineWidth: 16 })

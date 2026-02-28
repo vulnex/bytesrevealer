@@ -54,7 +54,10 @@ describe('SessionManager (pure methods)', () => {
     })
 
     it('converts Map to Object', () => {
-      const map = new Map([['a', 1], ['b', 2]])
+      const map = new Map([
+        ['a', 1],
+        ['b', 2]
+      ])
       expect(mgr.sanitizeForStorage(map)).toEqual({ a: 1, b: 2 })
     })
 
@@ -140,7 +143,10 @@ describe('SessionManager (pure methods)', () => {
       }
       const session = mgr.createSessionData('S', state)
       expect(session.state.coloredBytes[0]).toEqual({
-        start: 0, end: 10, color: '#ff0000', label: 'header'
+        start: 0,
+        end: 10,
+        color: '#ff0000',
+        label: 'header'
       })
     })
   })

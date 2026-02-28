@@ -7,7 +7,12 @@ import { useAnnotations } from './useAnnotations'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -55,10 +60,10 @@ describe('useAnnotations', () => {
   describe('addBookmark', () => {
     it('adds a bookmark with correct shape', () => {
       const [result, app] = withSetup(() => useAnnotations())
-      result.addBookmark(0xFF)
+      result.addBookmark(0xff)
       const bm = result.bookmarks.value[0]
       expect(bm.id).toMatch(/^bm_/)
-      expect(bm.offset).toBe(0xFF)
+      expect(bm.offset).toBe(0xff)
       expect(bm.label).toBe('Bookmark @ 0xFF')
       expect(bm.color).toBe('#4fc3f7')
       expect(new Date(bm.created).getTime()).not.toBeNaN()
@@ -79,7 +84,13 @@ describe('useAnnotations', () => {
       const [result, app] = withSetup(() => useAnnotations())
       result.addBookmark(10)
       const id = result.bookmarks.value[0].id
-      result.updateBookmark({ id, offset: 10, label: 'Updated', color: '#ff0000', created: result.bookmarks.value[0].created })
+      result.updateBookmark({
+        id,
+        offset: 10,
+        label: 'Updated',
+        color: '#ff0000',
+        created: result.bookmarks.value[0].created
+      })
       expect(result.bookmarks.value[0].label).toBe('Updated')
       expect(result.bookmarks.value[0].color).toBe('#ff0000')
       app.unmount()
@@ -129,7 +140,15 @@ describe('useAnnotations', () => {
       const [result, app] = withSetup(() => useAnnotations())
       result.addAnnotation({ startOffset: 0, endOffset: 5 })
       const id = result.annotations.value[0].id
-      result.updateAnnotation({ id, startOffset: 0, endOffset: 5, label: 'Changed', note: 'hello', color: '#000', created: result.annotations.value[0].created })
+      result.updateAnnotation({
+        id,
+        startOffset: 0,
+        endOffset: 5,
+        label: 'Changed',
+        note: 'hello',
+        color: '#000',
+        created: result.annotations.value[0].created
+      })
       expect(result.annotations.value[0].label).toBe('Changed')
       expect(result.annotations.value[0].note).toBe('hello')
       app.unmount()

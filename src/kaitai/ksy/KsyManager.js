@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KsyManager.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -39,14 +39,14 @@ class KsyManager {
   async initDB() {
     try {
       this.db = await openDB(this.dbName, this.dbVersion, {
-        upgrade(db, oldVersion, newVersion, transaction) {
+        upgrade(db, _oldVersion, _newVersion, _transaction) {
           // Create object store if it doesn't exist
           if (!db.objectStoreNames.contains('ksy_files')) {
             const store = db.createObjectStore('ksy_files', {
               keyPath: 'id',
               autoIncrement: false
             })
-            
+
             // Create indexes
             store.createIndex('name', 'name', { unique: false })
             store.createIndex('category', 'category', { unique: false })
@@ -56,7 +56,7 @@ class KsyManager {
           }
         }
       })
-      
+
       // Successfully initialized
       this.useMemoryStorage = false
       logger.debug('IndexedDB initialized successfully')
@@ -91,7 +91,7 @@ class KsyManager {
     if (!this.db && this.dbPromise) {
       await this.dbPromise
     }
-    
+
     // Initialize validator if needed
     if (!this.validator) {
       this.validator = getKsyValidator()
@@ -99,12 +99,12 @@ class KsyManager {
 
     // Validate KSY content
     const validation = await this.validator.validate(ksyData.content)
-    
+
     // Only fail if we can't parse the YAML at all
     if (!validation.parsed) {
       throw new Error(`Invalid KSY: Cannot parse YAML`)
     }
-    
+
     // Log validation warnings but don't fail
     if (!validation.valid && validation.errors.length > 0) {
       logger.warn(`KSY validation warnings for ${ksyData.name}:`, validation.errors)
@@ -158,13 +158,13 @@ class KsyManager {
     if (!this.db && this.dbPromise) {
       await this.dbPromise
     }
-    
+
     if (this.useMemoryStorage) {
       return this.memoryStore.get(id) || null
     }
-    
+
     try {
-      return await this.db.get(this.storeName, id) || null
+      return (await this.db.get(this.storeName, id)) || null
     } catch (error) {
       logger.error('Failed to get KSY file:', error)
       return null
@@ -181,7 +181,7 @@ class KsyManager {
     if (!this.db && this.dbPromise) {
       await this.dbPromise
     }
-    
+
     let results = []
 
     if (this.useMemoryStorage) {
@@ -200,14 +200,12 @@ class KsyManager {
 
     // Apply filters
     if (filter.category) {
-      results = results.filter(item => item.category === filter.category)
+      results = results.filter((item) => item.category === filter.category)
     }
 
     if (filter.name) {
       const searchTerm = filter.name.toLowerCase()
-      results = results.filter(item => 
-        item.name.toLowerCase().includes(searchTerm)
-      )
+      results = results.filter((item) => item.name.toLowerCase().includes(searchTerm))
     }
 
     // Sort by modified date (newest first)
@@ -276,7 +274,7 @@ class KsyManager {
     if (!this.db && this.dbPromise) {
       await this.dbPromise
     }
-    
+
     if (this.useMemoryStorage) {
       return this.memoryStore.delete(id)
     }
@@ -290,7 +288,7 @@ class KsyManager {
         return false
       }
     }
-    
+
     return false
   }
 
@@ -340,8 +338,8 @@ class KsyManager {
   async getCategories() {
     const files = await this.getAll()
     const categories = new Set(['system', 'user', 'community'])
-    
-    files.forEach(file => {
+
+    files.forEach((file) => {
       if (file.category) {
         categories.add(file.category)
       }
@@ -359,16 +357,17 @@ class KsyManager {
     const searchTerm = query.toLowerCase()
     const files = await this.getAll()
 
-    return files.filter(file => {
+    return files.filter((file) => {
       // Search in name
       if (file.name.toLowerCase().includes(searchTerm)) return true
-      
+
       // Search in description
       if (file.description && file.description.toLowerCase().includes(searchTerm)) return true
-      
+
       // Search in format ID
-      if (file.metadata?.formatId && file.metadata.formatId.toLowerCase().includes(searchTerm)) return true
-      
+      if (file.metadata?.formatId && file.metadata.formatId.toLowerCase().includes(searchTerm))
+        return true
+
       // Search in category
       if (file.category && file.category.toLowerCase().includes(searchTerm)) return true
 
@@ -406,7 +405,7 @@ class KsyManager {
    */
   async clearUserFiles() {
     const files = await this.getAll({ category: 'user' })
-    
+
     for (const file of files) {
       await this.delete(file.id)
     }
@@ -421,7 +420,7 @@ class KsyManager {
     let totalSize = 0
     const categoryCounts = {}
 
-    files.forEach(file => {
+    files.forEach((file) => {
       totalSize += file.content.length
       categoryCounts[file.category] = (categoryCounts[file.category] || 0) + 1
     })
@@ -443,7 +442,7 @@ class KsyManager {
       this.db.close()
       this.db = null
     }
-    
+
     if (this.memoryStore) {
       this.memoryStore.clear()
     }

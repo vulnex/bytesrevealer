@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: HexView.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-17
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: HexView.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-02-17 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="hex-view-container">
@@ -17,11 +8,11 @@
       <div class="controls-bar">
         <div class="jump-control">
           <input
-            type="text"
             v-model="jumpOffset"
+            type="text"
             placeholder="Jump to offset (hex/dec)"
-            @keyup.enter="handleJump"
             class="jump-input"
+            @keyup.enter="handleJump"
           />
           <button class="jump-button" @click="handleJump">Jump</button>
         </div>
@@ -29,16 +20,16 @@
           <button
             class="capitalize-button"
             :class="{ 'uppercase-mode': useUppercase }"
-            @click="toggleCapitalization"
             :title="useUppercase ? 'Switch to lowercase (aa)' : 'Switch to uppercase (AA)'"
+            @click="toggleCapitalization"
           >
             <span class="case-icon">{{ useUppercase ? 'AA' : 'aa' }}</span>
           </button>
           <button
             class="color-toggle-button"
             :class="{ 'colors-disabled': !useColors }"
-            @click="toggleColors"
             :title="useColors ? 'Disable byte coloring' : 'Enable byte coloring'"
+            @click="toggleColors"
           >
             <span class="color-icon">🎨</span>
           </button>
@@ -61,20 +52,16 @@
           <div class="hex-header">
             <div class="hex-grid-row">
               <div class="grid-offset">Address</div>
-              <div class="grid-hex-byte" v-for="i in 16" :key="i">{{ (i-1).toString(16).toUpperCase().padStart(2, '0') }}</div>
+              <div v-for="i in 16" :key="i" class="grid-hex-byte">
+                {{ (i - 1).toString(16).toUpperCase().padStart(2, '0') }}
+              </div>
               <div class="grid-ascii">ASCII</div>
             </div>
           </div>
           <!-- Virtual scrolling viewport -->
-          <div
-            class="virtual-scroll-content"
-            :style="{ height: `${totalHeight}px` }"
-          >
+          <div class="virtual-scroll-content" :style="{ height: `${totalHeight}px` }">
             <!-- Visible row window -->
-            <div
-              class="visible-window"
-              :style="{ transform: `translateY(${startOffset}px)` }"
-            >
+            <div class="visible-window" :style="{ transform: `translateY(${startOffset}px)` }">
               <!-- Individual hex rows -->
               <div
                 v-for="row in visibleData"
@@ -95,18 +82,20 @@
                       :class="[
                         getByteClass(row.bytes[index]),
                         {
-                          'highlighted': isHighlighted(row.offset + index),
-                          'hovered': !inspectorLocked && hoveredByte === (row.offset + index),
-                          'selected': isSelected(row.offset + index),
-                          'locked': inspectorLocked && lockedByte === (row.offset + index)
+                          highlighted: isHighlighted(row.offset + index),
+                          hovered: !inspectorLocked && hoveredByte === row.offset + index,
+                          selected: isSelected(row.offset + index),
+                          locked: inspectorLocked && lockedByte === row.offset + index
                         }
                       ]"
                       :style="getByteStyles(row.offset + index)"
                       @mouseenter="onByteHover(row.offset + index)"
                       @mouseleave="onByteLeave"
                       @dblclick="lockInspector(row.offset + index)"
-                    >{{ formatByte(row.bytes[index]) }}</div>
-                    <div v-else class="grid-hex-byte empty">  </div>
+                    >
+                      {{ formatByte(row.bytes[index]) }}
+                    </div>
+                    <div v-else class="grid-hex-byte empty"></div>
                   </template>
 
                   <!-- ASCII representation -->
@@ -116,17 +105,18 @@
                         :data-byte-index="row.offset + index"
                         class="ascii-char"
                         :class="{
-                          'highlighted': isHighlighted(row.offset + index),
-                          'hovered': !inspectorLocked && hoveredByte === (row.offset + index),
-                          'selected': isSelected(row.offset + index),
-                          'locked': inspectorLocked && lockedByte === (row.offset + index)
+                          highlighted: isHighlighted(row.offset + index),
+                          hovered: !inspectorLocked && hoveredByte === row.offset + index,
+                          selected: isSelected(row.offset + index),
+                          locked: inspectorLocked && lockedByte === row.offset + index
                         }"
                         :style="getByteStyles(row.offset + index)"
                         @mouseenter="onByteHover(row.offset + index)"
                         @mouseleave="onByteLeave"
                         @dblclick="lockInspector(row.offset + index)"
-                      >{{ byteToAscii(byte) }}</span>
-                    </template>|
+                        >{{ byteToAscii(byte) }}</span
+                      > </template
+                    >|
                   </div>
                 </div>
               </div>
@@ -169,10 +159,16 @@
         <div v-show="activeTab === 'inspector'" class="tab-pane">
           <DataInspector
             :offset="getDisplayOffset(inspectorLocked ? lockedByte : (hoveredByte ?? 0))"
-            :value="inspectorLocked ? (fileBytes[lockedByte] ?? 0) : (hoveredByte !== null ? fileBytes[hoveredByte] : 0)"
-            :fileBytes="fileBytes"
-            :isLocked="inspectorLocked"
-            :actualOffset="inspectorLocked ? lockedByte : (hoveredByte ?? 0)"
+            :value="
+              inspectorLocked
+                ? (fileBytes[lockedByte] ?? 0)
+                : hoveredByte !== null
+                  ? fileBytes[hoveredByte]
+                  : 0
+            "
+            :file-bytes="fileBytes"
+            :is-locked="inspectorLocked"
+            :actual-offset="inspectorLocked ? lockedByte : (hoveredByte ?? 0)"
           />
         </div>
 
@@ -180,12 +176,12 @@
         <div v-show="activeTab === 'kaitai'" class="tab-pane">
           <KaitaiStructureView
             :structures="kaitaiStructures"
-            :formatName="detectedFormat"
+            :format-name="detectedFormat"
             :loading="kaitaiLoading"
             :error="kaitaiError"
-            :currentOffset="lockedByte !== null ? lockedByte : 0"
-            :fileBytes="fileBytes"
-            :fileName="fileName"
+            :current-offset="lockedByte !== null ? lockedByte : 0"
+            :file-bytes="fileBytes"
+            :file-name="fileName"
             @hover="handleStructureHover"
             @select="handleStructureSelect"
             @highlight="handleStructureHighlight"
@@ -209,10 +205,7 @@
     </div>
 
     <!-- Chunk Loading Indicator -->
-    <ChunkLoadingIndicator
-      :chunk-manager="chunkManager"
-      :file-bytes="fileBytes"
-    />
+    <ChunkLoadingIndicator :chunk-manager="chunkManager" :file-bytes="fileBytes" />
 
     <!-- Context Menu -->
     <HexContextMenu
@@ -282,9 +275,7 @@ import { useHexDisplay } from '../composables/useHexDisplay'
 import { useHexNavigation } from '../composables/useHexNavigation'
 
 // Lazy load Kaitai components to reduce bundle size
-const KaitaiStructureView = defineAsyncComponent(() =>
-  import('./KaitaiStructureView.vue')
-)
+const KaitaiStructureView = defineAsyncComponent(() => import('./KaitaiStructureView.vue'))
 
 export default {
   name: 'HexView',
@@ -330,6 +321,7 @@ export default {
       default: () => []
     }
   },
+  emits: ['update-bookmark', 'remove-bookmark', 'update-annotation', 'remove-annotation', 'byte-selection'],
 
   setup(props, { emit }) {
     const settingsStore = useSettingsStore()
@@ -533,8 +525,8 @@ export default {
       fileData: hexExport.fileData,
       toast: hexExport.toast,
       // Props exposed for template
-      fileBytes: props.fileBytes,
-      chunkManager: props.chunkManager
+      fileBytes: props.fileBytes, // eslint-disable-line vue/no-dupe-keys
+      chunkManager: props.chunkManager // eslint-disable-line vue/no-dupe-keys
     }
   }
 }

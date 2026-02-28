@@ -22,12 +22,12 @@ export function useAnnotations() {
   }
 
   function updateBookmark(updated) {
-    const idx = bookmarks.value.findIndex(b => b.id === updated.id)
+    const idx = bookmarks.value.findIndex((b) => b.id === updated.id)
     if (idx !== -1) bookmarks.value.splice(idx, 1, updated)
   }
 
   function removeBookmark(id) {
-    bookmarks.value = bookmarks.value.filter(b => b.id !== id)
+    bookmarks.value = bookmarks.value.filter((b) => b.id !== id)
   }
 
   function addAnnotation({ startOffset, endOffset }) {
@@ -43,18 +43,18 @@ export function useAnnotations() {
   }
 
   function updateAnnotation(updated) {
-    const idx = annotations.value.findIndex(a => a.id === updated.id)
+    const idx = annotations.value.findIndex((a) => a.id === updated.id)
     if (idx !== -1) annotations.value.splice(idx, 1, updated)
   }
 
   function removeAnnotation(id) {
-    annotations.value = annotations.value.filter(a => a.id !== id)
+    annotations.value = annotations.value.filter((a) => a.id !== id)
   }
 
   function handleByteSelection({ start, end, color }) {
     if (color === '#ffffff') {
-      coloredBytes.value = coloredBytes.value.filter(range =>
-        !(range.start >= start && range.end <= end)
+      coloredBytes.value = coloredBytes.value.filter(
+        (range) => !(range.start >= start && range.end <= end)
       )
     } else {
       coloredBytes.value.push({ start, end, color })

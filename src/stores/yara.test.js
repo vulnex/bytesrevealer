@@ -42,7 +42,13 @@ describe('YaraStore', () => {
     it('totalMatches counts all matches across rules', () => {
       expect(store.totalMatches).toBe(0)
       store.matchedRules = [
-        { ruleName: 'rule1', matches: [{ offset: 0, length: 4 }, { offset: 10, length: 4 }] },
+        {
+          ruleName: 'rule1',
+          matches: [
+            { offset: 0, length: 4 },
+            { offset: 10, length: 4 }
+          ]
+        },
         { ruleName: 'rule2', matches: [{ offset: 20, length: 2 }] }
       ]
       expect(store.totalMatches).toBe(3)
@@ -73,9 +79,7 @@ describe('YaraStore', () => {
         },
         {
           ruleName: 'rule2',
-          matches: [
-            { offset: 20, length: 3, stringIdentifier: '$c', data: 'GHI' }
-          ]
+          matches: [{ offset: 20, length: 3, stringIdentifier: '$c', data: 'GHI' }]
         }
       ]
 
@@ -97,17 +101,13 @@ describe('YaraStore', () => {
     })
 
     it('matchHighlightBytes returns empty when highlight disabled', () => {
-      store.matchedRules = [
-        { ruleName: 'rule1', matches: [{ offset: 0, length: 3 }] }
-      ]
+      store.matchedRules = [{ ruleName: 'rule1', matches: [{ offset: 0, length: 3 }] }]
       store.highlightMatchesInHex = false
       expect(store.matchHighlightBytes).toEqual([])
     })
 
     it('matchHighlightBytes returns byte indices when highlight enabled', () => {
-      store.matchedRules = [
-        { ruleName: 'rule1', matches: [{ offset: 5, length: 3 }] }
-      ]
+      store.matchedRules = [{ ruleName: 'rule1', matches: [{ offset: 5, length: 3 }] }]
       store.highlightMatchesInHex = true
       expect(store.matchHighlightBytes).toEqual([5, 6, 7])
     })

@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: iconv-lite.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -21,22 +21,22 @@ import { createLogger } from '../../utils/logger'
 const logger = createLogger('iconv-lite-polyfill')
 
 const encodings = {
-  'utf8': 'utf-8',
+  utf8: 'utf-8',
   'utf-8': 'utf-8',
-  'ascii': 'windows-1252',
-  'latin1': 'iso-8859-1',
+  ascii: 'windows-1252',
+  latin1: 'iso-8859-1',
   'iso-8859-1': 'iso-8859-1',
   'windows-1252': 'windows-1252',
-  'utf16le': 'utf-16le',
+  utf16le: 'utf-16le',
   'utf-16le': 'utf-16le',
-  'utf16be': 'utf-16be',
+  utf16be: 'utf-16be',
   'utf-16be': 'utf-16be'
 }
 
 export function decode(buffer, encoding = 'utf-8') {
   try {
     const enc = encodings[encoding.toLowerCase()] || 'utf-8'
-    
+
     // Convert buffer to Uint8Array if needed
     let bytes
     if (buffer instanceof Uint8Array) {
@@ -48,7 +48,7 @@ export function decode(buffer, encoding = 'utf-8') {
     } else {
       bytes = new Uint8Array(0)
     }
-    
+
     // Use TextDecoder for decoding
     const decoder = new TextDecoder(enc)
     return decoder.decode(bytes)
@@ -57,7 +57,7 @@ export function decode(buffer, encoding = 'utf-8') {
     try {
       const decoder = new TextDecoder('utf-8')
       return decoder.decode(buffer)
-    } catch (fallbackError) {
+    } catch (_fallbackError) {
       // Last resort: convert bytes to string manually
       let str = ''
       const bytes = new Uint8Array(buffer)
@@ -71,8 +71,8 @@ export function decode(buffer, encoding = 'utf-8') {
 
 export function encode(str, encoding = 'utf-8') {
   try {
-    const enc = encodings[encoding.toLowerCase()] || 'utf-8'
-    
+    const _enc = encodings[encoding.toLowerCase()] || 'utf-8'
+
     // Use TextEncoder for encoding
     const encoder = new TextEncoder()
     return encoder.encode(str)
@@ -81,14 +81,14 @@ export function encode(str, encoding = 'utf-8') {
     // Fallback: convert string to bytes manually
     const bytes = []
     for (let i = 0; i < str.length; i++) {
-      bytes.push(str.charCodeAt(i) & 0xFF)
+      bytes.push(str.charCodeAt(i) & 0xff)
     }
     return new Uint8Array(bytes)
   }
 }
 
 export function encodingExists(encoding) {
-  return encodings.hasOwnProperty(encoding.toLowerCase())
+  return Object.prototype.hasOwnProperty.call(encodings, encoding.toLowerCase())
 }
 
 // Default export to mimic iconv-lite structure

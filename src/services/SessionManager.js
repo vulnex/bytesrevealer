@@ -178,7 +178,7 @@ class SessionManager {
 
     // Handle Array
     if (Array.isArray(obj)) {
-      return obj.map(item => this.sanitizeForStorage(item)).filter(item => item !== null)
+      return obj.map((item) => this.sanitizeForStorage(item)).filter((item) => item !== null)
     }
 
     // Handle plain objects
@@ -214,7 +214,7 @@ class SessionManager {
     }
 
     // Sanitize colored bytes to plain objects
-    const coloredBytes = (appState.coloredBytes || []).map(cb => ({
+    const coloredBytes = (appState.coloredBytes || []).map((cb) => ({
       start: cb.start,
       end: cb.end,
       color: cb.color,
@@ -222,7 +222,7 @@ class SessionManager {
     }))
 
     // Sanitize highlighted bytes to simple arrays
-    const highlightedBytes = (appState.highlightedBytes || []).map(hb => {
+    const highlightedBytes = (appState.highlightedBytes || []).map((hb) => {
       if (Array.isArray(hb)) {
         return [...hb]
       }
@@ -233,9 +233,9 @@ class SessionManager {
     })
 
     // Sanitize file signatures
-    const fileSignatures = (appState.fileSignatures || []).map(sig =>
-      this.sanitizeForStorage(sig)
-    ).filter(Boolean)
+    const fileSignatures = (appState.fileSignatures || [])
+      .map((sig) => this.sanitizeForStorage(sig))
+      .filter(Boolean)
 
     // Sanitize detected file type
     const detectedFileType = appState.detectedFileType
@@ -561,7 +561,9 @@ class SessionManager {
     if (session.file?.size && file.size !== session.file.size) {
       result.sizeMatch = false
       result.matches = false
-      result.warnings.push(`File size differs: expected ${session.file.size} bytes, got ${file.size} bytes`)
+      result.warnings.push(
+        `File size differs: expected ${session.file.size} bytes, got ${file.size} bytes`
+      )
     }
 
     // Check hash if provided
@@ -640,7 +642,7 @@ class SessionManager {
     try {
       // Check if the database exists
       const databases = await indexedDB.databases()
-      const chunksDbExists = databases.some(db => db.name === CHUNKS_DB_NAME)
+      const chunksDbExists = databases.some((db) => db.name === CHUNKS_DB_NAME)
 
       if (!chunksDbExists) {
         logger.info('No file cache database found')
@@ -652,8 +654,8 @@ class SessionManager {
         const tempDb = await openDB(CHUNKS_DB_NAME)
         tempDb.close()
         // Small delay to ensure the close is processed
-        await new Promise(resolve => setTimeout(resolve, 100))
-      } catch (e) {
+        await new Promise((resolve) => setTimeout(resolve, 100))
+      } catch (_e) {
         // Ignore errors here - database might not exist or have issues
       }
 
@@ -667,12 +669,16 @@ class SessionManager {
           logger.warn('File cache database blocked, waiting...')
           setTimeout(() => {
             // Check if it eventually succeeded
-            indexedDB.databases().then(dbs => {
-              const stillExists = dbs.some(db => db.name === CHUNKS_DB_NAME)
+            indexedDB.databases().then((dbs) => {
+              const stillExists = dbs.some((db) => db.name === CHUNKS_DB_NAME)
               if (!stillExists) {
                 resolve()
               } else {
-                reject(new Error('Please refresh the page and try again, or close other BytesRevealer tabs'))
+                reject(
+                  new Error(
+                    'Please refresh the page and try again, or close other BytesRevealer tabs'
+                  )
+                )
               }
             })
           }, 500)
@@ -698,7 +704,7 @@ class SessionManager {
     try {
       // Check if the database exists
       const databases = await indexedDB.databases()
-      const chunksDbExists = databases.some(db => db.name === CHUNKS_DB_NAME)
+      const chunksDbExists = databases.some((db) => db.name === CHUNKS_DB_NAME)
 
       if (!chunksDbExists) {
         return 0

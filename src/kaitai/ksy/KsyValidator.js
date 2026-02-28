@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KsyValidator.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -21,10 +21,34 @@ class KsyValidator {
     this.requiredMetaFields = ['id']
     this.validEndians = ['le', 'be']
     this.validTypes = [
-      'u1', 'u2', 'u2le', 'u2be', 'u4', 'u4le', 'u4be', 'u8', 'u8le', 'u8be',
-      's1', 's2', 's2le', 's2be', 's4', 's4le', 's4be', 's8', 's8le', 's8be',
-      'f4', 'f4le', 'f4be', 'f8', 'f8le', 'f8be',
-      'str', 'strz'
+      'u1',
+      'u2',
+      'u2le',
+      'u2be',
+      'u4',
+      'u4le',
+      'u4be',
+      'u8',
+      'u8le',
+      'u8be',
+      's1',
+      's2',
+      's2le',
+      's2be',
+      's4',
+      's4le',
+      's4be',
+      's8',
+      's8le',
+      's8be',
+      'f4',
+      'f4le',
+      'f4be',
+      'f8',
+      'f8le',
+      'f8be',
+      'str',
+      'strz'
     ]
   }
 
@@ -111,7 +135,9 @@ class KsyValidator {
 
     // Validate ID format
     if (meta.id && !/^[a-z][a-z0-9_]*$/.test(meta.id)) {
-      errors.push('Invalid meta.id: must start with lowercase letter and contain only lowercase letters, numbers, and underscores')
+      errors.push(
+        'Invalid meta.id: must start with lowercase letter and contain only lowercase letters, numbers, and underscores'
+      )
     }
 
     // Validate endian
@@ -123,7 +149,7 @@ class KsyValidator {
     if (meta['file-extension']) {
       const ext = meta['file-extension']
       if (Array.isArray(ext)) {
-        ext.forEach(e => {
+        ext.forEach((e) => {
           if (typeof e !== 'string') {
             errors.push('Invalid file-extension: must be string or array of strings')
           }
@@ -138,7 +164,7 @@ class KsyValidator {
       if (!Array.isArray(meta.imports)) {
         errors.push('Invalid meta.imports: must be an array')
       } else {
-        meta.imports.forEach(imp => {
+        meta.imports.forEach((imp) => {
           if (typeof imp !== 'string') {
             errors.push('Invalid import: must be a string')
           }
@@ -174,7 +200,7 @@ class KsyValidator {
     if (!field || typeof field !== 'object') {
       return
     }
-    
+
     // Check for ID - only required if not a contents-only field
     if (!field.id && !field.contents) {
       errors.push(`${path}: missing required field "id"`)
@@ -229,36 +255,61 @@ class KsyValidator {
     if (field.encoding) {
       // Accept common encoding formats - don't be too strict
       const validEncodings = [
-        'ASCII', 'UTF-8', 'UTF-16', 'UTF-16LE', 'UTF-16BE', 
-        'UTF-32', 'UTF-32LE', 'UTF-32BE',
-        'ISO-8859-1', 'iso-8859-1', 'iso8859-1', 'ISO8859-1',
-        'Windows-1252', 'windows-1252', 'CP1252', 'cp1252',
-        'Shift_JIS', 'shift_jis', 'SJIS', 'sjis',
-        'EUC-JP', 'euc-jp', 'GB2312', 'gb2312',
-        'Big5', 'big5', 'KOI8-R', 'koi8-r'
+        'ASCII',
+        'UTF-8',
+        'UTF-16',
+        'UTF-16LE',
+        'UTF-16BE',
+        'UTF-32',
+        'UTF-32LE',
+        'UTF-32BE',
+        'ISO-8859-1',
+        'iso-8859-1',
+        'iso8859-1',
+        'ISO8859-1',
+        'Windows-1252',
+        'windows-1252',
+        'CP1252',
+        'cp1252',
+        'Shift_JIS',
+        'shift_jis',
+        'SJIS',
+        'sjis',
+        'EUC-JP',
+        'euc-jp',
+        'GB2312',
+        'gb2312',
+        'Big5',
+        'big5',
+        'KOI8-R',
+        'koi8-r'
       ]
-      
+
       // Normalize the encoding for comparison
       const normalizedEncoding = field.encoding.toLowerCase().replace(/[-_]/g, '')
-      
+
       // Special case for ISO-8859-1 variations (very common)
-      if (normalizedEncoding === 'iso88591' || 
-          normalizedEncoding === 'latin1' || 
-          normalizedEncoding === 'iso88591') {
+      if (
+        normalizedEncoding === 'iso88591' ||
+        normalizedEncoding === 'latin1' ||
+        normalizedEncoding === 'iso88591'
+      ) {
         return // Valid encoding, no error
       }
-      
+
       // Check against our list
-      const isValid = validEncodings.some(enc => 
-        enc.toLowerCase().replace(/[-_]/g, '') === normalizedEncoding
+      const isValid = validEncodings.some(
+        (enc) => enc.toLowerCase().replace(/[-_]/g, '') === normalizedEncoding
       )
-      
+
       if (!isValid) {
         // Don't error on unknown encodings - just warn
         // Many KSY files use custom or rare encodings
         // The parser will handle or error appropriately
         if (this._strictMode) {
-          errors.push(`${path}.encoding: uncommon encoding "${field.encoding}" - may not be supported`)
+          errors.push(
+            `${path}.encoding: uncommon encoding "${field.encoding}" - may not be supported`
+          )
         }
       }
     }
@@ -306,7 +357,7 @@ class KsyValidator {
       this.validateInstanceField(instanceWithId, `instances.${name}`, errors)
     })
   }
-  
+
   /**
    * Validate instance field (special validation for instances)
    * @param {Object} field - Instance field definition
@@ -322,9 +373,9 @@ class KsyValidator {
     // - pos-based: has 'pos' field (for seeking to position)
     // - size+pos: raw bytes from position
     // An instance just needs to define what it represents
-    
+
     // No validation needed for instance existence - they're all valid
-    
+
     // Validate type if present
     if (field.type) {
       if (typeof field.type === 'string') {
@@ -347,36 +398,61 @@ class KsyValidator {
     if (field.encoding) {
       // Accept common encoding formats - don't be too strict
       const validEncodings = [
-        'ASCII', 'UTF-8', 'UTF-16', 'UTF-16LE', 'UTF-16BE', 
-        'UTF-32', 'UTF-32LE', 'UTF-32BE',
-        'ISO-8859-1', 'iso-8859-1', 'iso8859-1', 'ISO8859-1',
-        'Windows-1252', 'windows-1252', 'CP1252', 'cp1252',
-        'Shift_JIS', 'shift_jis', 'SJIS', 'sjis',
-        'EUC-JP', 'euc-jp', 'GB2312', 'gb2312',
-        'Big5', 'big5', 'KOI8-R', 'koi8-r'
+        'ASCII',
+        'UTF-8',
+        'UTF-16',
+        'UTF-16LE',
+        'UTF-16BE',
+        'UTF-32',
+        'UTF-32LE',
+        'UTF-32BE',
+        'ISO-8859-1',
+        'iso-8859-1',
+        'iso8859-1',
+        'ISO8859-1',
+        'Windows-1252',
+        'windows-1252',
+        'CP1252',
+        'cp1252',
+        'Shift_JIS',
+        'shift_jis',
+        'SJIS',
+        'sjis',
+        'EUC-JP',
+        'euc-jp',
+        'GB2312',
+        'gb2312',
+        'Big5',
+        'big5',
+        'KOI8-R',
+        'koi8-r'
       ]
-      
+
       // Normalize the encoding for comparison
       const normalizedEncoding = field.encoding.toLowerCase().replace(/[-_]/g, '')
-      
+
       // Special case for ISO-8859-1 variations (very common)
-      if (normalizedEncoding === 'iso88591' || 
-          normalizedEncoding === 'latin1' || 
-          normalizedEncoding === 'iso88591') {
+      if (
+        normalizedEncoding === 'iso88591' ||
+        normalizedEncoding === 'latin1' ||
+        normalizedEncoding === 'iso88591'
+      ) {
         return // Valid encoding, no error
       }
-      
+
       // Check against our list
-      const isValid = validEncodings.some(enc => 
-        enc.toLowerCase().replace(/[-_]/g, '') === normalizedEncoding
+      const isValid = validEncodings.some(
+        (enc) => enc.toLowerCase().replace(/[-_]/g, '') === normalizedEncoding
       )
-      
+
       if (!isValid) {
         // Don't error on unknown encodings - just warn
         // Many KSY files use custom or rare encodings
         // The parser will handle or error appropriately
         if (this._strictMode) {
-          errors.push(`${path}.encoding: uncommon encoding "${field.encoding}" - may not be supported`)
+          errors.push(
+            `${path}.encoding: uncommon encoding "${field.encoding}" - may not be supported`
+          )
         }
       }
     }
@@ -429,7 +505,7 @@ class KsyValidator {
       if (typeof enumDef !== 'object') {
         errors.push(`Invalid enum "${name}": must be an object`)
       } else {
-        Object.entries(enumDef).forEach(([key, value]) => {
+        Object.entries(enumDef).forEach(([key, _value]) => {
           if (typeof key !== 'string' && typeof key !== 'number') {
             errors.push(`Invalid enum key in "${name}": keys must be strings or numbers`)
           }
@@ -453,7 +529,7 @@ class KsyValidator {
         warnings.push('No endian specified - defaulting to little-endian')
       }
     }
-    
+
     // Warn if no structure defined at all
     if (!parsed?.seq && !parsed?.instances && !parsed?.types) {
       warnings.push('No structure defined - file will be treated as raw bytes')
@@ -461,9 +537,15 @@ class KsyValidator {
 
     // Check for very large repeat counts that could cause performance issues
     if (parsed?.seq) {
-      parsed.seq.forEach(field => {
-        if (field['repeat-expr'] && typeof field['repeat-expr'] === 'number' && field['repeat-expr'] > 100000) {
-          warnings.push(`Very large repeat count (${field['repeat-expr']}) in field "${field.id}" may impact performance`)
+      parsed.seq.forEach((field) => {
+        if (
+          field['repeat-expr'] &&
+          typeof field['repeat-expr'] === 'number' &&
+          field['repeat-expr'] > 100000
+        ) {
+          warnings.push(
+            `Very large repeat count (${field['repeat-expr']}) in field "${field.id}" may impact performance`
+          )
         }
       })
     }
@@ -478,29 +560,29 @@ class KsyValidator {
    */
   hasNumericFields(parsed) {
     const numericTypes = ['u2', 'u4', 'u8', 's2', 's4', 's8', 'f4', 'f8']
-    
+
     // Check seq fields
     if (parsed.seq) {
       for (const field of parsed.seq) {
-        if (field.type && numericTypes.some(t => field.type.includes(t))) {
+        if (field.type && numericTypes.some((t) => field.type.includes(t))) {
           return true
         }
       }
     }
-    
+
     // Check types
     if (parsed.types) {
       for (const typeDef of Object.values(parsed.types)) {
         if (typeDef.seq) {
           for (const field of typeDef.seq) {
-            if (field.type && numericTypes.some(t => field.type.includes(t))) {
+            if (field.type && numericTypes.some((t) => field.type.includes(t))) {
               return true
             }
           }
         }
       }
     }
-    
+
     return false
   }
 

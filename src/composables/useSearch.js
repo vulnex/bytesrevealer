@@ -21,10 +21,9 @@ export function useSearch(fileBytes) {
 
   function ensureWorker() {
     if (!searchWorker) {
-      searchWorker = new Worker(
-        new URL('../workers/SearchWorker.js', import.meta.url),
-        { type: 'module' }
-      )
+      searchWorker = new Worker(new URL('../workers/SearchWorker.js', import.meta.url), {
+        type: 'module'
+      })
     }
     return searchWorker
   }

@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: SearchBar.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-12
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: SearchBar.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="search-container">
@@ -21,38 +12,28 @@
         <option value="regex">Regex</option>
       </select>
       <input
-        type="text"
         v-model="searchPatternLocal"
+        type="text"
         :placeholder="getPlaceholder()"
         :disabled="isSearching"
         @keyup.enter="search"
-      >
+      />
       <button
         v-if="!isSearching"
-        @click="search"
         class="search-button"
         :disabled="!searchPatternLocal"
+        @click="search"
       >
         Search
       </button>
-      <button
-        v-else
-        @click="cancel"
-        class="cancel-button"
-        title="Cancel search"
-      >
-        Cancel
-      </button>
-      <button @click="clear" class="clear-button" :disabled="isSearching">Clear</button>
+      <button v-else class="cancel-button" title="Cancel search" @click="cancel">Cancel</button>
+      <button class="clear-button" :disabled="isSearching" @click="clear">Clear</button>
     </div>
 
     <!-- Progress Bar -->
     <div v-if="isSearching && progress > 0" class="search-progress">
       <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :style="{ width: progress + '%' }"
-        ></div>
+        <div class="progress-fill" :style="{ width: progress + '%' }"></div>
       </div>
       <span class="progress-text">{{ progress }}%</span>
     </div>
@@ -67,18 +48,13 @@
       </span>
       <button
         v-if="results.length > 1"
-        @click="prevMatch"
         class="nav-button"
         title="Previous match"
+        @click="prevMatch"
       >
         ⬅ Prev
       </button>
-      <button
-        v-if="results.length > 1"
-        @click="nextMatch"
-        class="nav-button"
-        title="Next match"
-      >
+      <button v-if="results.length > 1" class="nav-button" title="Next match" @click="nextMatch">
         Next ➔
       </button>
     </div>
@@ -110,6 +86,7 @@ export default {
       default: () => []
     }
   },
+  emits: ['update:searchType', 'update:searchPattern', 'search', 'clear', 'cancel', 'navigateToMatch'],
   data() {
     return {
       currentMatchIndex: 0
@@ -148,7 +125,7 @@ export default {
       this.$emit('cancel')
     },
     getPlaceholder() {
-      switch(this.searchTypeLocal) {
+      switch (this.searchTypeLocal) {
         case 'hex':
           return 'Search hex pattern: e.g. FF D8'
         case 'ascii':
@@ -169,9 +146,8 @@ export default {
     },
     prevMatch() {
       if (this.results.length > 0) {
-        this.currentMatchIndex = this.currentMatchIndex === 0
-          ? this.results.length - 1
-          : this.currentMatchIndex - 1
+        this.currentMatchIndex =
+          this.currentMatchIndex === 0 ? this.results.length - 1 : this.currentMatchIndex - 1
 
         this.$emit('navigateToMatch', this.results[this.currentMatchIndex])
       }

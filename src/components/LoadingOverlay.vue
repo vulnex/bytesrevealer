@@ -1,18 +1,9 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: FileSignatures.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-02-12
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: FileSignatures.vue * Author: Simon Roses Femerling *
+Created: 2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
-  <div class="loading-overlay" v-if="show">
+  <div v-if="show" class="loading-overlay">
     <div class="loading-content">
       <div class="spinner"></div>
       <div class="loading-text">{{ message }}</div>

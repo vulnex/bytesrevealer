@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: ExportBytesDialog.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-24
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ExportBytesDialog.vue * Author: Simon Roses Femerling *
+Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <Transition name="modal">
@@ -38,11 +29,7 @@
 
             <div class="format-options">
               <select v-model="selectedFormat" class="format-select">
-                <option
-                  v-for="format in currentFormats"
-                  :key="format.id"
-                  :value="format.id"
-                >
+                <option v-for="format in currentFormats" :key="format.id" :value="format.id">
                   {{ format.name }}
                 </option>
               </select>
@@ -65,14 +52,11 @@
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.splitLines"
-                  type="checkbox"
-                />
+                <input v-model="options.splitLines" type="checkbox" />
                 Split into multiple lines
               </label>
             </div>
-            <div class="option-row" v-if="options.splitLines">
+            <div v-if="options.splitLines" class="option-row">
               <label>
                 Bytes per line:
                 <input
@@ -86,19 +70,13 @@
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.includeOffset"
-                  type="checkbox"
-                />
+                <input v-model="options.includeOffset" type="checkbox" />
                 Include offset comments
               </label>
             </div>
             <div class="option-row">
               <label>
-                <input
-                  v-model="options.uppercase"
-                  type="checkbox"
-                />
+                <input v-model="options.uppercase" type="checkbox" />
                 Uppercase hex values
               </label>
             </div>
@@ -158,10 +136,8 @@ export default {
   emits: ['close', 'save', 'copy'],
 
   setup(props, { emit }) {
-    const {
-      languages, selectedLanguage, selectedFormat,
-      options, currentFormats, syntaxClass
-    } = useExportFormat()
+    const { languages, selectedLanguage, selectedFormat, options, currentFormats, syntaxClass } =
+      useExportFormat()
 
     // Dialog-level computed
     const bytesCount = computed(() => {
@@ -180,11 +156,7 @@ export default {
           addOffsetComments: options.value.includeOffset
         }
 
-        return ByteFormatter.format(
-          props.selectedBytes,
-          selectedFormat.value,
-          formatOptions
-        )
+        return ByteFormatter.format(props.selectedBytes, selectedFormat.value, formatOptions)
       } catch (error) {
         logger.error('Error formatting bytes:', error)
         return `// Error: ${error.message}`
@@ -231,14 +203,14 @@ export default {
     const saveToFile = () => {
       try {
         const extensions = {
-          'javascript': 'js',
-          'python': 'py',
-          'c': 'c',
-          'java': 'java',
-          'csharp': 'cs',
-          'go': 'go',
-          'rust': 'rs',
-          'data': 'txt'
+          javascript: 'js',
+          python: 'py',
+          c: 'c',
+          java: 'java',
+          csharp: 'cs',
+          go: 'go',
+          rust: 'rs',
+          data: 'txt'
         }
 
         const ext = extensions[selectedLanguage.value] || 'txt'

@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KsyToJsCompiler.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -42,13 +42,13 @@ class KsyToJsCompiler {
     try {
       // Parse YAML
       const ksy = yaml.parse(ksyContent)
-      
+
       // Generate JavaScript code
       const code = this.generateCode(ksy)
-      
+
       // Create parser class
       const Parser = this.createParser(ksy)
-      
+
       return {
         success: true,
         code,
@@ -56,8 +56,8 @@ class KsyToJsCompiler {
         metadata: {
           id: ksy.meta?.id,
           title: ksy.meta?.title,
-          extensions: Array.isArray(ksy.meta?.['file-extension']) 
-            ? ksy.meta['file-extension'] 
+          extensions: Array.isArray(ksy.meta?.['file-extension'])
+            ? ksy.meta['file-extension']
             : [ksy.meta?.['file-extension']].filter(Boolean)
         }
       }
@@ -77,7 +77,7 @@ class KsyToJsCompiler {
   generateCode(ksy) {
     const className = this.toPascalCase(ksy.meta?.id || 'CustomFormat')
     const endian = ksy.meta?.endian === 'be' ? 'BE' : 'LE'
-    
+
     let code = `// Generated from KSY format: ${ksy.meta?.title || 'Unknown'}\n`
     code += `class ${className} {\n`
     code += `  constructor(buffer) {\n`
@@ -86,24 +86,24 @@ class KsyToJsCompiler {
     code += `    this.endian = '${endian}';\n`
     code += `    this.parse();\n`
     code += `  }\n\n`
-    
+
     // Generate parse method
     code += `  parse() {\n`
-    
+
     if (ksy.seq) {
       for (const field of ksy.seq) {
         code += this.generateFieldParser(field, '    ')
       }
     }
-    
+
     code += `  }\n\n`
-    
+
     // Generate helper methods
     code += this.generateHelperMethods()
-    
+
     code += `}\n\n`
     code += `export default ${className};\n`
-    
+
     return code
   }
 
@@ -116,22 +116,24 @@ class KsyToJsCompiler {
   generateFieldParser(field, indent = '') {
     let code = ''
     const fieldName = this.toCamelCase(field.id)
-    
+
     // Handle magic/contents validation
     if (field.contents) {
       const contents = Array.isArray(field.contents) ? field.contents : [field.contents]
-      const bytesArray = contents.map(c => {
-        if (typeof c === 'string') {
-          // Convert string to byte array
-          return Array.from(c).map(ch => ch.charCodeAt(0))
-        } else if (typeof c === 'number') {
-          return [c]
-        } else if (Array.isArray(c)) {
-          return c
-        }
-        return []
-      }).flat()
-      
+      const bytesArray = contents
+        .map((c) => {
+          if (typeof c === 'string') {
+            // Convert string to byte array
+            return Array.from(c).map((ch) => ch.charCodeAt(0))
+          } else if (typeof c === 'number') {
+            return [c]
+          } else if (Array.isArray(c)) {
+            return c
+          }
+          return []
+        })
+        .flat()
+
       code += `${indent}// Validate magic: ${field.id}\n`
       code += `${indent}const ${fieldName}Expected = [${bytesArray.join(', ')}];\n`
       code += `${indent}const ${fieldName} = this.readBytes(${bytesArray.length});\n`
@@ -143,7 +145,7 @@ class KsyToJsCompiler {
       code += `${indent}this.${fieldName} = ${fieldName};\n\n`
       return code
     }
-    
+
     // Handle primitive types
     if (field.type && typeof field.type === 'string') {
       const typeInfo = this.typeMap[field.type]
@@ -165,13 +167,13 @@ class KsyToJsCompiler {
         code += `${indent}this.${fieldName} = this.readStringZ('${encoding}');\n\n`
       }
     }
-    
+
     // Handle sized data
     if (field.size) {
       code += `${indent}// Read sized data: ${field.id}\n`
       code += `${indent}this.${fieldName} = this.readBytes(${field.size});\n\n`
     }
-    
+
     // Handle repetition
     if (field.repeat) {
       code += `${indent}// Read repeated field: ${field.id}\n`
@@ -187,7 +189,7 @@ class KsyToJsCompiler {
         code += `${indent}}\n\n`
       }
     }
-    
+
     return code
   }
 
@@ -300,9 +302,14 @@ class KsyToJsCompiler {
         if (field.id && !this._isSafeIdentifier(field.id)) {
           throw new Error(`Unsafe identifier in field id: "${field.id}"`)
         }
-        if (field.type && typeof field.type === 'string' && !this.typeMap[field.type]
-            && field.type !== 'str' && field.type !== 'strz'
-            && !this._isSafeIdentifier(field.type)) {
+        if (
+          field.type &&
+          typeof field.type === 'string' &&
+          !this.typeMap[field.type] &&
+          field.type !== 'str' &&
+          field.type !== 'strz' &&
+          !this._isSafeIdentifier(field.type)
+        ) {
           throw new Error(`Unsafe identifier in field type: "${field.type}"`)
         }
       }
@@ -344,7 +351,8 @@ class KsyToJsCompiler {
     return {
       parse: () => ({
         success: false,
-        error: 'KsyToJsCompiler.createParser() is disabled for security reasons (no dynamic code execution). Use AdvancedKsyCompiler instead, which parses KSY fields directly and safely.'
+        error:
+          'KsyToJsCompiler.createParser() is disabled for security reasons (no dynamic code execution). Use AdvancedKsyCompiler instead, which parses KSY fields directly and safely.'
       })
     }
   }
@@ -357,7 +365,7 @@ class KsyToJsCompiler {
   toPascalCase(str) {
     return str
       .split(/[_-]/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+      .map((word) => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
       .join('')
   }
 

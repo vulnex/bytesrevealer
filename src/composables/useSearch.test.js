@@ -22,8 +22,12 @@ class MockWorker {
     this.postMessage = mockPostMessage
     this.terminate = mockTerminate
   }
-  set onmessage(handler) { workerOnMessage = handler }
-  get onmessage() { return workerOnMessage }
+  set onmessage(handler) {
+    workerOnMessage = handler
+  }
+  get onmessage() {
+    return workerOnMessage
+  }
   set onerror(_handler) {}
 }
 
@@ -31,7 +35,12 @@ vi.stubGlobal('Worker', MockWorker)
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -97,7 +106,14 @@ describe('useSearch', () => {
       const searchPromise = result.search()
 
       // Simulate worker response
-      workerOnMessage({ data: { type: 'searchComplete', highlightedBytes: [0, 1], results: [{ offset: 0 }], matchCount: 1 } })
+      workerOnMessage({
+        data: {
+          type: 'searchComplete',
+          highlightedBytes: [0, 1],
+          results: [{ offset: 0 }],
+          matchCount: 1
+        }
+      })
 
       await searchPromise
 
@@ -116,7 +132,9 @@ describe('useSearch', () => {
       workerOnMessage({ data: { type: 'progress', progress: 50 } })
       expect(result.searchProgress.value).toBe(50)
 
-      workerOnMessage({ data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 } })
+      workerOnMessage({
+        data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 }
+      })
       await searchPromise
       app.unmount()
     })
@@ -152,7 +170,9 @@ describe('useSearch', () => {
       // Only one postMessage call
       expect(mockPostMessage).toHaveBeenCalledTimes(1)
 
-      workerOnMessage({ data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 } })
+      workerOnMessage({
+        data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 }
+      })
       await p
       app.unmount()
     })
@@ -266,7 +286,9 @@ describe('useSearch', () => {
 
       // Create worker by starting a search
       const p = result.search()
-      workerOnMessage({ data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 } })
+      workerOnMessage({
+        data: { type: 'searchComplete', highlightedBytes: [], results: [], matchCount: 0 }
+      })
       await p
 
       result.cleanup()

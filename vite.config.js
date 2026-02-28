@@ -65,7 +65,6 @@ export default defineConfig({
         },
         // Use smaller chunk size for better loading
         chunkFileNames: (chunkInfo) => {
-          const facadeModuleId = chunkInfo.facadeModuleId ? chunkInfo.facadeModuleId.split('/').pop() : 'chunk'
           return `assets/${chunkInfo.name}-[hash].js`
         }
       }
@@ -92,7 +91,7 @@ export default defineConfig({
       '@': fileURLToPath(new URL('./src', import.meta.url)),
       'crypto-js': 'crypto-js',
       'iconv-lite': fileURLToPath(new URL('./src/kaitai/polyfills/iconv-lite.js', import.meta.url)),
-      'zlib': fileURLToPath(new URL('./src/kaitai/polyfills/zlib.js', import.meta.url))
+      zlib: fileURLToPath(new URL('./src/kaitai/polyfills/zlib.js', import.meta.url))
     }
   },
   optimizeDeps: {

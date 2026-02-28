@@ -5,7 +5,12 @@ import { useHexNavigation } from './useHexNavigation'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
@@ -239,11 +244,14 @@ describe('useHexNavigation', () => {
       const container = { scrollTop: 0, clientHeight: 600 }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          navigationInProgress,
-          containerRef: ref(container),
-          handleScroll
-        }))
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            navigationInProgress,
+            containerRef: ref(container),
+            handleScroll
+          })
+        )
       )
 
       const promise = result.navigateToOffset(32)
@@ -258,12 +266,15 @@ describe('useHexNavigation', () => {
       const container = { scrollTop: 0, clientHeight: 600 }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          scrollTop,
-          containerRef: ref(container),
-          handleScroll,
-          totalRows: ref(64)
-        }))
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            scrollTop,
+            containerRef: ref(container),
+            handleScroll,
+            totalRows: ref(64)
+          })
+        )
       )
 
       await result.navigateToOffset(256)
@@ -283,14 +294,17 @@ describe('useHexNavigation', () => {
       const totalRows = ref(2000000) // 2M rows * 24 = 48M > 30M
       const container = { scrollTop: 0, clientHeight: 600 }
       const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          forceViewRow,
-          useVirtualNavigation,
-          virtualOffset,
-          scrollTop,
-          totalRows,
-          containerRef: ref(container)
-        }))
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            forceViewRow,
+            useVirtualNavigation,
+            virtualOffset,
+            scrollTop,
+            totalRows,
+            containerRef: ref(container)
+          })
+        )
       )
 
       await result.navigateToOffset(1000)
@@ -307,14 +321,17 @@ describe('useHexNavigation', () => {
       const container = { scrollTop: 0, clientHeight: 600 }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          forceViewRow,
-          useVirtualNavigation,
-          virtualOffset,
-          containerRef: ref(container),
-          handleScroll,
-          totalRows: ref(64) // 64 * 24 = 1536 < 30M
-        }))
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            forceViewRow,
+            useVirtualNavigation,
+            virtualOffset,
+            containerRef: ref(container),
+            handleScroll,
+            totalRows: ref(64) // 64 * 24 = 1536 < 30M
+          })
+        )
       )
 
       await result.navigateToOffset(32)
@@ -355,10 +372,13 @@ describe('useHexNavigation', () => {
       const container = { scrollTop: 0, clientHeight: 600 }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          containerRef: ref(container),
-          handleScroll
-        }))
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            containerRef: ref(container),
+            handleScroll
+          })
+        )
       )
 
       const ret = await result.scrollToOffset(32, 1)
@@ -371,7 +391,7 @@ describe('useHexNavigation', () => {
   describe('scrollToOffset CustomEvent listener', () => {
     it('registers event listener on mount', () => {
       const addSpy = vi.spyOn(window, 'addEventListener')
-      const [result, app] = withSetup(() => useHexNavigation(makeProps(), makeDeps()))
+      const [_result, app] = withSetup(() => useHexNavigation(makeProps(), makeDeps()))
 
       expect(addSpy).toHaveBeenCalledWith('scrollToOffset', expect.any(Function))
       addSpy.mockRestore()
@@ -380,23 +400,27 @@ describe('useHexNavigation', () => {
 
     it('removes event listener on unmount', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener')
-      const [result, app] = withSetup(() => useHexNavigation(makeProps(), makeDeps()))
+      const [_result, app] = withSetup(() => useHexNavigation(makeProps(), makeDeps()))
 
       app.unmount()
       expect(removeSpy).toHaveBeenCalledWith('scrollToOffset', expect.any(Function))
       removeSpy.mockRestore()
     })
 
+    // eslint-disable-next-line vitest/expect-expect -- smoke test: verifies no throw
     it('handles scrollToOffset CustomEvent with offset detail', async () => {
       const container = { scrollTop: 0, clientHeight: 600 }
       const handleScroll = vi.fn()
       const navigationInProgress = ref(false)
-      const [result, app] = withSetup(() =>
-        useHexNavigation(makeProps(), makeDeps({
-          containerRef: ref(container),
-          handleScroll,
-          navigationInProgress
-        }))
+      const [_result, app] = withSetup(() =>
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            containerRef: ref(container),
+            handleScroll,
+            navigationInProgress
+          })
+        )
       )
 
       const event = new CustomEvent('scrollToOffset', {
@@ -412,7 +436,7 @@ describe('useHexNavigation', () => {
 
     it('ignores CustomEvent without valid offset', () => {
       const navigationInProgress = ref(false)
-      const [result, app] = withSetup(() =>
+      const [_result, app] = withSetup(() =>
         useHexNavigation(makeProps(), makeDeps({ navigationInProgress }))
       )
 

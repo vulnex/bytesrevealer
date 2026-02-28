@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: FormatRegistry.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-09
@@ -38,7 +38,7 @@ class FormatRegistry {
     // If already initialized and has formats, just ensure managers are ready
     if (this.initialized && this.formats.size > 0) {
       logger.debug(`Already initialized with ${this.formats.size} formats, keeping existing...`)
-      
+
       // Ensure manager and compiler are initialized
       if (!this.manager) {
         this.manager = getKsyManager()
@@ -46,7 +46,7 @@ class FormatRegistry {
       if (!this.compiler) {
         this.compiler = getKsyCompiler()
       }
-      
+
       return
     }
 
@@ -55,7 +55,7 @@ class FormatRegistry {
       // Initialize manager and compiler
       this.manager = getKsyManager()
       this.compiler = getKsyCompiler()
-      
+
       if (!this.manager || !this.compiler) {
         throw new Error('Failed to initialize KSY manager or compiler')
       }
@@ -70,14 +70,14 @@ class FormatRegistry {
       // Load all stored formats
       const storedFormats = await this.manager.getAll()
       logger.debug(`Loading ${storedFormats.length} stored formats`)
-    
-    for (const format of storedFormats) {
-      try {
-        await this.registerFormat(format)
-      } catch (error) {
-        logger.warn(`Failed to register format ${format.name}:`, error)
+
+      for (const format of storedFormats) {
+        try {
+          await this.registerFormat(format)
+        } catch (error) {
+          logger.warn(`Failed to register format ${format.name}:`, error)
+        }
       }
-    }
 
       // Load built-in formats only if we don't have them yet
       if (this.formats.size === 0 || !this.initialized) {
@@ -115,7 +115,7 @@ class FormatRegistry {
           // Don't try to serialize the parser - it's a complex function/class
           // Just mark that we have compiled it
           await this.manager.update(formatData.id, {
-            compiled: true  // Mark as compiled without serializing
+            compiled: true // Mark as compiled without serializing
           })
         }
       } catch (error) {
@@ -143,11 +143,11 @@ class FormatRegistry {
 
     // Register file extensions
     if (formatData.metadata?.fileExtension) {
-      const extensions = Array.isArray(formatData.metadata.fileExtension) 
-        ? formatData.metadata.fileExtension 
+      const extensions = Array.isArray(formatData.metadata.fileExtension)
+        ? formatData.metadata.fileExtension
         : [formatData.metadata.fileExtension]
-      
-      extensions.forEach(ext => {
+
+      extensions.forEach((ext) => {
         if (!this.extensions.has(ext)) {
           this.extensions.set(ext, [])
         }
@@ -204,13 +204,12 @@ class FormatRegistry {
       return null
     }
 
+    // For large files, only use first 64KB for signature detection
+    const MAX_DETECTION_SIZE = 65536 // 64KB
+    const detectionBytes =
+      bytes.length > MAX_DETECTION_SIZE ? bytes.slice(0, MAX_DETECTION_SIZE) : bytes
+
     try {
-      // For large files, only use first 64KB for signature detection
-      const MAX_DETECTION_SIZE = 65536 // 64KB
-      const detectionBytes = bytes.length > MAX_DETECTION_SIZE 
-        ? bytes.slice(0, MAX_DETECTION_SIZE)
-        : bytes
-      
       // Try signature-based detection first
       const signatureMatch = this.detectBySignature(detectionBytes)
       if (signatureMatch) {
@@ -268,7 +267,7 @@ class FormatRegistry {
     }
 
     // Check signatures with wildcard first byte (0xFF in mask)
-    const wildcardCandidates = this.signatures.get(0xFF) || []
+    const wildcardCandidates = this.signatures.get(0xff) || []
     for (const sig of wildcardCandidates) {
       if (this.matchesSignature(bytes, sig)) {
         return sig.formatId
@@ -296,7 +295,7 @@ class FormatRegistry {
     for (let i = 0; i < sigBytes.length; i++) {
       const fileByte = bytes[offset + i]
       const sigByte = sigBytes[i]
-      
+
       if (mask && mask[i] !== undefined) {
         // Apply mask
         if ((fileByte & mask[i]) !== (sigByte & mask[i])) {
@@ -321,7 +320,7 @@ class FormatRegistry {
   detectByExtension(fileName) {
     const ext = fileName.split('.').pop().toLowerCase()
     const formatIds = this.extensions.get(ext)
-    
+
     if (formatIds && formatIds.length > 0) {
       // Return first matching format
       // Could be enhanced to return best match based on additional criteria
@@ -338,28 +337,30 @@ class FormatRegistry {
    */
   detectByHeuristics(bytes) {
     // Basic heuristics for common formats
-    
+
     // PE/DOS executable
-    if (bytes[0] === 0x4D && bytes[1] === 0x5A) {
-      const peFormat = Array.from(this.formats.values()).find(f => 
-        f.name.toLowerCase().includes('pe') || f.name.toLowerCase().includes('dos')
+    if (bytes[0] === 0x4d && bytes[1] === 0x5a) {
+      const peFormat = Array.from(this.formats.values()).find(
+        (f) => f.name.toLowerCase().includes('pe') || f.name.toLowerCase().includes('dos')
       )
       if (peFormat) return peFormat.id
     }
 
     // ZIP
-    if (bytes[0] === 0x50 && bytes[1] === 0x4B && 
-        (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07)) {
-      const zipFormat = Array.from(this.formats.values()).find(f => 
+    if (
+      bytes[0] === 0x50 &&
+      bytes[1] === 0x4b &&
+      (bytes[2] === 0x03 || bytes[2] === 0x05 || bytes[2] === 0x07)
+    ) {
+      const zipFormat = Array.from(this.formats.values()).find((f) =>
         f.name.toLowerCase().includes('zip')
       )
       if (zipFormat) return zipFormat.id
     }
 
     // PNG
-    if (bytes[0] === 0x89 && bytes[1] === 0x50 && 
-        bytes[2] === 0x4E && bytes[3] === 0x47) {
-      const pngFormat = Array.from(this.formats.values()).find(f => 
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
+      const pngFormat = Array.from(this.formats.values()).find((f) =>
         f.name.toLowerCase().includes('png')
       )
       if (pngFormat) return pngFormat.id
@@ -391,7 +392,7 @@ class FormatRegistry {
       try {
         logger.debug(`Compiling format on-demand: ${format.name}`)
         const parser = await this.compiler.compile(format.metadata.content)
-        
+
         if (parser) {
           logger.debug(`✅ Compilation successful for ${format.name}`)
           // Update the format with the compiled parser
@@ -418,14 +419,12 @@ class FormatRegistry {
     let formats = Array.from(this.formats.values())
 
     if (filter.category) {
-      formats = formats.filter(f => f.category === filter.category)
+      formats = formats.filter((f) => f.category === filter.category)
     }
 
     if (filter.name) {
       const searchTerm = filter.name.toLowerCase()
-      formats = formats.filter(f => 
-        f.name.toLowerCase().includes(searchTerm)
-      )
+      formats = formats.filter((f) => f.name.toLowerCase().includes(searchTerm))
     }
 
     return formats
@@ -445,7 +444,7 @@ class FormatRegistry {
 
     // Remove from signatures
     for (const [key, sigs] of this.signatures.entries()) {
-      const filtered = sigs.filter(s => s.formatId !== formatId)
+      const filtered = sigs.filter((s) => s.formatId !== formatId)
       if (filtered.length === 0) {
         this.signatures.delete(key)
       } else {
@@ -455,7 +454,7 @@ class FormatRegistry {
 
     // Remove from extensions
     for (const [ext, ids] of this.extensions.entries()) {
-      const filtered = ids.filter(id => id !== formatId)
+      const filtered = ids.filter((id) => id !== formatId)
       if (filtered.length === 0) {
         this.extensions.delete(ext)
       } else {
@@ -477,12 +476,12 @@ class FormatRegistry {
       // Import preset formats
       const { getPresetFormats, builtinPresets } = await import('../ksy/presets/index.js')
       const presets = await getPresetFormats() // Now async!
-      
+
       // Load built-in presets first (these are small and reliable)
       for (const preset of builtinPresets || []) {
         try {
           const parser = await this.compiler.compile(preset.content)
-          
+
           if (parser) {
             this.formats.set(preset.id, {
               id: preset.id,
@@ -491,13 +490,13 @@ class FormatRegistry {
               parser: parser,
               metadata: preset.metadata
             })
-            
+
             if (preset.metadata?.signature) {
               this.registerSignature(preset.id, preset.metadata.signature)
             }
-            
+
             if (preset.metadata?.fileExtensions) {
-              preset.metadata.fileExtensions.forEach(ext => {
+              preset.metadata.fileExtensions.forEach((ext) => {
                 if (!this.extensions.has(ext)) {
                   this.extensions.set(ext, [])
                 }
@@ -509,7 +508,7 @@ class FormatRegistry {
           logger.warn(`Error loading built-in preset ${preset.name}:`, error)
         }
       }
-      
+
       // Register all generated formats without compiling (compile on-demand)
       const allPresets = presets || []
       for (const preset of allPresets) {
@@ -526,15 +525,15 @@ class FormatRegistry {
               needsCompilation: true
             }
           })
-          
+
           // Register signature for detection
           if (preset.metadata?.signature) {
             this.registerSignature(preset.id, preset.metadata.signature)
           }
-          
+
           // Register file extensions
           if (preset.metadata?.fileExtensions) {
-            preset.metadata.fileExtensions.forEach(ext => {
+            preset.metadata.fileExtensions.forEach((ext) => {
               if (!this.extensions.has(ext)) {
                 this.extensions.set(ext, [])
               }
@@ -543,16 +542,17 @@ class FormatRegistry {
           }
         }
       }
-      
-      logger.debug(`Loaded ${this.formats.size} formats (${builtinPresets?.length || 0} compiled, ${allPresets.length - (builtinPresets?.length || 0)} on-demand)`)
-      
+
+      logger.debug(
+        `Loaded ${this.formats.size} formats (${builtinPresets?.length || 0} compiled, ${allPresets.length - (builtinPresets?.length || 0)} on-demand)`
+      )
     } catch (error) {
       logger.error('Failed to load preset formats:', error)
       // Fall back to basic formats without compilation
       this.loadFallbackFormats()
     }
   }
-  
+
   /**
    * Load fallback formats when KSY compilation fails
    */
@@ -564,7 +564,7 @@ class FormatRegistry {
         category: 'system',
         parser: null,
         metadata: {
-          signature: { offset: 0, bytes: [0x4D, 0x5A] },
+          signature: { offset: 0, bytes: [0x4d, 0x5a] },
           fileExtension: ['exe', 'dll', 'sys']
         }
       },
@@ -574,7 +574,7 @@ class FormatRegistry {
         category: 'system',
         parser: null,
         metadata: {
-          signature: { offset: 0, bytes: [0x50, 0x4B] },
+          signature: { offset: 0, bytes: [0x50, 0x4b] },
           fileExtension: ['zip', 'jar', 'apk']
         }
       },
@@ -584,25 +584,25 @@ class FormatRegistry {
         category: 'system',
         parser: null,
         metadata: {
-          signature: { offset: 0, bytes: [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A] },
+          signature: { offset: 0, bytes: [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a] },
           fileExtension: ['png']
         }
       }
     ]
-    
+
     for (const format of fallbackFormats) {
       this.formats.set(format.id, format)
-      
+
       if (format.metadata?.signature) {
         this.registerSignature(format.id, format.metadata.signature)
       }
-      
+
       if (format.metadata?.fileExtension) {
         const extensions = Array.isArray(format.metadata.fileExtension)
           ? format.metadata.fileExtension
           : [format.metadata.fileExtension]
-        
-        extensions.forEach(ext => {
+
+        extensions.forEach((ext) => {
           if (!this.extensions.has(ext)) {
             this.extensions.set(ext, [])
           }
@@ -620,11 +620,11 @@ class FormatRegistry {
   hexToBytes(hex) {
     const bytes = []
     const cleanHex = hex.replace(/\s/g, '').replace(/^0x/i, '')
-    
+
     for (let i = 0; i < cleanHex.length; i += 2) {
       bytes.push(parseInt(cleanHex.substr(i, 2), 16))
     }
-    
+
     return bytes
   }
 
@@ -638,9 +638,10 @@ class FormatRegistry {
       totalSignatures: Array.from(this.signatures.values()).flat().length,
       totalExtensions: this.extensions.size,
       categories: {
-        system: Array.from(this.formats.values()).filter(f => f.category === 'system').length,
-        user: Array.from(this.formats.values()).filter(f => f.category === 'user').length,
-        community: Array.from(this.formats.values()).filter(f => f.category === 'community').length
+        system: Array.from(this.formats.values()).filter((f) => f.category === 'system').length,
+        user: Array.from(this.formats.values()).filter((f) => f.category === 'user').length,
+        community: Array.from(this.formats.values()).filter((f) => f.category === 'community')
+          .length
       }
     }
   }
@@ -654,11 +655,11 @@ class FormatRegistry {
     this.signatures.clear()
     this.extensions.clear()
     this.initialized = false
-    
+
     if (this.manager) {
       await this.manager.destroy()
     }
-    
+
     if (this.compiler) {
       this.compiler.destroy()
     }

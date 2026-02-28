@@ -1,14 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: HexContextMenu.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-23
- * Version: 0.1
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: HexContextMenu.vue * Author: Simon Roses Femerling *
+Created: 2025-09-23 * Version: 0.1 * License: Apache-2.0 * Copyright (c) 2025 VULNEX. All rights
+reserved. * https://www.vulnex.com */
 
 <template>
   <div
@@ -281,7 +273,7 @@ export default {
       try {
         // Convert bytes to text (ASCII)
         const text = Array.from(props.selectedBytes)
-          .map(byte => (byte >= 32 && byte <= 126) ? String.fromCharCode(byte) : '.')
+          .map((byte) => (byte >= 32 && byte <= 126 ? String.fromCharCode(byte) : '.'))
           .join('')
 
         await navigator.clipboard.writeText(text)
@@ -293,8 +285,8 @@ export default {
         })
 
         emit('close')
-      } catch (error) {
-        // console.error('Failed to copy as text:', error)
+      } catch (_error) {
+        // console.error('Failed to copy as text:', _error)
       }
     }
 
@@ -309,9 +301,12 @@ export default {
     }
 
     const addBookmarkAtOffset = () => {
-      const offset = props.clickedOffset !== null
-        ? props.clickedOffset
-        : (props.selectionStart !== null ? Math.min(props.selectionStart, props.selectionEnd ?? props.selectionStart) : 0)
+      const offset =
+        props.clickedOffset !== null
+          ? props.clickedOffset
+          : props.selectionStart !== null
+            ? Math.min(props.selectionStart, props.selectionEnd ?? props.selectionStart)
+            : 0
       emit('add-bookmark', offset)
       emit('close')
     }

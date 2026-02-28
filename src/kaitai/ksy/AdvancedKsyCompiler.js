@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: AdvancedKsyCompiler.js
  * Author: Simon Roses Femerling
  * Created: 2025-01-10
@@ -33,11 +33,11 @@ class AdvancedKsyCompiler {
   async compile(ksyContent) {
     try {
       logger.debug('compile called, content length:', ksyContent?.length)
-      
+
       // Parse YAML
       const ksy = yaml.parse(ksyContent)
       logger.debug('Parsed KSY:', ksy?.meta?.id, 'has seq:', !!ksy?.seq)
-      
+
       if (!ksy || !ksy.meta) {
         throw new Error('Invalid KSY: missing meta section')
       }
@@ -45,14 +45,14 @@ class AdvancedKsyCompiler {
       // Create parser class
       const parser = this.createParserClass(ksy)
       logger.debug('Created advanced parser, type:', typeof parser)
-      
+
       return parser
     } catch (error) {
       logger.error('Advanced KSY compilation error:', error)
       return null
     }
   }
-  
+
   /**
    * Create a parser class from KSY definition
    * @param {Object} ksy - KSY definition object
@@ -63,7 +63,7 @@ class AdvancedKsyCompiler {
     const types = ksy.types || {}
     const enums = ksy.enums || {}
     const meta = ksy.meta || {}
-    
+
     class AdvancedKsyParser {
       constructor(buffer) {
         this.buffer = buffer instanceof Uint8Array ? buffer : new Uint8Array(buffer)
@@ -81,45 +81,45 @@ class AdvancedKsyCompiler {
           size: this.buffer.length,
           eof: false
         }
-        
+
         // Determine endianness
         this._endian = this._determineEndianness(meta.endian)
-        
+
         // Parse structure
         this._parseRoot()
       }
-      
+
       /**
        * Determine endianness from meta
        */
       _determineEndianness(endianSpec) {
         if (!endianSpec) return 'le'
-        
+
         if (typeof endianSpec === 'string') {
           return endianSpec
         }
-        
+
         // Handle switch-on endianness (like ELF)
         if (endianSpec['switch-on']) {
           // For now, default to LE
           // Full implementation would evaluate the switch expression
           return 'le'
         }
-        
+
         return 'le'
       }
-      
+
       /**
        * Parse root structure
        */
       _parseRoot() {
         const seq = this._ksy.seq || []
-        
+
         if (this._debug) {
           logger.debug('Starting advanced root parse')
-          logger.debug('Sequence:', seq.map(f => f.id).join(', '))
+          logger.debug('Sequence:', seq.map((f) => f.id).join(', '))
         }
-        
+
         // Parse sequence fields
         for (const field of seq) {
           try {
@@ -132,39 +132,39 @@ class AdvancedKsyCompiler {
             // Continue parsing other fields
           }
         }
-        
+
         // Parse instances if defined
         if (this._ksy.instances) {
           this._parseInstances(this._ksy.instances, this)
         }
       }
-      
+
       /**
        * Parse a single field
        */
       _parseField(field, parent) {
         if (!field.id) return
-        
+
         const fieldName = field.id
         const startOffset = this.offset
-        
+
         if (this._debug) {
           logger.debug(`Parsing field ${fieldName}: offset=${startOffset}`)
         }
-        
+
         // Handle contents validation (magic bytes)
         if (field.contents !== undefined) {
           this._validateContents(field.contents)
           const size = this._getContentsSize(field.contents)
-          this._parsed[fieldName] = { 
-            value: field.contents, 
-            offset: startOffset, 
+          this._parsed[fieldName] = {
+            value: field.contents,
+            offset: startOffset,
             size: size,
             type: 'magic'
           }
           return
         }
-        
+
         // Handle conditional fields
         if (field.if) {
           const condition = this._evaluateExpression(field.if, parent)
@@ -175,17 +175,17 @@ class AdvancedKsyCompiler {
             return
           }
         }
-        
+
         // Handle positioning
         if (field.pos !== undefined) {
           const pos = this._evaluateExpression(field.pos, parent)
           this.offset = pos
           this._io.pos = pos
         }
-        
+
         let value = null
         let size = 0
-        
+
         // Handle repeat fields
         if (field.repeat) {
           const result = this._parseRepeatField(field, parent)
@@ -196,26 +196,26 @@ class AdvancedKsyCompiler {
           value = result.value
           size = result.size
         }
-        
+
         // Handle validation
         if (field.valid !== undefined && value !== null) {
           this._validateField(field.valid, value, parent)
         }
-        
+
         // Store the value
         parent[fieldName] = value
-        this._parsed[fieldName] = { 
-          value: value, 
-          offset: startOffset, 
+        this._parsed[fieldName] = {
+          value: value,
+          offset: startOffset,
           size: size,
           type: field.type || 'bytes'
         }
-        
+
         if (this._debug) {
           logger.debug(`Field ${fieldName}: stored offset=${startOffset}, size=${size}`)
         }
       }
-      
+
       /**
        * Get size of contents
        */
@@ -235,13 +235,13 @@ class AdvancedKsyCompiler {
         }
         return 0
       }
-      
+
       /**
        * Validate contents (magic bytes)
        */
       _validateContents(contents) {
-        const startOffset = this.offset
-        
+        const _startOffset = this.offset
+
         if (Array.isArray(contents)) {
           for (const expected of contents) {
             if (typeof expected === 'string') {
@@ -250,14 +250,18 @@ class AdvancedKsyCompiler {
                 const byte = this._readU1()
                 const expectedByte = expected.charCodeAt(i)
                 if (byte !== expectedByte) {
-                  logger.debug(`Contents mismatch at offset ${this.offset - 1}: expected 0x${expectedByte.toString(16)}, got 0x${byte.toString(16)}`)
+                  logger.debug(
+                    `Contents mismatch at offset ${this.offset - 1}: expected 0x${expectedByte.toString(16)}, got 0x${byte.toString(16)}`
+                  )
                 }
               }
             } else if (typeof expected === 'number') {
               // Byte value
               const byte = this._readU1()
               if (byte !== expected) {
-                logger.debug(`Contents mismatch at offset ${this.offset - 1}: expected 0x${expected.toString(16)}, got 0x${byte.toString(16)}`)
+                logger.debug(
+                  `Contents mismatch at offset ${this.offset - 1}: expected 0x${expected.toString(16)}, got 0x${byte.toString(16)}`
+                )
               }
             }
           }
@@ -267,12 +271,14 @@ class AdvancedKsyCompiler {
             const byte = this._readU1()
             const expected = contents.charCodeAt(i)
             if (byte !== expected) {
-              logger.debug(`Contents mismatch at offset ${this.offset - 1}: expected 0x${expected.toString(16)}, got 0x${byte.toString(16)}`)
+              logger.debug(
+                `Contents mismatch at offset ${this.offset - 1}: expected 0x${expected.toString(16)}, got 0x${byte.toString(16)}`
+              )
             }
           }
         }
       }
-      
+
       /**
        * Validate field value
        */
@@ -296,35 +302,35 @@ class AdvancedKsyCompiler {
           }
         }
       }
-      
+
       /**
        * Parse field value
        */
       _parseFieldValue(field, parent) {
-        const startOffset = this.offset
-        
+        const _startOffset = this.offset
+
         // Handle switch-on types
         if (field.type && typeof field.type === 'object' && field.type['switch-on']) {
           return this._parseSwitchType(field, parent)
         }
-        
+
         // Handle type field
         if (field.type) {
           // Check if it's a custom type
           if (this._types[field.type]) {
             return this._parseCustomType(field.type, parent)
           }
-          
+
           // Check if it's a type with dynamic endianness
           if (field.type === 'endian_elf') {
             // Special handling for ELF endian type
             return this._parseEndianElf(parent)
           }
-          
+
           // Parse primitive type
           return this._parsePrimitiveType(field, parent)
         }
-        
+
         // Handle size-based fields
         if (field.size !== undefined) {
           let size = this._evaluateExpression(field.size, parent)
@@ -334,20 +340,20 @@ class AdvancedKsyCompiler {
           const bytes = this._readBytes(size)
           return { value: bytes, size: size }
         }
-        
+
         // Default to single byte
         return { value: this._readU1(), size: 1 }
       }
-      
+
       /**
        * Parse primitive type
        */
       _parsePrimitiveType(field, parent) {
         const type = field.type
-        const startOffset = this.offset
+        const _startOffset = this.offset
         let value = null
         let size = 0
-        
+
         // Handle bit fields
         if (type.startsWith('b')) {
           const bits = parseInt(type.substring(1))
@@ -443,11 +449,12 @@ class AdvancedKsyCompiler {
                 size = strSize
               }
               break
-            case 'strz':
+            case 'strz': {
               const result = this._readStringZ(field.encoding)
               value = result.value
               size = result.size
               break
+            }
             default:
               // Unknown type, read as bytes if size specified
               if (field.size) {
@@ -457,19 +464,19 @@ class AdvancedKsyCompiler {
               }
           }
         }
-        
+
         // Apply enum if specified
         if (field.enum && value !== null) {
           value = this._applyEnum(field.enum, value, parent)
         }
-        
+
         return { value: value, size: size }
       }
-      
+
       /**
        * Apply enum to value
        */
-      _applyEnum(enumName, value, parent) {
+      _applyEnum(enumName, value, _parent) {
         const enumDef = this._enums[enumName]
         if (enumDef && enumDef[value] !== undefined) {
           const enumValue = enumDef[value]
@@ -480,15 +487,15 @@ class AdvancedKsyCompiler {
         }
         return value
       }
-      
+
       /**
        * Parse repeat fields
        */
       _parseRepeatField(field, parent) {
         const items = []
         let totalSize = 0
-        const startOffset = this.offset
-        
+        const _startOffset = this.offset
+
         if (field.repeat === 'eos') {
           // Repeat until end of stream
           while (this.offset < this.buffer.length) {
@@ -496,7 +503,7 @@ class AdvancedKsyCompiler {
               const result = this._parseFieldValue(field, parent)
               items.push(result.value)
               totalSize += result.size
-            } catch (error) {
+            } catch (_error) {
               break
             }
           }
@@ -504,13 +511,13 @@ class AdvancedKsyCompiler {
           // Repeat until condition
           const expr = field['repeat-until']
           let maxIter = 10000 // Safety limit
-          
+
           while (this.offset < this.buffer.length && maxIter-- > 0) {
             try {
               const result = this._parseFieldValue(field, parent)
               items.push(result.value)
               totalSize += result.size
-              
+
               // Check condition
               const context = {
                 _: result.value,
@@ -519,11 +526,11 @@ class AdvancedKsyCompiler {
                 _io: this._io,
                 _index: items.length - 1
               }
-              
+
               if (this._evaluateExpression(expr, context)) {
                 break
               }
-            } catch (error) {
+            } catch (_error) {
               break
             }
           }
@@ -535,29 +542,29 @@ class AdvancedKsyCompiler {
               const result = this._parseFieldValue(field, parent)
               items.push(result.value)
               totalSize += result.size
-            } catch (error) {
+            } catch (_error) {
               break
             }
           }
         }
-        
+
         return { value: items, size: totalSize }
       }
-      
+
       /**
        * Parse switch-on type
        */
       _parseSwitchType(field, parent) {
         const switchOn = field.type['switch-on']
         const cases = field.type.cases || {}
-        
+
         // Evaluate switch expression
         const switchValue = this._evaluateExpression(switchOn, parent)
-        
+
         if (this._debug) {
           logger.debug(`Switch on: ${switchOn} = ${switchValue}`)
         }
-        
+
         // Find matching case
         let matchedType = null
         for (const [caseKey, caseType] of Object.entries(cases)) {
@@ -566,12 +573,12 @@ class AdvancedKsyCompiler {
             break
           }
         }
-        
+
         // Check for default case
         if (!matchedType && cases['_']) {
           matchedType = cases['_']
         }
-        
+
         if (!matchedType) {
           // No match, read as bytes if size specified
           if (field.size) {
@@ -580,35 +587,35 @@ class AdvancedKsyCompiler {
           }
           return { value: null, size: 0 }
         }
-        
+
         // Parse with matched type
         const tempField = { ...field, type: matchedType }
         delete tempField.type['switch-on']
         delete tempField.type.cases
-        
+
         return this._parseFieldValue(tempField, parent)
       }
-      
+
       /**
        * Match switch case
        */
       _matchCase(caseKey, value) {
         // Remove quotes if present
         const cleanKey = caseKey.replace(/^["']|["']$/g, '')
-        
+
         // Direct match
         if (cleanKey === String(value)) return true
-        
+
         // Enum-style match (e.g., "endian::le")
         if (caseKey.includes('::')) {
           const parts = caseKey.split('::')
           const enumValue = parts[parts.length - 1].replace(/["']/g, '')
           if (enumValue === String(value)) return true
         }
-        
+
         return false
       }
-      
+
       /**
        * Parse custom type
        */
@@ -618,13 +625,13 @@ class AdvancedKsyCompiler {
           logger.warn(`Type not found: ${typeName}`)
           return { value: null, size: 0 }
         }
-        
+
         const startOffset = this.offset
         const result = {
           _parent: parent,
           _root: this._root
         }
-        
+
         // Parse sequence
         if (typeDef.seq) {
           for (const field of typeDef.seq) {
@@ -635,16 +642,16 @@ class AdvancedKsyCompiler {
             }
           }
         }
-        
+
         // Parse instances
         if (typeDef.instances) {
           this._parseInstances(typeDef.instances, result)
         }
-        
+
         const size = this.offset - startOffset
         return { value: result, size: size }
       }
-      
+
       /**
        * Parse ELF endian-specific structure
        */
@@ -656,13 +663,13 @@ class AdvancedKsyCompiler {
         } else if (endianValue === 2) {
           this._endian = 'be'
         }
-        
+
         const startOffset = this.offset
         const result = {
           _parent: parent,
           _root: this._root
         }
-        
+
         // Find endian_elf type definition
         const typeDef = this._types['endian_elf']
         if (typeDef) {
@@ -677,11 +684,11 @@ class AdvancedKsyCompiler {
             }
           }
         }
-        
+
         const size = this.offset - startOffset
         return { value: result, size: size }
       }
-      
+
       /**
        * Parse instances (calculated fields)
        */
@@ -705,7 +712,7 @@ class AdvancedKsyCompiler {
           }
         }
       }
-      
+
       /**
        * Evaluate expression safely without using eval/new Function.
        * Uses a recursive descent parser that ONLY supports safe KSY
@@ -757,7 +764,7 @@ class AdvancedKsyCompiler {
           }
 
           return this._safeEvaluate(expr, evalContext)
-        } catch (error) {
+        } catch (_error) {
           // Return expression as-is if evaluation fails
           return expr
         }
@@ -787,7 +794,10 @@ class AdvancedKsyCompiler {
 
         while (i < src.length) {
           // Skip whitespace
-          if (/\s/.test(src[i])) { i++; continue }
+          if (/\s/.test(src[i])) {
+            i++
+            continue
+          }
 
           // String literals (single or double quoted)
           if (src[i] === '"' || src[i] === "'") {
@@ -807,17 +817,26 @@ class AdvancedKsyCompiler {
           }
 
           // Numbers: hex (0x...) or decimal
-          if (/[0-9]/.test(src[i]) || (src[i] === '0' && i + 1 < src.length && src[i + 1] === 'x')) {
+          if (
+            /[0-9]/.test(src[i]) ||
+            (src[i] === '0' && i + 1 < src.length && src[i + 1] === 'x')
+          ) {
             let num = ''
-            if (src[i] === '0' && i + 1 < src.length && (src[i + 1] === 'x' || src[i + 1] === 'X')) {
+            if (
+              src[i] === '0' &&
+              i + 1 < src.length &&
+              (src[i + 1] === 'x' || src[i + 1] === 'X')
+            ) {
               num = '0x'
               i += 2
               while (i < src.length && /[0-9a-fA-F]/.test(src[i])) {
-                num += src[i]; i++
+                num += src[i]
+                i++
               }
             } else {
               while (i < src.length && /[0-9.]/.test(src[i])) {
-                num += src[i]; i++
+                num += src[i]
+                i++
               }
             }
             tokens.push({ type: 'number', value: Number(num) })
@@ -843,7 +862,8 @@ class AdvancedKsyCompiler {
           if (/[a-zA-Z_]/.test(src[i])) {
             let ident = ''
             while (i < src.length && /[a-zA-Z0-9_.]/.test(src[i])) {
-              ident += src[i]; i++
+              ident += src[i]
+              i++
             }
             // Keywords
             if (ident === 'true') {
@@ -870,7 +890,9 @@ class AdvancedKsyCompiler {
         const expect = (type, value) => {
           const t = advance()
           if (!t || t.type !== type || (value !== undefined && t.value !== value)) {
-            throw new Error(`Expected ${type} ${value ?? ''} but got ${t ? t.type + ' ' + t.value : 'EOF'}`)
+            throw new Error(
+              `Expected ${type} ${value ?? ''} but got ${t ? t.type + ' ' + t.value : 'EOF'}`
+            )
           }
           return t
         }
@@ -942,10 +964,15 @@ class AdvancedKsyCompiler {
 
         const parseBitwiseOr = () => {
           let left = parseBitwiseXor()
-          while (peek() && peek().type === 'op' && peek().value === '|' &&
-                 !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '|')) {
+          while (
+            peek() &&
+            peek().type === 'op' &&
+            peek().value === '|' &&
+            !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '|')
+          ) {
             // Single '|' (not '||' which is already consumed as a two-char token)
-            advance(); left = left | parseBitwiseXor()
+            advance()
+            left = left | parseBitwiseXor()
           }
           return left
         }
@@ -953,24 +980,34 @@ class AdvancedKsyCompiler {
         const parseBitwiseXor = () => {
           let left = parseBitwiseAnd()
           while (peek() && peek().type === 'op' && peek().value === '^') {
-            advance(); left = left ^ parseBitwiseAnd()
+            advance()
+            left = left ^ parseBitwiseAnd()
           }
           return left
         }
 
         const parseBitwiseAnd = () => {
           let left = parseEquality()
-          while (peek() && peek().type === 'op' && peek().value === '&' &&
-                 !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '&')) {
+          while (
+            peek() &&
+            peek().type === 'op' &&
+            peek().value === '&' &&
+            !(tokens[pos + 1] && tokens[pos + 1].type === 'op' && tokens[pos + 1].value === '&')
+          ) {
             // Single '&' (not '&&' which is already consumed as a two-char token)
-            advance(); left = left & parseEquality()
+            advance()
+            left = left & parseEquality()
           }
           return left
         }
 
         const parseEquality = () => {
           let left = parseComparison()
-          while (peek() && peek().type === 'op' && (peek().value === '==' || peek().value === '!=')) {
+          while (
+            peek() &&
+            peek().type === 'op' &&
+            (peek().value === '==' || peek().value === '!=')
+          ) {
             const op = advance().value
             const right = parseComparison()
             left = op === '==' ? left == right : left != right
@@ -984,10 +1021,18 @@ class AdvancedKsyCompiler {
             const op = advance().value
             const right = parseShift()
             switch (op) {
-              case '<':  left = left < right; break
-              case '>':  left = left > right; break
-              case '<=': left = left <= right; break
-              case '>=': left = left >= right; break
+              case '<':
+                left = left < right
+                break
+              case '>':
+                left = left > right
+                break
+              case '<=':
+                left = left <= right
+                break
+              case '>=':
+                left = left >= right
+                break
             }
           }
           return left
@@ -995,7 +1040,11 @@ class AdvancedKsyCompiler {
 
         const parseShift = () => {
           let left = parseAdditive()
-          while (peek() && peek().type === 'op' && (peek().value === '<<' || peek().value === '>>')) {
+          while (
+            peek() &&
+            peek().type === 'op' &&
+            (peek().value === '<<' || peek().value === '>>')
+          ) {
             const op = advance().value
             const right = parseAdditive()
             left = op === '<<' ? left << right : left >> right
@@ -1015,13 +1064,23 @@ class AdvancedKsyCompiler {
 
         const parseMultiplicative = () => {
           let left = parseUnary()
-          while (peek() && peek().type === 'op' && (peek().value === '*' || peek().value === '/' || peek().value === '%')) {
+          while (
+            peek() &&
+            peek().type === 'op' &&
+            (peek().value === '*' || peek().value === '/' || peek().value === '%')
+          ) {
             const op = advance().value
             const right = parseUnary()
             switch (op) {
-              case '*': left = left * right; break
-              case '/': left = right !== 0 ? Math.trunc(left / right) : 0; break
-              case '%': left = right !== 0 ? left % right : 0; break
+              case '*':
+                left = left * right
+                break
+              case '/':
+                left = right !== 0 ? Math.trunc(left / right) : 0
+                break
+              case '%':
+                left = right !== 0 ? left % right : 0
+                break
             }
           }
           return left
@@ -1031,13 +1090,16 @@ class AdvancedKsyCompiler {
           const t = peek()
           if (t && t.type === 'op') {
             if (t.value === '!' || t.value === 'not') {
-              advance(); return !parseUnary()
+              advance()
+              return !parseUnary()
             }
             if (t.value === '-') {
-              advance(); return -parseUnary()
+              advance()
+              return -parseUnary()
             }
             if (t.value === '~') {
-              advance(); return ~parseUnary()
+              advance()
+              return ~parseUnary()
             }
           }
           return parsePrimary()
@@ -1048,16 +1110,20 @@ class AdvancedKsyCompiler {
           if (!t) throw new Error('Unexpected end of expression')
 
           if (t.type === 'number') {
-            advance(); return t.value
+            advance()
+            return t.value
           }
           if (t.type === 'string') {
-            advance(); return t.value
+            advance()
+            return t.value
           }
           if (t.type === 'boolean') {
-            advance(); return t.value
+            advance()
+            return t.value
           }
           if (t.type === 'ident') {
-            advance(); return resolveIdent(t.value)
+            advance()
+            return resolveIdent(t.value)
           }
           if (t.type === 'op' && t.value === '(') {
             advance() // consume '('
@@ -1078,7 +1144,7 @@ class AdvancedKsyCompiler {
 
         return result
       }
-      
+
       // Read methods
       _readU1() {
         if (this.offset >= this.buffer.length) {
@@ -1088,7 +1154,7 @@ class AdvancedKsyCompiler {
         this._io.pos = this.offset
         return value
       }
-      
+
       _readU2LE() {
         if (this.offset + 2 > this.buffer.length) {
           throw new Error('EOF')
@@ -1098,7 +1164,7 @@ class AdvancedKsyCompiler {
         this._io.pos = this.offset
         return value
       }
-      
+
       _readU2BE() {
         if (this.offset + 2 > this.buffer.length) {
           throw new Error('EOF')
@@ -1108,90 +1174,94 @@ class AdvancedKsyCompiler {
         this._io.pos = this.offset
         return value
       }
-      
+
       _readU4LE() {
         if (this.offset + 4 > this.buffer.length) {
           throw new Error('EOF')
         }
-        const value = this.buffer[this.offset] |
-                     (this.buffer[this.offset + 1] << 8) |
-                     (this.buffer[this.offset + 2] << 16) |
-                     (this.buffer[this.offset + 3] << 24)
+        const value =
+          this.buffer[this.offset] |
+          (this.buffer[this.offset + 1] << 8) |
+          (this.buffer[this.offset + 2] << 16) |
+          (this.buffer[this.offset + 3] << 24)
         this.offset += 4
         this._io.pos = this.offset
         return value >>> 0
       }
-      
+
       _readU4BE() {
         if (this.offset + 4 > this.buffer.length) {
           throw new Error('EOF')
         }
-        const value = (this.buffer[this.offset] << 24) |
-                     (this.buffer[this.offset + 1] << 16) |
-                     (this.buffer[this.offset + 2] << 8) |
-                     this.buffer[this.offset + 3]
+        const value =
+          (this.buffer[this.offset] << 24) |
+          (this.buffer[this.offset + 1] << 16) |
+          (this.buffer[this.offset + 2] << 8) |
+          this.buffer[this.offset + 3]
         this.offset += 4
         this._io.pos = this.offset
         return value >>> 0
       }
-      
+
       _readU8LE() {
         const low = this._readU4LE()
         const high = this._readU4LE()
         return high * 0x100000000 + low
       }
-      
+
       _readU8BE() {
         const high = this._readU4BE()
         const low = this._readU4BE()
         return high * 0x100000000 + low
       }
-      
+
       _readS1() {
         const value = this._readU1()
         return value > 127 ? value - 256 : value
       }
-      
+
       _readS2LE() {
         const value = this._readU2LE()
         return value > 32767 ? value - 65536 : value
       }
-      
+
       _readS2BE() {
         const value = this._readU2BE()
         return value > 32767 ? value - 65536 : value
       }
-      
+
       _readS4LE() {
         const value = this._readU4LE()
         return value > 2147483647 ? value - 4294967296 : value
       }
-      
+
       _readS4BE() {
         const value = this._readU4BE()
         return value > 2147483647 ? value - 4294967296 : value
       }
-      
+
       _readS8LE() {
         const value = this._readU8LE()
         // Convert unsigned 64-bit to signed 64-bit
         // JavaScript doesn't natively support 64-bit integers
         // Using BigInt for proper 64-bit signed handling
         const bigValue = BigInt(value)
-        const signedValue = bigValue > 0x7FFFFFFFFFFFFFFFn ? bigValue - 0x10000000000000000n : bigValue
+        const signedValue =
+          bigValue > 0x7fffffffffffffffn ? bigValue - 0x10000000000000000n : bigValue
         return Number(signedValue)
       }
-      
+
       _readS8BE() {
         const value = this._readU8BE()
         // Convert unsigned 64-bit to signed 64-bit
         // JavaScript doesn't natively support 64-bit integers
         // Using BigInt for proper 64-bit signed handling
         const bigValue = BigInt(value)
-        const signedValue = bigValue > 0x7FFFFFFFFFFFFFFFn ? bigValue - 0x10000000000000000n : bigValue
+        const signedValue =
+          bigValue > 0x7fffffffffffffffn ? bigValue - 0x10000000000000000n : bigValue
         return Number(signedValue)
       }
-      
+
       _readF4LE() {
         const buffer = new ArrayBuffer(4)
         const view = new DataView(buffer)
@@ -1201,7 +1271,7 @@ class AdvancedKsyCompiler {
         }
         return view.getFloat32(0, true)
       }
-      
+
       _readF4BE() {
         const buffer = new ArrayBuffer(4)
         const view = new DataView(buffer)
@@ -1211,7 +1281,7 @@ class AdvancedKsyCompiler {
         }
         return view.getFloat32(0, false)
       }
-      
+
       _readF8LE() {
         const buffer = new ArrayBuffer(8)
         const view = new DataView(buffer)
@@ -1221,7 +1291,7 @@ class AdvancedKsyCompiler {
         }
         return view.getFloat64(0, true)
       }
-      
+
       _readF8BE() {
         const buffer = new ArrayBuffer(8)
         const view = new DataView(buffer)
@@ -1231,7 +1301,7 @@ class AdvancedKsyCompiler {
         }
         return view.getFloat64(0, false)
       }
-      
+
       _readBytes(count) {
         if (count < 0) {
           throw new Error(`Invalid byte count: ${count}`)
@@ -1243,12 +1313,12 @@ class AdvancedKsyCompiler {
         this._io.pos = this.offset
         return bytes
       }
-      
+
       _readString(size, encoding = 'UTF-8') {
         const bytes = this._readBytes(size)
         return new TextDecoder(encoding.toLowerCase()).decode(bytes)
       }
-      
+
       _readStringZ(encoding = 'UTF-8') {
         const startOffset = this.offset
         let end = this.offset
@@ -1261,7 +1331,7 @@ class AdvancedKsyCompiler {
         const value = new TextDecoder(encoding.toLowerCase()).decode(bytes)
         return { value: value, size: this.offset - startOffset }
       }
-      
+
       _readBits(count) {
         // Simplified bit reading - just read as bytes for now
         const byteCount = Math.ceil(count / 8)
@@ -1274,43 +1344,45 @@ class AdvancedKsyCompiler {
         const mask = (1 << count) - 1
         return value & mask
       }
-      
+
       // Static parse method for compatibility
       static parse(buffer) {
         try {
           logger.debug('AdvancedKsyParser.parse called with buffer length:', buffer.length)
           const instance = new AdvancedKsyParser(buffer)
-          
+
           // Debug: log parsed fields
           logger.debug('=== AdvancedKsyParser _parsed contents:', instance._parsed)
-          
+
           // Convert _parsed to fields array
-          const fields = Object.keys(instance._parsed).map(key => {
+          const fields = Object.keys(instance._parsed).map((key) => {
             const field = instance._parsed[key]
-            logger.debug(`=== Field ${key}: offset=${field.offset}, size=${field.size}, type=${field.type}`)
-            
+            logger.debug(
+              `=== Field ${key}: offset=${field.offset}, size=${field.size}, type=${field.type}`
+            )
+
             // Format value for display
             let displayValue = field.value
             if (displayValue instanceof Uint8Array) {
               if (displayValue.length <= 16) {
-                displayValue = Array.from(displayValue).map(b => 
-                  b.toString(16).padStart(2, '0').toUpperCase()
-                ).join(' ')
+                displayValue = Array.from(displayValue)
+                  .map((b) => b.toString(16).padStart(2, '0').toUpperCase())
+                  .join(' ')
               } else {
-                const preview = Array.from(displayValue.slice(0, 8)).map(b => 
-                  b.toString(16).padStart(2, '0').toUpperCase()
-                ).join(' ')
+                const preview = Array.from(displayValue.slice(0, 8))
+                  .map((b) => b.toString(16).padStart(2, '0').toUpperCase())
+                  .join(' ')
                 displayValue = `${preview}... [${displayValue.length} bytes]`
               }
             } else if (typeof displayValue === 'object' && displayValue !== null) {
               // Handle nested structures
-              displayValue = `{${Object.keys(displayValue).filter(k => !k.startsWith('_')).length} fields}`
+              displayValue = `{${Object.keys(displayValue).filter((k) => !k.startsWith('_')).length} fields}`
             } else if (Array.isArray(displayValue)) {
               displayValue = `[${displayValue.length} items]`
             } else if (typeof displayValue === 'number') {
               displayValue = `${displayValue} (0x${displayValue.toString(16).toUpperCase()})`
             }
-            
+
             return {
               name: key,
               value: displayValue,
@@ -1318,9 +1390,9 @@ class AdvancedKsyCompiler {
               size: field.size
             }
           })
-          
+
           logger.debug('=== Final fields array:', fields)
-          
+
           return {
             success: true,
             data: instance,
@@ -1336,7 +1408,7 @@ class AdvancedKsyCompiler {
         }
       }
     }
-    
+
     logger.debug('Returning AdvancedKsyParser class')
     return AdvancedKsyParser
   }

@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: TestKsyCompiler.js - Fixed PNG parser
  * Author: Simon Roses Femerling
  * Created: 2025-01-10
@@ -25,24 +25,19 @@ class TestKsyCompiler {
   }
 
   async compile(ksyContent) {
-    try {
-      const ksy = yaml.parse(ksyContent)
-      if (!ksy) {
-        throw new Error('Invalid KSY content')
-      }
-      return this.createParserClass(ksy)
-    } catch (error) {
-      // Re-throw without logging to reduce console noise
-      throw error
+    const ksy = yaml.parse(ksyContent)
+    if (!ksy) {
+      throw new Error('Invalid KSY content')
     }
+    return this.createParserClass(ksy)
   }
-  
+
   createParserClass(ksy) {
     const self = this
     const types = ksy.types || {}
     const enums = ksy.enums || {}
     const endian = ksy.meta?.endian || 'le'
-    
+
     class TestKsyParser {
       constructor(buffer) {
         // Use the proper KaitaiStream implementation
@@ -53,18 +48,18 @@ class TestKsyCompiler {
         this._types = types
         this._enums = enums
         this._endian = endian
-        
+
         if (this._debug) {
           logger.debug('Starting parse with endian:', endian)
           logger.debug('Buffer size:', this._io.size)
         }
-        
+
         this._parseRoot(ksy)
       }
-      
+
       _parseRoot(ksy) {
         const seq = ksy.seq || []
-        
+
         for (const field of seq) {
           try {
             if (this._debug) {
@@ -80,10 +75,10 @@ class TestKsyCompiler {
           }
         }
       }
-      
+
       _parseField(field, parent, parentDef) {
         if (!field.id) return
-        
+
         try {
           // Handle contents validation
           if (field.contents !== undefined) {
@@ -91,26 +86,30 @@ class TestKsyCompiler {
             parent[field.id] = field.contents // Store the expected value
             return
           }
-          
+
           let value = null
-          
+
           if (field.repeat) {
             value = this._parseRepeatField(field, parent, parentDef)
           } else {
             value = this._parseFieldValue(field, parent, parentDef)
           }
-          
+
           // Validate if needed
           if (field.valid !== undefined && value !== null) {
             this._validateField(field.valid, value, field.id)
           }
-          
+
           parent[field.id] = value
-          
-          if (this._debug && field.id !== 'body') { // Don't log large body data
-            const displayValue = value instanceof Uint8Array ? 
-              `[${value.length} bytes]` : 
-              (typeof value === 'object' ? JSON.stringify(value).substring(0, 100) : value)
+
+          if (this._debug && field.id !== 'body') {
+            // Don't log large body data
+            const displayValue =
+              value instanceof Uint8Array
+                ? `[${value.length} bytes]`
+                : typeof value === 'object'
+                  ? JSON.stringify(value).substring(0, 100)
+                  : value
             logger.debug(`Stored field ${field.id}:`, displayValue)
           }
         } catch (error) {
@@ -120,10 +119,10 @@ class TestKsyCompiler {
           parent[field.id] = null
         }
       }
-      
+
       _validateContents(contents) {
         const io = this._io
-        
+
         if (Array.isArray(contents)) {
           // Validate magic bytes
           for (const expected of contents) {
@@ -141,7 +140,7 @@ class TestKsyCompiler {
           }
         }
       }
-      
+
       _validateField(valid, value, fieldName) {
         try {
           if (typeof valid === 'number') {
@@ -162,39 +161,39 @@ class TestKsyCompiler {
           }
         }
       }
-      
+
       _parseFieldValue(field, parent, parentDef) {
         const io = this._io
-        
+
         // Handle switch-on types
         if (field.type && typeof field.type === 'object' && field.type['switch-on']) {
           return this._parseSwitchType(field, parent, parentDef)
         }
-        
+
         const type = field.type || 'u1'
-        
+
         // Handle custom types
         if (typeof type === 'string' && this._types[type]) {
           return this._parseCustomType(type, parent)
         }
-        
+
         // Handle size
         let size = field.size
         if (typeof size === 'string') {
           size = this._evaluateExpression(size, parent)
         }
-        
+
         // Parse primitive types with proper endian support
         switch (type) {
-          case 'u1': 
+          case 'u1':
             return io.readU1()
-          case 'u2': 
+          case 'u2':
             return this._endian === 'be' ? io.readU2be() : io.readU2le()
-          case 'u4': 
+          case 'u4':
             return this._endian === 'be' ? io.readU4be() : io.readU4le()
           case 'u8':
             return this._endian === 'be' ? io.readU8be() : io.readU8le()
-          case 's1': 
+          case 's1':
             return io.readS1()
           case 's2':
             return this._endian === 'be' ? io.readS2be() : io.readS2le()
@@ -208,10 +207,11 @@ class TestKsyCompiler {
               return io.readStr(encoding === 'UTF-8' ? 'utf-8' : encoding, size)
             }
             return null
-          case 'strz':
+          case 'strz': {
             const terminator = field.terminator || 0
             const encoding = field.encoding || 'ASCII'
             return io.readStrz(encoding, terminator, false, true)
+          }
           default:
             // Handle raw bytes
             if (size !== undefined && size !== null && size > 0) {
@@ -220,21 +220,21 @@ class TestKsyCompiler {
             return null
         }
       }
-      
-      _parseSwitchType(field, parent, parentDef) {
+
+      _parseSwitchType(field, parent, _parentDef) {
         const switchOn = field.type['switch-on']
         const cases = field.type.cases || {}
-        
+
         // Evaluate switch expression
         const switchValue = this._evaluateExpression(switchOn, parent)
-        
+
         if (this._debug) {
           logger.debug(`Switch-on "${switchOn}" evaluated to: "${switchValue}"`)
         }
-        
+
         // Find matching case - try exact match first
         let caseType = cases[`"${switchValue}"`] || cases[switchValue]
-        
+
         if (!caseType) {
           // No matching case, read raw bytes if size is specified
           const size = this._evaluateExpression(field.size || 'len', parent)
@@ -246,47 +246,48 @@ class TestKsyCompiler {
           }
           return null
         }
-        
+
         if (this._debug) {
           logger.debug(`Matched case: "${switchValue}" -> ${caseType}`)
         }
-        
+
         // Parse with the matched type
         if (typeof caseType === 'string' && this._types[caseType]) {
           return this._parseCustomType(caseType, parent)
         }
-        
+
         // If no custom type, read as raw bytes
         const size = this._evaluateExpression(field.size || 'len', parent)
         if (size !== undefined && size !== null && size >= 0) {
           return this._io.readBytes(size)
         }
-        
+
         return null
       }
-      
+
       _parseRepeatField(field, parent, parentDef) {
         const io = this._io
         const items = []
-        
+
         if (field.repeat === 'until') {
           const expr = field['repeat-until']
-          
+
           if (this._debug) {
             logger.debug(`Starting repeat-until with expression: ${expr}`)
           }
-          
+
           let count = 0
           const maxIterations = 1000 // Safety limit
-          
+
           while (!io.isEof && count < maxIterations) {
             try {
               const startPos = io.pos
-              
-              if (this._debug && count < 10) { // Only log first 10
+
+              if (this._debug && count < 10) {
+                // Only log first 10
                 logger.debug(`Parsing item ${count + 1} at position 0x${startPos.toString(16)}`)
               }
-              
+
               // Parse the item
               let item = null
               if (field.type) {
@@ -297,17 +298,17 @@ class TestKsyCompiler {
                   item = this._parseFieldValue(field, parent, parentDef)
                 }
               }
-              
+
               if (item === null) {
                 if (this._debug) {
                   logger.warn('Got null item in repeat-until, breaking')
                 }
                 break
               }
-              
+
               items.push(item)
               count++
-              
+
               // Check the repeat-until condition
               if (this._evaluateRepeatUntil(expr, item, io)) {
                 if (this._debug) {
@@ -315,7 +316,7 @@ class TestKsyCompiler {
                 }
                 break
               }
-              
+
               // Safety check
               if (io.pos <= startPos) {
                 if (this._debug) {
@@ -328,16 +329,16 @@ class TestKsyCompiler {
                 logger.error(`Error in repeat-until at item ${count + 1}:`, error.message)
               }
               if (io.isEof) break
-              
+
               // Try to recover
               try {
                 io.seek(io.pos + 1)
-              } catch (e) {
+              } catch (_e) {
                 break
               }
             }
           }
-          
+
           if (this._debug) {
             logger.debug(`Finished repeat-until, parsed ${items.length} items`)
           }
@@ -371,10 +372,10 @@ class TestKsyCompiler {
             }
           }
         }
-        
+
         return items
       }
-      
+
       _evaluateRepeatUntil(expr, item, io) {
         // Handle PNG-specific repeat-until: _.type == "IEND" or _io.eof
         if (expr.includes('type == "IEND"')) {
@@ -382,17 +383,17 @@ class TestKsyCompiler {
             return true
           }
         }
-        
+
         if (expr.includes('_io.eof')) {
           if (io.isEof) {
             return true
           }
         }
-        
+
         // Check both conditions for PNG
         return (item && item.type === 'IEND') || io.isEof
       }
-      
+
       _parseCustomType(typeName, parent) {
         const typeDef = this._types[typeName]
         if (!typeDef) {
@@ -401,17 +402,17 @@ class TestKsyCompiler {
           }
           return null
         }
-        
+
         if (this._debug) {
           logger.debug(`Parsing custom type: ${typeName} at pos 0x${this._io.pos.toString(16)}`)
         }
-        
+
         const result = {
           _parent: parent,
           _root: this._root,
           _io: this._io
         }
-        
+
         if (typeDef.seq) {
           for (const field of typeDef.seq) {
             try {
@@ -424,7 +425,7 @@ class TestKsyCompiler {
             }
           }
         }
-        
+
         // Process instances if any
         if (typeDef.instances) {
           for (const [instName, instDef] of Object.entries(typeDef.instances)) {
@@ -444,59 +445,59 @@ class TestKsyCompiler {
             })
           }
         }
-        
+
         return result
       }
-      
+
       _evaluateExpression(expr, context) {
         if (typeof expr !== 'string') return expr
-        
+
         // Direct field reference
         if (context && context[expr] !== undefined) {
           return context[expr]
         }
-        
+
         // Parent field reference (e.g., _parent.len)
         if (expr.startsWith('_parent.') && context._parent) {
           const fieldName = expr.substring(8)
           return context._parent[fieldName]
         }
-        
+
         // Root field reference (e.g., _root.ihdr)
         if (expr.startsWith('_root.') && context._root) {
           const fieldName = expr.substring(6)
           return context._root[fieldName]
         }
-        
+
         // Special size-eos handling
         if (expr === 'size-eos' || expr.includes('eos')) {
           return this._io.size - this._io.pos
         }
-        
+
         // Try to parse as number
         const num = parseInt(expr, 10)
         if (!isNaN(num)) {
           return num
         }
-        
+
         // Silent fail for unknown expressions
-        
+
         // Return the expression for field names like 'len'
         return expr
       }
     }
-    
+
     // Add static parse method for compatibility
-    TestKsyParser.parse = function(buffer) {
+    TestKsyParser.parse = function (buffer) {
       try {
         const instance = new TestKsyParser(buffer)
-        
+
         // Convert to field structure for UI
         const fields = []
-        
+
         for (const [key, value] of Object.entries(instance)) {
           if (key.startsWith('_')) continue
-          
+
           const field = {
             name: key,
             value: null,
@@ -504,7 +505,7 @@ class TestKsyCompiler {
             size: 0,
             fields: []
           }
-          
+
           if (value === null || value === undefined) {
             field.value = 'null'
           } else if (Array.isArray(value)) {
@@ -526,9 +527,10 @@ class TestKsyCompiler {
                   if (subKey.startsWith('_')) continue
                   const subField = {
                     name: subKey,
-                    value: subValue instanceof Uint8Array ? 
-                      `[${subValue.length} bytes]` : 
-                      String(subValue),
+                    value:
+                      subValue instanceof Uint8Array
+                        ? `[${subValue.length} bytes]`
+                        : String(subValue),
                     offset: 0,
                     size: 0,
                     fields: []
@@ -564,9 +566,8 @@ class TestKsyCompiler {
               if (subKey.startsWith('_')) continue
               field.fields.push({
                 name: subKey,
-                value: subValue instanceof Uint8Array ? 
-                  `[${subValue.length} bytes]` : 
-                  String(subValue),
+                value:
+                  subValue instanceof Uint8Array ? `[${subValue.length} bytes]` : String(subValue),
                 offset: 0,
                 size: 0,
                 fields: []
@@ -575,10 +576,10 @@ class TestKsyCompiler {
           } else {
             field.value = String(value)
           }
-          
+
           fields.push(field)
         }
-        
+
         return {
           success: true,
           data: instance,
@@ -595,7 +596,7 @@ class TestKsyCompiler {
         }
       }
     }
-    
+
     return TestKsyParser
   }
 }

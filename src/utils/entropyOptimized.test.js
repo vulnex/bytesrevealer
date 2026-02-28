@@ -19,7 +19,7 @@ describe('calculateOptimizedEntropy', () => {
   it('returns ~1.0 for two-value repeating pattern', () => {
     // Alternating 0x00 and 0xFF → entropy = 1.0
     const pattern = new Uint8Array(256)
-    for (let i = 0; i < 256; i++) pattern[i] = i % 2 === 0 ? 0x00 : 0xFF
+    for (let i = 0; i < 256; i++) pattern[i] = i % 2 === 0 ? 0x00 : 0xff
     const result = calculateOptimizedEntropy(pattern)
     expect(result.globalEntropy).toBeCloseTo(1.0, 1)
   })
@@ -50,10 +50,10 @@ describe('calculateOptimizedEntropy', () => {
   })
 
   it('byteFrequencies has length 256', () => {
-    const data = new Uint8Array(100).fill(0xAA)
+    const data = new Uint8Array(100).fill(0xaa)
     const result = calculateOptimizedEntropy(data)
     expect(result.byteFrequencies).toHaveLength(256)
-    expect(result.byteFrequencies[0xAA]).toBe(100)
+    expect(result.byteFrequencies[0xaa]).toBe(100)
   })
 
   it('identifies high entropy regions (>7.5)', () => {
@@ -62,7 +62,7 @@ describe('calculateOptimizedEntropy', () => {
     for (let i = 0; i < 512; i++) data[i] = (i * 137 + 73) % 256
     const result = calculateOptimizedEntropy(data)
     // The data should have high entropy blocks
-    expect(result.entropyValues.some(v => v.entropy > 6)).toBe(true)
+    expect(result.entropyValues.some((v) => v.entropy > 6)).toBe(true)
   })
 
   it('statistics contains min, max, average, median, standardDeviation', () => {

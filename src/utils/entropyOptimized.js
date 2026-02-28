@@ -22,9 +22,9 @@ const logger = createLogger('EntropyOptimized')
  */
 export function calculateOptimizedEntropy(fileBytes, options = {}) {
   const {
-    blockSize = 256,        // Size of each block for entropy calculation
-    maxBlocks = 1000,       // Maximum number of blocks to process
-    sampleRate = 1.0        // Sampling rate (1.0 = all blocks, 0.5 = half)
+    blockSize = 256, // Size of each block for entropy calculation
+    maxBlocks = 1000, // Maximum number of blocks to process
+    sampleRate = 1.0 // Sampling rate (1.0 = all blocks, 0.5 = half)
   } = options
 
   const fileSize = fileBytes.length
@@ -35,7 +35,9 @@ export function calculateOptimizedEntropy(fileBytes, options = {}) {
   const actualSampleRate = isLargeFile ? Math.min(sampleRate, maxBlocks / totalBlocks) : 1.0
   const blocksToProcess = Math.min(totalBlocks, Math.floor(totalBlocks * actualSampleRate))
 
-  logger.debug(`Processing ${blocksToProcess} of ${totalBlocks} blocks (sample rate: ${actualSampleRate.toFixed(2)})`)
+  logger.debug(
+    `Processing ${blocksToProcess} of ${totalBlocks} blocks (sample rate: ${actualSampleRate.toFixed(2)})`
+  )
 
   const entropyValues = []
   const highEntropyRegions = []
@@ -45,7 +47,11 @@ export function calculateOptimizedEntropy(fileBytes, options = {}) {
   // Calculate block stride for uniform sampling
   const blockStride = Math.max(1, Math.floor(totalBlocks / blocksToProcess))
 
-  for (let blockIndex = 0; blockIndex < totalBlocks && entropyValues.length < maxBlocks; blockIndex += blockStride) {
+  for (
+    let blockIndex = 0;
+    blockIndex < totalBlocks && entropyValues.length < maxBlocks;
+    blockIndex += blockStride
+  ) {
     const start = blockIndex * blockSize
     const end = Math.min(start + blockSize, fileSize)
     const block = fileBytes.slice(start, end)
@@ -166,7 +172,7 @@ function calculateStatistics(entropyValues) {
     }
   }
 
-  const entropies = entropyValues.map(v => v.entropy)
+  const entropies = entropyValues.map((v) => v.entropy)
   const sorted = [...entropies].sort((a, b) => a - b)
 
   const min = Math.min(...entropies)
@@ -175,12 +181,11 @@ function calculateStatistics(entropyValues) {
 
   // Calculate median
   const mid = Math.floor(sorted.length / 2)
-  const median = sorted.length % 2 === 0
-    ? (sorted[mid - 1] + sorted[mid]) / 2
-    : sorted[mid]
+  const median = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid]
 
   // Calculate standard deviation
-  const variance = entropies.reduce((sum, val) => sum + Math.pow(val - average, 2), 0) / entropies.length
+  const variance =
+    entropies.reduce((sum, val) => sum + Math.pow(val - average, 2), 0) / entropies.length
   const standardDeviation = Math.sqrt(variance)
 
   return {
@@ -210,7 +215,7 @@ export function generateEntropyVisualization(entropyData, width = 800, height = 
   entropyValues.forEach((value, index) => {
     points.push({
       x: index * xScale,
-      y: height - (value.entropy * yScale),
+      y: height - value.entropy * yScale,
       entropy: value.entropy,
       offset: value.offset
     })
@@ -220,7 +225,7 @@ export function generateEntropyVisualization(entropyData, width = 800, height = 
     points,
     width,
     height,
-    highEntropyThreshold: height - (7.5 * yScale),
-    lowEntropyThreshold: height - (2 * yScale)
+    highEntropyThreshold: height - 7.5 * yScale,
+    lowEntropyThreshold: height - 2 * yScale
   }
 }

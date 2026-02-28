@@ -3,20 +3,18 @@ import { ref } from 'vue'
 import { useHexExport } from './useHexExport'
 
 function mockByteEvent(byteIndex, button = 0) {
-  const element = byteIndex !== null
-    ? { dataset: { byteIndex: String(byteIndex) } }
-    : null
+  const element = byteIndex !== null ? { dataset: { byteIndex: String(byteIndex) } } : null
   return {
     button,
     preventDefault: vi.fn(),
     clientX: 100,
     clientY: 200,
-    target: { closest: vi.fn(sel => sel === '[data-byte-index]' ? element : null) }
+    target: { closest: vi.fn((sel) => (sel === '[data-byte-index]' ? element : null)) }
   }
 }
 
 function setup(opts = {}) {
-  const bytes = opts.fileBytes || new Uint8Array([0xDE, 0xAD, 0xBE, 0xEF, 0xCA, 0xFE])
+  const bytes = opts.fileBytes || new Uint8Array([0xde, 0xad, 0xbe, 0xef, 0xca, 0xfe])
   const props = { fileBytes: bytes }
   const baseOffset = ref(opts.baseOffset ?? 0)
   const selectionStart = ref(opts.selectionStart ?? null)
@@ -222,7 +220,7 @@ describe('useHexExport', () => {
       const s = setup({ baseOffset: 0 })
       s.handleContextMenu(mockByteEvent(2))
       expect(s.contextMenu.value.selectedBytes.length).toBe(1)
-      expect(s.contextMenu.value.selectedBytes[0]).toBe(0xBE)
+      expect(s.contextMenu.value.selectedBytes[0]).toBe(0xbe)
     })
 
     it('sets clickedOffset from target element', () => {

@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KaitaiManager.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27
@@ -17,26 +17,26 @@ const logger = createLogger('KaitaiManager')
 
 // Format mapping from file signatures to Kaitai parsers
 const FORMAT_MAPPING = {
-  'ZIP': 'zip',
-  'PNG': 'png',
-  'JPEG': 'jpeg',
-  'GIF': 'gif',
-  'BMP': 'bmp',
-  'ELF': 'elf',
-  'PE': 'dos_mz',
-  'PDF': 'pdf',
-  'GZIP': 'gzip',
-  'TAR': 'tar',
-  'RAR': 'rar',
-  'MP3': 'mp3',
-  'MP4': 'mp4',
-  'AVI': 'avi',
-  'WAV': 'wav',
-  'WEBP': 'webp',
-  'ICO': 'ico',
-  'Class': 'java_class',
-  'DEX': 'dex',
-  'SQLite': 'sqlite3'
+  ZIP: 'zip',
+  PNG: 'png',
+  JPEG: 'jpeg',
+  GIF: 'gif',
+  BMP: 'bmp',
+  ELF: 'elf',
+  PE: 'dos_mz',
+  PDF: 'pdf',
+  GZIP: 'gzip',
+  TAR: 'tar',
+  RAR: 'rar',
+  MP3: 'mp3',
+  MP4: 'mp4',
+  AVI: 'avi',
+  WAV: 'wav',
+  WEBP: 'webp',
+  ICO: 'ico',
+  Class: 'java_class',
+  DEX: 'dex',
+  SQLite: 'sqlite3'
 }
 
 class KaitaiManager {
@@ -74,7 +74,7 @@ class KaitaiManager {
 
         // Wait for worker ready signal
         this.readyCallbacks.push(resolve)
-        
+
         // Clean up the URL after creating the worker
         URL.revokeObjectURL(workerUrl)
       } catch (error) {
@@ -84,7 +84,7 @@ class KaitaiManager {
       }
     })
   }
-  
+
   getWorkerCode() {
     // Inline worker code with actual parsing logic
     return `
@@ -199,7 +199,7 @@ class KaitaiManager {
       self.postMessage({ type: 'WORKER_READY' })
     `
   }
-  
+
   getParsersCode() {
     // Return the parser functions as a string
     return `
@@ -469,7 +469,7 @@ class KaitaiManager {
 
     if (type === 'WORKER_READY') {
       this.isReady = true
-      this.readyCallbacks.forEach(cb => cb())
+      this.readyCallbacks.forEach((cb) => cb())
       this.readyCallbacks = []
       return
     }
@@ -490,7 +490,7 @@ class KaitaiManager {
     return new Promise((resolve, reject) => {
       const id = ++this.requestId
       this.pendingRequests.set(id, { resolve, reject })
-      
+
       this.worker.postMessage({
         id,
         type,
@@ -513,17 +513,17 @@ class KaitaiManager {
     }
 
     const kaitaiFormat = FORMAT_MAPPING[formatName] || formatName.toLowerCase()
-    
+
     try {
       const result = await this.sendMessage('LOAD_PARSER', {
         format: kaitaiFormat
       })
-      
+
       if (result.success) {
         this.currentFormat = kaitaiFormat
         return true
       }
-      
+
       return false
     } catch (error) {
       logger.error('Failed to load format:', error)
@@ -553,7 +553,7 @@ class KaitaiManager {
       if (result.success) {
         // Cache the result
         this.viewportCache.set(cacheKey, result.data)
-        
+
         // Limit cache size
         if (this.viewportCache.size > 100) {
           const firstKey = this.viewportCache.keys().next().value
@@ -593,14 +593,14 @@ class KaitaiManager {
     }
   }
 
-  async parseViewport(data, startOffset, endOffset, bytesPerRow = 16) {
+  async parseViewport(data, startOffset, endOffset, _bytesPerRow = 16) {
     const chunkSize = 1024 // Parse 1KB chunks
     const structures = []
-    
+
     for (let offset = startOffset; offset < endOffset; offset += chunkSize) {
       const length = Math.min(chunkSize, endOffset - offset)
       const parsed = await this.parseChunk(data, offset, length)
-      
+
       if (parsed) {
         structures.push({
           ...parsed,
@@ -626,8 +626,7 @@ class KaitaiManager {
     if (!structure || !structure.fields) return null
 
     for (const field of structure.fields) {
-      if (field.offset <= targetOffset && 
-          targetOffset < field.offset + (field.size || 1)) {
+      if (field.offset <= targetOffset && targetOffset < field.offset + (field.size || 1)) {
         // Check if field has nested structure
         if (field.value && field.value.fields) {
           const nested = this.findFieldAtOffset(field.value, targetOffset)
@@ -649,10 +648,10 @@ class KaitaiManager {
   detectFormat(fileBytes) {
     // Use existing file signature detection
     const signatures = this.detectFileSignatures(fileBytes)
-    
+
     logger.debug('Format detection - signatures found:', signatures)
     logger.debug('Format mapping available:', FORMAT_MAPPING)
-    
+
     for (const sig of signatures) {
       if (FORMAT_MAPPING[sig.name]) {
         logger.debug(`Format ${sig.name} mapped to ${FORMAT_MAPPING[sig.name]}`)
@@ -667,44 +666,41 @@ class KaitaiManager {
   detectFileSignatures(bytes) {
     // Simple signature detection for common formats
     const signatures = []
-    
+
     if (!bytes || bytes.length < 4) return signatures
-    
+
     // ZIP
-    if (bytes[0] === 0x50 && bytes[1] === 0x4B) {
+    if (bytes[0] === 0x50 && bytes[1] === 0x4b) {
       signatures.push({ name: 'ZIP', confidence: 100 })
     }
-    
+
     // PNG
-    if (bytes[0] === 0x89 && bytes[1] === 0x50 && 
-        bytes[2] === 0x4E && bytes[3] === 0x47) {
+    if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) {
       signatures.push({ name: 'PNG', confidence: 100 })
     }
-    
+
     // JPEG
-    if (bytes[0] === 0xFF && bytes[1] === 0xD8 && bytes[2] === 0xFF) {
+    if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) {
       signatures.push({ name: 'JPEG', confidence: 100 })
     }
-    
+
     // GIF
     if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) {
       signatures.push({ name: 'GIF', confidence: 100 })
     }
-    
+
     // PDF
-    if (bytes[0] === 0x25 && bytes[1] === 0x50 && 
-        bytes[2] === 0x44 && bytes[3] === 0x46) {
+    if (bytes[0] === 0x25 && bytes[1] === 0x50 && bytes[2] === 0x44 && bytes[3] === 0x46) {
       signatures.push({ name: 'PDF', confidence: 100 })
     }
-    
+
     // ELF
-    if (bytes[0] === 0x7F && bytes[1] === 0x45 && 
-        bytes[2] === 0x4C && bytes[3] === 0x46) {
+    if (bytes[0] === 0x7f && bytes[1] === 0x45 && bytes[2] === 0x4c && bytes[3] === 0x46) {
       signatures.push({ name: 'ELF', confidence: 100 })
     }
-    
+
     // PE/DOS MZ header
-    if (bytes[0] === 0x4D && bytes[1] === 0x5A) {
+    if (bytes[0] === 0x4d && bytes[1] === 0x5a) {
       signatures.push({ name: 'PE', confidence: 100 })
       logger.debug('Detected PE/DOS MZ format')
     }

@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: StringAnalysisView.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: StringAnalysisView.vue * Author: Simon Roses Femerling *
+Created: 2025-02-12 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="string-analysis">
@@ -25,10 +16,7 @@
         Extracting strings from large file... {{ progress.toFixed(1) }}%
       </div>
       <div class="progress-bar">
-        <div
-          class="progress-fill"
-          :style="{ width: `${progress}%` }"
-        ></div>
+        <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
       </div>
     </div>
 
@@ -41,19 +29,19 @@
       <div class="stat-card ascii">
         <div class="stat-label">ASCII Strings</div>
         <div class="stat-value">
-          {{ strings.filter(s => s.type === 'ASCII').length }}
+          {{ strings.filter((s) => s.type === 'ASCII').length }}
         </div>
       </div>
       <div class="stat-card utf8">
         <div class="stat-label">UTF-8 Strings</div>
         <div class="stat-value">
-          {{ strings.filter(s => s.type === 'UTF-8').length }}
+          {{ strings.filter((s) => s.type === 'UTF-8').length }}
         </div>
       </div>
       <div class="stat-card utf16">
         <div class="stat-label">UTF-16 Strings</div>
         <div class="stat-value">
-          {{ strings.filter(s => s.type.includes('UTF-16')).length }}
+          {{ strings.filter((s) => s.type.includes('UTF-16')).length }}
         </div>
       </div>
     </div>
@@ -63,14 +51,14 @@
       <div class="filter-controls">
         <div class="search-container">
           <input
-            type="text"
             v-model="searchQuery"
+            type="text"
             :placeholder="useRegex ? 'Enter regex pattern...' : 'Search strings...'"
             class="search-input"
             :class="{ 'regex-mode': useRegex, 'regex-error': regexError }"
-          >
+          />
           <label class="regex-toggle" title="Enable regex search">
-            <input type="checkbox" v-model="useRegex">
+            <input v-model="useRegex" type="checkbox" />
             <span>Regex</span>
           </label>
         </div>
@@ -104,9 +92,7 @@
           </tr>
         </thead>
         <tbody>
-          <tr v-for="(str, index) in paginatedStrings"
-              :key="index"
-              class="string-row">
+          <tr v-for="(str, index) in paginatedStrings" :key="index" class="string-row">
             <td class="cell-offset">
               <code>0x{{ (str.offset || 0).toString(16).toUpperCase().padStart(8, '0') }}</code>
             </td>
@@ -115,27 +101,17 @@
                 {{ str.type }}
               </span>
             </td>
-            <td class="cell-size">
-              {{ str.size }} chars
-            </td>
+            <td class="cell-size">{{ str.size }} chars</td>
             <td class="cell-content">
               <div class="string-value" :title="str.value">
                 {{ truncateString(str.value, 100) }}
               </div>
             </td>
             <td class="cell-actions">
-              <button
-                @click="copyString(str.value)"
-                class="action-btn copy"
-                title="Copy string"
-              >
+              <button class="action-btn copy" title="Copy string" @click="copyString(str.value)">
                 📋
               </button>
-              <button
-                @click="showDetails(str)"
-                class="action-btn details"
-                title="View details"
-              >
+              <button class="action-btn details" title="View details" @click="showDetails(str)">
                 🔍
               </button>
             </td>
@@ -152,19 +128,17 @@
     <!-- Pagination -->
     <div v-if="totalPages > 1" class="pagination">
       <button
-        @click="currentPage = Math.max(1, currentPage - 1)"
         :disabled="currentPage === 1"
         class="page-btn"
+        @click="currentPage = Math.max(1, currentPage - 1)"
       >
         Previous
       </button>
-      <span class="page-info">
-        Page {{ currentPage }} of {{ totalPages }}
-      </span>
+      <span class="page-info"> Page {{ currentPage }} of {{ totalPages }} </span>
       <button
-        @click="currentPage = Math.min(totalPages, currentPage + 1)"
         :disabled="currentPage === totalPages"
         class="page-btn"
+        @click="currentPage = Math.min(totalPages, currentPage + 1)"
       >
         Next
       </button>
@@ -175,12 +149,16 @@
       <div class="modal-content" @click.stop>
         <div class="modal-header">
           <h3>String Details</h3>
-          <button @click="selectedString = null" class="modal-close">×</button>
+          <button class="modal-close" @click="selectedString = null">×</button>
         </div>
         <div class="modal-body">
           <div class="detail-row">
             <label>Offset:</label>
-            <code>0x{{ (selectedString.offset || 0).toString(16).toUpperCase().padStart(8, '0') }}</code>
+            <code
+              >0x{{
+                (selectedString.offset || 0).toString(16).toUpperCase().padStart(8, '0')
+              }}</code
+            >
           </div>
           <div class="detail-row">
             <label>Type:</label>
@@ -199,21 +177,17 @@
             </div>
           </div>
           <div class="modal-actions">
-            <button @click="copyString(selectedString.value)" class="modal-btn primary">
+            <button class="modal-btn primary" @click="copyString(selectedString.value)">
               Copy String
             </button>
-            <button @click="selectedString = null" class="modal-btn">
-              Close
-            </button>
+            <button class="modal-btn" @click="selectedString = null">Close</button>
           </div>
         </div>
       </div>
     </div>
 
     <!-- Copy notification -->
-    <div v-if="showCopyNotification" class="copy-notification">
-      String copied to clipboard!
-    </div>
+    <div v-if="showCopyNotification" class="copy-notification">String copied to clipboard!</div>
   </div>
 </template>
 
@@ -236,12 +210,7 @@ export default {
     const fileBytesRef = toRef(props, 'fileBytes')
 
     // String extraction (worker lifecycle, sync fallback)
-    const {
-      strings,
-      isLoading,
-      progress,
-      extractStrings
-    } = useStringExtraction(fileBytesRef)
+    const { strings, isLoading, progress, extractStrings } = useStringExtraction(fileBytesRef)
 
     // Filtering, sorting, pagination
     const {
@@ -280,7 +249,7 @@ export default {
         setTimeout(() => {
           showCopyNotification.value = false
         }, 2000)
-      } catch (err) {
+      } catch (_err) {
         // clipboard not available
       }
     }

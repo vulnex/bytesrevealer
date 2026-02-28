@@ -101,7 +101,10 @@ self.onmessage = async function (event) {
       try {
         // Validate scan message data
         if (!data || !data.fileData || !data.rules) {
-          self.postMessage({ type: 'error', error: 'Invalid scan message: missing fileData or rules' })
+          self.postMessage({
+            type: 'error',
+            error: 'Invalid scan message: missing fileData or rules'
+          })
           return
         }
         self.postMessage({ type: 'progress', progress: 5 })

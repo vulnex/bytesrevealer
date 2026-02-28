@@ -20,39 +20,49 @@ describe('fileSignatures', () => {
 
   describe('detectFileTypes()', () => {
     it('detects PNG', () => {
-      const png = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A, ...new Array(20).fill(0)])
+      const png = new Uint8Array([
+        0x89,
+        0x50,
+        0x4e,
+        0x47,
+        0x0d,
+        0x0a,
+        0x1a,
+        0x0a,
+        ...new Array(20).fill(0)
+      ])
       const matches = detectFileTypes(png)
-      expect(matches.some(m => m.name === 'PNG Image')).toBe(true)
+      expect(matches.some((m) => m.name === 'PNG Image')).toBe(true)
     })
 
     it('detects PDF', () => {
-      const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31, 0x2E, 0x34])
+      const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31, 0x2e, 0x34])
       const matches = detectFileTypes(pdf)
-      expect(matches.some(m => m.name === 'PDF Document')).toBe(true)
+      expect(matches.some((m) => m.name === 'PDF Document')).toBe(true)
     })
 
     it('detects ZIP', () => {
-      const zip = new Uint8Array([0x50, 0x4B, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00])
+      const zip = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x00, 0x00, 0x00, 0x00])
       const matches = detectFileTypes(zip)
-      expect(matches.some(m => m.extension === 'zip')).toBe(true)
+      expect(matches.some((m) => m.extension === 'zip')).toBe(true)
     })
 
     it('detects PE (MZ)', () => {
-      const pe = new Uint8Array([0x4D, 0x5A, 0x90, 0x00])
+      const pe = new Uint8Array([0x4d, 0x5a, 0x90, 0x00])
       const matches = detectFileTypes(pe)
-      expect(matches.some(m => m.name.includes('PE'))).toBe(true)
+      expect(matches.some((m) => m.name.includes('PE'))).toBe(true)
     })
 
     it('detects ELF', () => {
-      const elf = new Uint8Array([0x7F, 0x45, 0x4C, 0x46, 0x02, 0x01, 0x01, 0x00])
+      const elf = new Uint8Array([0x7f, 0x45, 0x4c, 0x46, 0x02, 0x01, 0x01, 0x00])
       const matches = detectFileTypes(elf)
-      expect(matches.some(m => m.name === 'ELF Binary')).toBe(true)
+      expect(matches.some((m) => m.name === 'ELF Binary')).toBe(true)
     })
 
     it('detects Mach-O 64-bit little-endian', () => {
-      const macho = new Uint8Array([0xCF, 0xFA, 0xED, 0xFE, ...new Array(60).fill(0)])
+      const macho = new Uint8Array([0xcf, 0xfa, 0xed, 0xfe, ...new Array(60).fill(0)])
       const matches = detectFileTypes(macho)
-      expect(matches.some(m => m.name.includes('Mach-O'))).toBe(true)
+      expect(matches.some((m) => m.name.includes('Mach-O'))).toBe(true)
     })
 
     it('returns empty for unknown bytes', () => {
@@ -66,7 +76,7 @@ describe('fileSignatures', () => {
     })
 
     it('each match has confidence and offset', () => {
-      const png = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
       const matches = detectFileTypes(png)
       for (const m of matches) {
         expect(m).toHaveProperty('confidence')
@@ -82,26 +92,38 @@ describe('fileSignatures', () => {
       // First fat_arch: cputype = 0x01000007 (x86_64)
       const buf = new Uint8Array(8 + 2 * 20) // fat_header + 2 * fat_arch
       // magic
-      buf[0] = 0xCA; buf[1] = 0xFE; buf[2] = 0xBA; buf[3] = 0xBE
+      buf[0] = 0xca
+      buf[1] = 0xfe
+      buf[2] = 0xba
+      buf[3] = 0xbe
       // nfat_arch = 2 (big-endian)
       buf[7] = 2
       // First fat_arch: cputype = 0x01000007 (x86_64, big-endian)
-      buf[8] = 0x01; buf[9] = 0x00; buf[10] = 0x00; buf[11] = 0x07
+      buf[8] = 0x01
+      buf[9] = 0x00
+      buf[10] = 0x00
+      buf[11] = 0x07
 
       const matches = detectFileTypes(buf)
-      expect(matches.some(m => m.name === 'Mach-O Universal Binary')).toBe(true)
+      expect(matches.some((m) => m.name === 'Mach-O Universal Binary')).toBe(true)
     })
 
     it('identifies Java Class File when not Mach-O', () => {
       // CAFEBABE with invalid CPU type → Java
       const buf = new Uint8Array(48)
-      buf[0] = 0xCA; buf[1] = 0xFE; buf[2] = 0xBA; buf[3] = 0xBE
+      buf[0] = 0xca
+      buf[1] = 0xfe
+      buf[2] = 0xba
+      buf[3] = 0xbe
       buf[7] = 1 // nfat_arch = 1
       // cputype = 0xFFFFFFFF (not a known CPU type)
-      buf[8] = 0xFF; buf[9] = 0xFF; buf[10] = 0xFF; buf[11] = 0xFF
+      buf[8] = 0xff
+      buf[9] = 0xff
+      buf[10] = 0xff
+      buf[11] = 0xff
 
       const matches = detectFileTypes(buf)
-      expect(matches.some(m => m.name === 'Java Class File')).toBe(true)
+      expect(matches.some((m) => m.name === 'Java Class File')).toBe(true)
     })
   })
 
@@ -113,24 +135,36 @@ describe('fileSignatures', () => {
 
     it('returns false when nfat_arch is out of range', () => {
       const buf = new Uint8Array(48)
-      buf[0] = 0xCA; buf[1] = 0xFE; buf[2] = 0xBA; buf[3] = 0xBE
-      buf[4] = 0; buf[5] = 0; buf[6] = 0; buf[7] = 0 // nfat_arch = 0
+      buf[0] = 0xca
+      buf[1] = 0xfe
+      buf[2] = 0xba
+      buf[3] = 0xbe
+      buf[4] = 0
+      buf[5] = 0
+      buf[6] = 0
+      buf[7] = 0 // nfat_arch = 0
       expect(isMachOFatBinary(buf)).toBe(false)
     })
 
     it('returns true for valid fat binary', () => {
       const buf = new Uint8Array(8 + 20)
-      buf[0] = 0xCA; buf[1] = 0xFE; buf[2] = 0xBA; buf[3] = 0xBE
+      buf[0] = 0xca
+      buf[1] = 0xfe
+      buf[2] = 0xba
+      buf[3] = 0xbe
       buf[7] = 1 // nfat_arch = 1
       // cputype = ARM64 (0x0100000C)
-      buf[8] = 0x01; buf[9] = 0x00; buf[10] = 0x00; buf[11] = 0x0C
+      buf[8] = 0x01
+      buf[9] = 0x00
+      buf[10] = 0x00
+      buf[11] = 0x0c
       expect(isMachOFatBinary(buf)).toBe(true)
     })
   })
 
   describe('isFileType()', () => {
     it('returns true for matching format', () => {
-      const png = new Uint8Array([0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A])
+      const png = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a])
       expect(isFileType(png, 'PNG')).toBe(true)
     })
 
@@ -144,7 +178,7 @@ describe('fileSignatures', () => {
     })
 
     it('is case-insensitive', () => {
-      const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2D, 0x31])
+      const pdf = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31])
       expect(isFileType(pdf, 'pdf')).toBe(true)
       expect(isFileType(pdf, 'PDF')).toBe(true)
     })

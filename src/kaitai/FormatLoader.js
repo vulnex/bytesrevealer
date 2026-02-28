@@ -108,28 +108,38 @@ async function loadFormatCategory(category) {
   // Check if category already loaded
   if (store.isCategoryLoaded(category)) {
     logger.debug(`Category ${category} already loaded`)
-    return { formats: Array.from(formatCache.values()).filter(f =>
-      (formatToCategory[f.id] || 'common') === category
-    )}
+    return {
+      formats: Array.from(formatCache.values()).filter(
+        (f) => (formatToCategory[f.id] || 'common') === category
+      )
+    }
   }
 
   try {
     // Use dynamic imports with explicit chunk names for better splitting
-    switch(category) {
+    switch (category) {
       case 'archives':
-        return await import(/* webpackChunkName: "formats-archives" */ './ksy/categories/archives.js')
+        return await import(
+          /* webpackChunkName: "formats-archives" */ './ksy/categories/archives.js'
+        )
       case 'images':
         return await import(/* webpackChunkName: "formats-images" */ './ksy/categories/images.js')
       case 'executables':
-        return await import(/* webpackChunkName: "formats-executables" */ './ksy/categories/executables.js')
+        return await import(
+          /* webpackChunkName: "formats-executables" */ './ksy/categories/executables.js'
+        )
       case 'media':
         return await import(/* webpackChunkName: "formats-media" */ './ksy/categories/media.js')
       case 'network':
         return await import(/* webpackChunkName: "formats-network" */ './ksy/categories/network.js')
       case 'filesystem':
-        return await import(/* webpackChunkName: "formats-filesystem" */ './ksy/categories/filesystem.js')
+        return await import(
+          /* webpackChunkName: "formats-filesystem" */ './ksy/categories/filesystem.js'
+        )
       case 'documents':
-        return await import(/* webpackChunkName: "formats-documents" */ './ksy/categories/documents.js')
+        return await import(
+          /* webpackChunkName: "formats-documents" */ './ksy/categories/documents.js'
+        )
       case 'common':
       default:
         return await import(/* webpackChunkName: "formats-common" */ './ksy/categories/common.js')
@@ -149,7 +159,7 @@ export async function getFormatByExtension(extension) {
   const ext = extension.toLowerCase()
 
   // Quick check in known extensions
-  for (const [formatId, category] of Object.entries(formatToCategory)) {
+  for (const [formatId, _category] of Object.entries(formatToCategory)) {
     // This is simplified - in reality, you'd need to check the format's metadata
     if (formatId.includes(ext)) {
       return await loadFormat(formatId)
@@ -159,9 +169,7 @@ export async function getFormatByExtension(extension) {
   // If not found in known formats, try loading common formats
   const commonModule = await loadFormatCategory('common')
   if (commonModule && commonModule.formats) {
-    return commonModule.formats.find(f =>
-      f.metadata?.fileExtensions?.includes(ext)
-    ) || null
+    return commonModule.formats.find((f) => f.metadata?.fileExtensions?.includes(ext)) || null
   }
 
   return null
@@ -172,7 +180,7 @@ export async function getFormatByExtension(extension) {
  * @param {Array<string>} categories - Categories to preload
  */
 export async function preloadCategories(categories = ['images', 'archives']) {
-  const promises = categories.map(cat => loadFormatCategory(cat))
+  const promises = categories.map((cat) => loadFormatCategory(cat))
   await Promise.all(promises)
   logger.debug(`Preloaded format categories: ${categories.join(', ')}`)
 }

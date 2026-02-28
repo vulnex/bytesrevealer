@@ -1,3 +1,4 @@
+/* eslint-disable no-console */
 /**
  * VULNEX -Bytes Revealer-
  *

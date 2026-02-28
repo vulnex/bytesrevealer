@@ -1,6 +1,6 @@
-/** 
+/**
  * VULNEX -Bytes Revealer-
- * 
+ *
  * File: KaitaiStreamBrowser.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27

@@ -508,23 +508,23 @@
 }
 
 :root[class='dark-mode'] .byte-printable {
-  color: #f0f0f0 !important;  /* Bright white for printable ASCII */
+  color: #f0f0f0 !important; /* Bright white for printable ASCII */
 }
 
 :root[class='dark-mode'] .byte-control {
-  color: #ffb86c !important;  /* Orange for control characters */
+  color: #ffb86c !important; /* Orange for control characters */
 }
 
 :root[class='dark-mode'] .byte-extended {
-  color: #bd93f9 !important;  /* Purple for extended ASCII */
+  color: #bd93f9 !important; /* Purple for extended ASCII */
 }
 
 :root[class='dark-mode'] .byte-ff {
-  color: #ff79c6 !important;  /* Pink for FF bytes */
+  color: #ff79c6 !important; /* Pink for FF bytes */
 }
 
 :root[class='dark-mode'] .byte-default {
-  color: #e0e0e0 !important;  /* Light gray default */
+  color: #e0e0e0 !important; /* Light gray default */
 }
 
 /* Fix highlight visibility in dark mode */

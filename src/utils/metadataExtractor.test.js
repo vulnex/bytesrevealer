@@ -13,32 +13,43 @@ describe('extractMetadata', () => {
   describe('PNG metadata', () => {
     function buildMinimalPNG() {
       // PNG signature + IHDR chunk + IEND chunk
-      const sig = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A]
+      const sig = [0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]
       // IHDR chunk: length=13, type=IHDR, data (13 bytes), CRC (4 bytes)
-      const ihdrLength = [0x00, 0x00, 0x00, 0x0D]
+      const ihdrLength = [0x00, 0x00, 0x00, 0x0d]
       const ihdrType = [0x49, 0x48, 0x44, 0x52] // "IHDR"
       // Width=100 (0x64), Height=50 (0x32), bit depth=8, color type=2 (RGB),
       // compression=0, filter=0, interlace=0
       const ihdrData = [
-        0x00, 0x00, 0x00, 0x64, // width=100
-        0x00, 0x00, 0x00, 0x32, // height=50
-        0x08,                    // bit depth
-        0x02,                    // color type (RGB)
-        0x00,                    // compression
-        0x00,                    // filter
-        0x00                     // interlace
+        0x00,
+        0x00,
+        0x00,
+        0x64, // width=100
+        0x00,
+        0x00,
+        0x00,
+        0x32, // height=50
+        0x08, // bit depth
+        0x02, // color type (RGB)
+        0x00, // compression
+        0x00, // filter
+        0x00 // interlace
       ]
       const ihdrCRC = [0x00, 0x00, 0x00, 0x00] // Simplified, not real CRC
 
       // IEND chunk
       const iendLength = [0x00, 0x00, 0x00, 0x00]
-      const iendType = [0x49, 0x45, 0x4E, 0x44]
+      const iendType = [0x49, 0x45, 0x4e, 0x44]
       const iendCRC = [0x00, 0x00, 0x00, 0x00]
 
       return new Uint8Array([
         ...sig,
-        ...ihdrLength, ...ihdrType, ...ihdrData, ...ihdrCRC,
-        ...iendLength, ...iendType, ...iendCRC
+        ...ihdrLength,
+        ...ihdrType,
+        ...ihdrData,
+        ...ihdrCRC,
+        ...iendLength,
+        ...iendType,
+        ...iendCRC
       ])
     }
 
@@ -53,7 +64,7 @@ describe('extractMetadata', () => {
     it('IHDR chunk has length 13', () => {
       const png = buildMinimalPNG()
       const result = extractMetadata(png, 'PNG Image')
-      const ihdr = result.chunks.find(c => c.type === 'IHDR')
+      const ihdr = result.chunks.find((c) => c.type === 'IHDR')
       expect(ihdr).toBeDefined()
       expect(ihdr.length).toBe(13)
     })
@@ -80,22 +91,28 @@ describe('extractMetadata', () => {
       const peOffset = 0x80
       const buf = new Uint8Array(peOffset + 24 + 224 + 40 + 64)
       // MZ
-      buf[0] = 0x4D; buf[1] = 0x5A
+      buf[0] = 0x4d
+      buf[1] = 0x5a
       // e_lfanew
-      buf[0x3C] = peOffset
+      buf[0x3c] = peOffset
       // PE signature
-      buf[peOffset] = 0x50; buf[peOffset + 1] = 0x45
-      buf[peOffset + 2] = 0x00; buf[peOffset + 3] = 0x00
+      buf[peOffset] = 0x50
+      buf[peOffset + 1] = 0x45
+      buf[peOffset + 2] = 0x00
+      buf[peOffset + 3] = 0x00
       // COFF: machine = 0x14C (x86)
-      buf[peOffset + 4] = 0x4C; buf[peOffset + 5] = 0x01
+      buf[peOffset + 4] = 0x4c
+      buf[peOffset + 5] = 0x01
       // NumberOfSections = 1
       buf[peOffset + 6] = 1
       // SizeOfOptionalHeader = 224
-      buf[peOffset + 20] = 0xE0; buf[peOffset + 21] = 0x00
+      buf[peOffset + 20] = 0xe0
+      buf[peOffset + 21] = 0x00
       // Characteristics: executable
       buf[peOffset + 22] = 0x02
       // Optional header magic: PE32 (0x10B)
-      buf[peOffset + 24] = 0x0B; buf[peOffset + 25] = 0x01
+      buf[peOffset + 24] = 0x0b
+      buf[peOffset + 25] = 0x01
       return buf
     }
 
@@ -126,7 +143,10 @@ describe('extractMetadata', () => {
     function buildMinimalELF() {
       const buf = new Uint8Array(128)
       // Magic
-      buf[0] = 0x7F; buf[1] = 0x45; buf[2] = 0x4C; buf[3] = 0x46
+      buf[0] = 0x7f
+      buf[1] = 0x45
+      buf[2] = 0x4c
+      buf[3] = 0x46
       // Class: 64-bit
       buf[4] = 2
       // Data: LE
@@ -136,7 +156,7 @@ describe('extractMetadata', () => {
       // e_type = 2 (executable)
       buf[16] = 2
       // e_machine = 0x3E (x86-64)
-      buf[18] = 0x3E
+      buf[18] = 0x3e
       return buf
     }
 
@@ -161,17 +181,29 @@ describe('extractMetadata', () => {
     function buildMinimalMachO() {
       const buf = new Uint8Array(64)
       // CF FA ED FE (64-bit LE)
-      buf[0] = 0xCF; buf[1] = 0xFA; buf[2] = 0xED; buf[3] = 0xFE
+      buf[0] = 0xcf
+      buf[1] = 0xfa
+      buf[2] = 0xed
+      buf[3] = 0xfe
       // cputype = ARM64 (0x0100000C) LE
-      buf[4] = 0x0C; buf[5] = 0x00; buf[6] = 0x00; buf[7] = 0x01
+      buf[4] = 0x0c
+      buf[5] = 0x00
+      buf[6] = 0x00
+      buf[7] = 0x01
       // cpusubtype
-      buf[8] = 0x00; buf[9] = 0x00; buf[10] = 0x00; buf[11] = 0x00
+      buf[8] = 0x00
+      buf[9] = 0x00
+      buf[10] = 0x00
+      buf[11] = 0x00
       // filetype = 2 (executable)
       buf[12] = 0x02
       // ncmds = 0
       buf[16] = 0x00
       // flags with PIE (0x200000) LE
-      buf[24] = 0x00; buf[25] = 0x00; buf[26] = 0x20; buf[27] = 0x00
+      buf[24] = 0x00
+      buf[25] = 0x00
+      buf[26] = 0x20
+      buf[27] = 0x00
       return buf
     }
 
@@ -199,7 +231,7 @@ describe('extractMetadata', () => {
   describe('JPEG metadata', () => {
     it('extracts JPEG format', () => {
       // Minimal JPEG: SOI + EOI
-      const jpeg = new Uint8Array([0xFF, 0xD8, 0xFF, 0xD9])
+      const jpeg = new Uint8Array([0xff, 0xd8, 0xff, 0xd9])
       const result = extractMetadata(jpeg, 'JPEG Image')
       expect(result.format).toBe('JPEG')
       expect(result).toHaveProperty('segments')

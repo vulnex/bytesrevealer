@@ -19,7 +19,12 @@ vi.mock('../utils/logger', () => ({
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -43,13 +48,15 @@ function makeDeps(overrides = {}) {
     bookmarks: overrides.bookmarks || ref([]),
     annotations: overrides.annotations || ref([]),
     tags: overrides.tags || ref([]),
-    features: overrides.features || reactive({
-      fileAnalysis: true,
-      visualView: true,
-      hexView: true,
-      stringAnalysis: true,
-      yaraScanning: true
-    }),
+    features:
+      overrides.features ||
+      reactive({
+        fileAnalysis: true,
+        visualView: true,
+        hexView: true,
+        stringAnalysis: true,
+        yaraScanning: true
+      }),
     activeTab: overrides.activeTab || ref('info'),
     activeGraphTab: overrides.activeGraphTab || ref('entropy')
   }
@@ -112,7 +119,13 @@ describe('useSessionRestore', () => {
         file: { name: 'restored.bin' },
         state: {
           activeGraphTab: 'byteFreq',
-          features: { fileAnalysis: false, visualView: true, hexView: true, stringAnalysis: false, yaraScanning: true },
+          features: {
+            fileAnalysis: false,
+            visualView: true,
+            hexView: true,
+            stringAnalysis: false,
+            yaraScanning: true
+          },
           searchPattern: 'FF00',
           searchType: 'ascii',
           highlightedBytes: [0, 1],

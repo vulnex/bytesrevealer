@@ -1,23 +1,14 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: SessionControls.vue
- * Author: Simon Roses Femerling
- * Created: 2026-01-03
- * Last Modified: 2026-01-03
- * Version: 0.4
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: SessionControls.vue * Author: Simon Roses Femerling *
+Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="session-controls">
     <div class="session-header">
       <h3>Session Management</h3>
       <p class="session-description">
-        Save and restore your analysis sessions. Sessions preserve your annotations,
-        search results, and analysis state.
+        Save and restore your analysis sessions. Sessions preserve your annotations, search results,
+        and analysis state.
       </p>
     </div>
 
@@ -27,14 +18,16 @@
         <span class="session-icon">📂</span>
         <div class="session-details">
           <strong>{{ sessionStore.currentSessionName }}</strong>
-          <span v-if="sessionStore.isDirty" class="unsaved-indicator" title="Unsaved changes">●</span>
+          <span v-if="sessionStore.isDirty" class="unsaved-indicator" title="Unsaved changes"
+            >●</span
+          >
         </div>
       </div>
       <div class="current-session-actions">
-        <button @click="saveCurrentSession" :disabled="isBusy" class="btn btn-primary btn-sm">
+        <button :disabled="isBusy" class="btn btn-primary btn-sm" @click="saveCurrentSession">
           {{ sessionStore.isSaving ? 'Saving...' : 'Save' }}
         </button>
-        <button @click="closeSession" :disabled="isBusy" class="btn btn-secondary btn-sm">
+        <button :disabled="isBusy" class="btn btn-secondary btn-sm" @click="closeSession">
           Close
         </button>
       </div>
@@ -52,11 +45,7 @@
           :disabled="!hasFileLoaded || isBusy"
           @keyup.enter="saveNewSession"
         />
-        <button
-          @click="saveNewSession"
-          :disabled="!canSave"
-          class="btn btn-primary"
-        >
+        <button :disabled="!canSave" class="btn btn-primary" @click="saveNewSession">
           {{ sessionStore.isSaving ? 'Saving...' : 'Save Session' }}
         </button>
       </div>
@@ -68,7 +57,7 @@
       <div class="sessions-header">
         <h4>Saved Sessions ({{ sessionStore.sessionCount }})</h4>
         <div class="sessions-actions">
-          <button @click="refreshSessions" :disabled="isBusy" class="btn btn-icon" title="Refresh">
+          <button :disabled="isBusy" class="btn btn-icon" title="Refresh" @click="refreshSessions">
             🔄
           </button>
           <label class="btn btn-secondary btn-sm import-btn">
@@ -76,18 +65,16 @@
             <input
               type="file"
               :accept="sessionFileExtension"
-              @change="handleImport"
               class="hidden-input"
               :disabled="isBusy"
+              @change="handleImport"
             />
           </label>
         </div>
       </div>
 
       <!-- Loading State -->
-      <div v-if="sessionStore.isLoading" class="loading-state">
-        Loading sessions...
-      </div>
+      <div v-if="sessionStore.isLoading" class="loading-state">Loading sessions...</div>
 
       <!-- Empty State -->
       <div v-else-if="sessionStore.sessionCount === 0" class="empty-state">
@@ -128,26 +115,26 @@
           </div>
           <div class="session-item-actions">
             <button
-              @click="loadSession(session)"
               :disabled="isBusy || session.id === sessionStore.currentSessionId"
               class="btn btn-sm btn-primary"
               title="Load this session"
+              @click="loadSession(session)"
             >
               Load
             </button>
             <button
-              @click="exportSession(session)"
               :disabled="isBusy"
               class="btn btn-sm btn-secondary"
               title="Export to file"
+              @click="exportSession(session)"
             >
               Export
             </button>
             <button
-              @click="confirmDelete(session)"
               :disabled="isBusy"
               class="btn btn-sm btn-danger"
               title="Delete session"
+              @click="confirmDelete(session)"
             >
               Delete
             </button>
@@ -159,7 +146,7 @@
     <!-- Error Display -->
     <div v-if="sessionStore.error" class="error-message">
       {{ sessionStore.error }}
-      <button @click="sessionStore.clearError()" class="btn-close">×</button>
+      <button class="btn-close" @click="sessionStore.clearError()">×</button>
     </div>
 
     <!-- File Verification Warning -->
@@ -169,8 +156,8 @@
         <li v-for="warning in verificationWarning.warnings" :key="warning">{{ warning }}</li>
       </ul>
       <div class="warning-actions">
-        <button @click="proceedWithLoad" class="btn btn-warning btn-sm">Load Anyway</button>
-        <button @click="cancelLoad" class="btn btn-secondary btn-sm">Cancel</button>
+        <button class="btn btn-warning btn-sm" @click="proceedWithLoad">Load Anyway</button>
+        <button class="btn btn-secondary btn-sm" @click="cancelLoad">Cancel</button>
       </div>
     </div>
 
@@ -181,8 +168,8 @@
         <p>Are you sure you want to delete "{{ sessionToDelete.name }}"?</p>
         <p class="warning-text">This action cannot be undone.</p>
         <div class="modal-actions">
-          <button @click="deleteSession(sessionToDelete)" class="btn btn-danger">Delete</button>
-          <button @click="sessionToDelete = null" class="btn btn-secondary">Cancel</button>
+          <button class="btn btn-danger" @click="deleteSession(sessionToDelete)">Delete</button>
+          <button class="btn btn-secondary" @click="sessionToDelete = null">Cancel</button>
         </div>
       </div>
     </div>
@@ -202,10 +189,10 @@
           <span class="storage-label">File Cache:</span>
           <span class="storage-value">{{ formatFileSize(fileCacheSize) }}</span>
           <button
-            @click="clearFileCache"
             :disabled="isClearingCache"
             class="btn btn-sm btn-secondary clear-cache-btn"
             title="Clear cached file chunks"
+            @click="clearFileCache"
           >
             {{ isClearingCache ? 'Clearing...' : 'Clear' }}
           </button>

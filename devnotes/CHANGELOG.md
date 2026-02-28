@@ -6,6 +6,64 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4] - 2026-02-28 (Component Decomposition & Test Expansion)
+
+### Changed
+- **App.vue Decomposition** — Extracted ~400 lines from the 995-line root component into 5 composables + external CSS:
+  - `src/composables/useAppPreferences.js` — Theme, features, tab state, graph tab
+  - `src/composables/useAnnotations.js` — Bookmarks/annotations CRUD, color management
+  - `src/composables/useSearch.js` — Search pattern, type, navigation, worker integration
+  - `src/composables/useFileProcessing.js` — File load, hash, entropy, signature detection
+  - `src/composables/useSessionRestore.js` — Session load/save state mapping
+  - `src/styles/app.css` — Extracted ~330 lines of scoped CSS
+
+- **HexView.vue Decomposition** — Extracted 2 additional composables + external CSS:
+  - `src/composables/useHexDisplay.js` — Row rendering, byte formatting, style computation
+  - `src/composables/useHexNavigation.js` — Keyboard navigation, offset jumping, match cycling
+  - `src/styles/hex-view.css` — Extracted ~290 lines of scoped CSS
+
+- **StringAnalysisView.vue Decomposition** — Extracted 2 composables:
+  - `src/composables/useStringExtraction.js` — Worker-based string extraction, fallback sync
+  - `src/composables/useStringFilter.js` — Filter, sort, pagination, encoding selection
+
+- **ExportBytesRangeDialog.vue Decomposition** — Extracted 2 composables:
+  - `src/composables/useExportRange.js` — Range validation, selection, byte slicing
+  - `src/composables/useExportFormat.js` — Language selection, format conversion, clipboard
+
+- **ExportBytesDialog.vue** — Adopted `useExportFormat` composable + extracted CSS
+
+- **VisualView.vue Decomposition** — Extracted 2 composables:
+  - `src/composables/useVisualScroll.js` — Virtual scrolling, visible row calculation
+  - `src/composables/useVisualInteraction.js` — Mouse selection, hover, byte styles
+
+- **SessionControls.vue Decomposition** — Extracted 2 composables + external CSS:
+  - `src/composables/useSessionStorage.js` — Storage usage display, file cache management
+  - `src/composables/useSessionActions.js` — Session CRUD, import/export, verification, formatting
+  - `src/styles/session-controls.css` — Extracted ~430 lines of scoped CSS
+
+### Added
+- **565 new unit tests** across 20 test files (from 337 to 902 total):
+  - `useAppPreferences.test.js` (17), `useAnnotations.test.js` (20), `useSearch.test.js` (19)
+  - `useFileProcessing.test.js` (27), `useSessionRestore.test.js` (11)
+  - `useHexDisplay.test.js` (44), `useHexNavigation.test.js` (24)
+  - `useStringExtraction.test.js` (36), `useStringFilter.test.js` (47)
+  - `useExportRange.test.js` (54), `useExportFormat.test.js` (42)
+  - `useVisualScroll.test.js` (35), `useVisualInteraction.test.js` (76)
+  - `useSessionStorage.test.js` (15), `useSessionActions.test.js` (56)
+  - `useByteInspector.test.js` (12), `useByteSelection.test.js` (12)
+  - `useHexExport.test.js` (27), `useKaitaiIntegration.test.js` (21), `useHexVirtualScroll.test.js` (20)
+
+### Fixed
+- **17 security vulnerabilities** from deep code review (XSS, prototype pollution, ReDoS, etc.)
+
+### Technical Details
+- Composable count: 5 → 14 (useByteInspector, useByteSelection, useHexVirtualScroll, useHexExport, useKaitaiIntegration already existed)
+- Extracted CSS files: app.css, hex-view.css, session-controls.css
+- All 902 tests pass; no regressions across all decompositions
+- Component line counts reduced: App.vue 995→595, HexView.vue 900→545, StringAnalysisView.vue 600→280, SessionControls.vue 978→280
+
+---
+
 ## [0.4] - 2026-02-10 (YARA Rule Scanning)
 
 ### Added

@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: ExportOptions.vue
- * Author: Simon Roses Femerling
- * Created: 2025-04-27
- * Last Modified: 2026-02-09
- * Version: 0.4
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ExportOptions.vue * Author: Simon Roses Femerling * Created:
+2025-04-27 * Last Modified: 2026-02-09 * Version: 0.4 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="export-options p-4">
@@ -19,28 +10,16 @@
       <!-- File Information -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="exportOptions.fileInfo"
-            class="form-checkbox"
-          >
+          <input v-model="exportOptions.fileInfo" type="checkbox" class="form-checkbox" />
           <span>Basic File Information</span>
         </label>
-        <div class="ml-6 mt-2 space-y-2" v-if="exportOptions.fileInfo">
+        <div v-if="exportOptions.fileInfo" class="ml-6 mt-2 space-y-2">
           <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              v-model="exportOptions.fileInfo_hashes"
-              class="form-checkbox"
-            >
+            <input v-model="exportOptions.fileInfo_hashes" type="checkbox" class="form-checkbox" />
             <span>File Hashes</span>
           </label>
           <label class="flex items-center space-x-2">
-            <input
-              type="checkbox"
-              v-model="exportOptions.fileInfo_entropy"
-              class="form-checkbox"
-            >
+            <input v-model="exportOptions.fileInfo_entropy" type="checkbox" class="form-checkbox" />
             <span>Entropy Analysis</span>
           </label>
         </div>
@@ -49,11 +28,7 @@
       <!-- Signatures -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="exportOptions.signatures"
-            class="form-checkbox"
-          >
+          <input v-model="exportOptions.signatures" type="checkbox" class="form-checkbox" />
           <span>File Signatures</span>
         </label>
       </div>
@@ -61,11 +36,7 @@
       <!-- Structure Analysis -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="exportOptions.structure"
-            class="form-checkbox"
-          >
+          <input v-model="exportOptions.structure" type="checkbox" class="form-checkbox" />
           <span>Structure Analysis</span>
         </label>
       </div>
@@ -73,11 +44,7 @@
       <!-- Strings -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="exportOptions.strings"
-            class="form-checkbox"
-          >
+          <input v-model="exportOptions.strings" type="checkbox" class="form-checkbox" />
           <span>Extracted Strings</span>
         </label>
       </div>
@@ -85,11 +52,7 @@
       <!-- YARA Matches -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="exportOptions.yaraMatches"
-            class="form-checkbox"
-          >
+          <input v-model="exportOptions.yaraMatches" type="checkbox" class="form-checkbox" />
           <span>YARA Matches</span>
         </label>
       </div>
@@ -97,15 +60,15 @@
 
     <div class="mt-6 flex space-x-4">
       <button
-        @click="exportData"
         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
         :disabled="!canExport"
+        @click="exportData"
       >
         Export to JSON
       </button>
       <button
-        @click="resetOptions"
         class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+        @click="resetOptions"
       >
         Reset Options
       </button>
@@ -115,8 +78,28 @@
     <div class="export-divider"></div>
     <h3 class="text-xl font-semibold mb-4">
       USecVisLib Export
-      <a href="https://github.com/vulnex/usecvislib" target="_blank" rel="noopener noreferrer" class="info-icon" title="Learn more about USecVisLib">
-        <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></svg>
+      <a
+        href="https://github.com/vulnex/usecvislib"
+        target="_blank"
+        rel="noopener noreferrer"
+        class="info-icon"
+        title="Learn more about USecVisLib"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="18"
+          height="18"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="currentColor"
+          stroke-width="2"
+          stroke-linecap="round"
+          stroke-linejoin="round"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <line x1="12" y1="16" x2="12" y2="12" />
+          <line x1="12" y1="8" x2="12.01" y2="8" />
+        </svg>
       </a>
     </h3>
 
@@ -125,18 +108,18 @@
       <div class="section">
         <label class="flex items-center space-x-2">
           <input
-            type="checkbox"
             v-model="usecvisOptions.binVisJson"
+            type="checkbox"
             class="form-checkbox"
             :disabled="!hasFileData"
-          >
+          />
           <span>Binary Visualization Data (JSON)</span>
         </label>
-        <div class="ml-6 mt-2" v-if="usecvisOptions.binVisJson">
+        <div v-if="usecvisOptions.binVisJson" class="ml-6 mt-2">
           <button
-            @click="exportBinVisJson"
             class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             :disabled="!hasFileData"
+            @click="exportBinVisJson"
           >
             Export BinVis JSON
           </button>
@@ -147,19 +130,21 @@
       <div class="section">
         <label class="flex items-center space-x-2">
           <input
-            type="checkbox"
             v-model="usecvisOptions.attackGraph"
+            type="checkbox"
             class="form-checkbox"
             :disabled="!isExecutableBinary"
-          >
+          />
           <span>Attack Graph Config (TOML)</span>
-          <span v-if="!isExecutableBinary" class="text-sm" style="color: var(--text-muted, #888);">(PE/ELF/Mach-O only)</span>
+          <span v-if="!isExecutableBinary" class="text-sm" style="color: var(--text-muted, #888)"
+            >(PE/ELF/Mach-O only)</span
+          >
         </label>
-        <div class="ml-6 mt-2" v-if="usecvisOptions.attackGraph">
+        <div v-if="usecvisOptions.attackGraph" class="ml-6 mt-2">
           <button
-            @click="exportAttackGraph"
             class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
             :disabled="!isExecutableBinary"
+            @click="exportAttackGraph"
           >
             Export Attack Graph
           </button>
@@ -169,36 +154,30 @@
       <!-- Direct API Visualization -->
       <div class="section">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="usecvisOptions.useApi"
-            class="form-checkbox"
-          >
+          <input v-model="usecvisOptions.useApi" type="checkbox" class="form-checkbox" />
           <span>Direct API Visualization</span>
         </label>
-        <div class="api-section ml-6 mt-2 space-y-3" v-if="usecvisOptions.useApi">
+        <div v-if="usecvisOptions.useApi" class="api-section ml-6 mt-2 space-y-3">
           <div class="flex items-center space-x-2">
             <input
-              type="text"
               v-model="apiUrl"
+              type="text"
               class="api-url-input"
               placeholder="http://localhost:8003"
-            >
+            />
             <input
-              type="password"
               v-model="apiKey"
+              type="password"
               class="api-url-input"
               placeholder="API Key (optional)"
-              style="max-width: 180px;"
-            >
-            <button
-              @click="testApiConnection"
-              class="btn-test-api"
-              :disabled="apiTesting"
-            >
+              style="max-width: 180px"
+            />
+            <button class="btn-test-api" :disabled="apiTesting" @click="testApiConnection">
               {{ apiTesting ? 'Testing...' : 'Test' }}
             </button>
-            <span v-if="apiStatus === 'ok'" class="api-status-ok">Connected ({{ apiVersion }})</span>
+            <span v-if="apiStatus === 'ok'" class="api-status-ok"
+              >Connected ({{ apiVersion }})</span
+            >
             <span v-else-if="apiStatus === 'fail'" class="api-status-fail">Unavailable</span>
           </div>
           <div v-if="apiStatus === 'fail' && apiError" class="api-error-detail">{{ apiError }}</div>
@@ -240,9 +219,9 @@
             </div>
 
             <button
-              @click="generateApiVisualization"
               class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
               :disabled="apiGenerating || !hasFileData"
+              @click="generateApiVisualization"
             >
               {{ apiGenerating ? 'Generating...' : 'Generate Visualization' }}
             </button>
@@ -260,6 +239,7 @@ const logger = createLogger('ExportOptions')
 
 export default {
   name: 'ExportOptions',
+  emits: ['error'],
   data() {
     return {
       exportOptions: {
@@ -291,61 +271,61 @@ export default {
   },
   computed: {
     canExport() {
-      return Object.values(this.exportOptions).some(value => value === true);
+      return Object.values(this.exportOptions).some((value) => value === true)
     },
     isExecutableBinary() {
-      const sigs = this.$parent.fileSignatures;
-      if (!sigs || sigs.length === 0) return false;
-      const name = sigs[0].name || '';
-      return name.includes('PE') || name.includes('ELF') || name.includes('Mach-O');
+      const sigs = this.$parent.fileSignatures
+      if (!sigs || sigs.length === 0) return false
+      const name = sigs[0].name || ''
+      return name.includes('PE') || name.includes('ELF') || name.includes('Mach-O')
     },
     hasFileData() {
-      const parent = this.$parent;
-      return parent && parent.fileBytes && parent.fileBytes.length > 0;
+      const parent = this.$parent
+      return parent && parent.fileBytes && parent.fileBytes.length > 0
     }
   },
   methods: {
     async exportData() {
       try {
-        const timestamp = new Date();
+        const timestamp = new Date()
         const exportData = {
           metadata: {
             timestamp: timestamp.toISOString(),
             tool: 'VULNEX Bytes Revealer',
             version: '0.4'
           }
-        };
+        }
 
         // Always include comprehensive file information
         if (this.exportOptions.fileInfo) {
-          const parent = this.$parent;
+          const parent = this.$parent
           exportData.fileInfo = {
             name: parent.fileName,
             size: parent.fileBytes.length,
             sizeFormatted: this.formatFileSize(parent.fileBytes.length)
-          };
+          }
 
           if (this.exportOptions.fileInfo_hashes && parent.hashes) {
-            exportData.fileInfo.hashes = parent.hashes;
+            exportData.fileInfo.hashes = parent.hashes
           }
 
           if (this.exportOptions.fileInfo_entropy) {
-            exportData.fileInfo.entropy = parent.entropy;
+            exportData.fileInfo.entropy = parent.entropy
             // Include byte frequency if available
             if (parent.byteFrequency) {
-              exportData.fileInfo.byteFrequency = parent.byteFrequency;
+              exportData.fileInfo.byteFrequency = parent.byteFrequency
             }
           }
 
           // Include detected file type if available
           if (parent.detectedFileType) {
-            exportData.fileInfo.detectedFileType = parent.detectedFileType;
+            exportData.fileInfo.detectedFileType = parent.detectedFileType
           }
         }
 
         // Include all signature information
         if (this.exportOptions.signatures && this.$parent.fileSignatures) {
-          exportData.signatures = this.$parent.fileSignatures.map(sig => ({
+          exportData.signatures = this.$parent.fileSignatures.map((sig) => ({
             name: sig.name,
             extension: sig.extension,
             confidence: sig.confidence,
@@ -357,27 +337,27 @@ export default {
             sections: sig.sections || null,
             imports: sig.imports || null,
             nestedFiles: sig.nestedFiles || []
-          }));
+          }))
         }
 
         if (this.exportOptions.structure) {
-          exportData.structure = this.$parent.fileStructure || {};
+          exportData.structure = this.$parent.fileStructure || {}
         }
 
         // Always include string analysis summary
-        const stringSummary = await this.getStringAnalysisSummary();
-        exportData.stringAnalysisSummary = stringSummary;
+        const stringSummary = await this.getStringAnalysisSummary()
+        exportData.stringAnalysisSummary = stringSummary
 
         // Include full strings data if selected
         if (this.exportOptions.strings) {
-          exportData.strings = await this.extractStrings();
+          exportData.strings = await this.extractStrings()
         }
 
         // Include YARA matches if selected
         if (this.exportOptions.yaraMatches) {
           try {
-            const { useYaraStore } = await import('../stores/yara');
-            const yaraStore = useYaraStore();
+            const { useYaraStore } = await import('../stores/yara')
+            const yaraStore = useYaraStore()
             if (yaraStore.hasResults) {
               exportData.yaraMatches = {
                 rules: yaraStore.currentRules,
@@ -387,37 +367,37 @@ export default {
                 matchedRules: yaraStore.matchedRules,
                 compileErrors: yaraStore.compileErrors,
                 totalMatches: yaraStore.totalMatches
-              };
+              }
             }
           } catch (err) {
-            logger.warn('Could not export YARA matches:', err);
+            logger.warn('Could not export YARA matches:', err)
           }
         }
 
         // Generate filename with timestamp
-        const dateStr = timestamp.toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        const filename = `bytes-revealer-analysis_${dateStr}.json`;
+        const dateStr = timestamp.toISOString().replace(/[:.]/g, '-').slice(0, 19)
+        const filename = `bytes-revealer-analysis_${dateStr}.json`
 
         // Create and download JSON file
-        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = filename;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+        const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
+        const url = URL.createObjectURL(blob)
+        const a = document.createElement('a')
+        a.href = url
+        a.download = filename
+        document.body.appendChild(a)
+        a.click()
+        document.body.removeChild(a)
+        URL.revokeObjectURL(url)
       } catch (error) {
-        logger.error('Export error:', error);
-        this.$emit('error', 'Failed to export data: ' + error.message);
+        logger.error('Export error:', error)
+        this.$emit('error', 'Failed to export data: ' + error.message)
       }
     },
 
     async exportBinVisJson() {
       try {
-        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js');
-        const parent = this.$parent;
+        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js')
+        const parent = this.$parent
         const data = usecvislibExporter.generateBinVisData({
           fileBytes: parent.fileBytes,
           entropy: parent.entropy,
@@ -426,88 +406,97 @@ export default {
           fileSignatures: parent.fileSignatures,
           coloredBytes: parent.coloredBytes,
           fileName: parent.fileName
-        });
-        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        usecvislibExporter.downloadJson(data, `binvis-${parent.fileName || 'binary'}_${dateStr}.json`);
+        })
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+        usecvislibExporter.downloadJson(
+          data,
+          `binvis-${parent.fileName || 'binary'}_${dateStr}.json`
+        )
       } catch (error) {
-        logger.error('BinVis JSON export error:', error);
-        this.$emit('error', 'Failed to export BinVis JSON: ' + error.message);
+        logger.error('BinVis JSON export error:', error)
+        this.$emit('error', 'Failed to export BinVis JSON: ' + error.message)
       }
     },
 
     async exportAttackGraph() {
       try {
-        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js');
-        const parent = this.$parent;
+        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js')
+        const parent = this.$parent
         const result = usecvislibExporter.generateAttackGraphConfig({
           fileSignatures: parent.fileSignatures,
           detectedFileType: parent.detectedFileType,
           fileName: parent.fileName,
           hashes: parent.hashes,
           entropy: parent.entropy
-        });
+        })
         if (!result.toml) {
-          this.$emit('error', result.error || 'Could not generate attack graph.');
-          return;
+          this.$emit('error', result.error || 'Could not generate attack graph.')
+          return
         }
-        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        usecvislibExporter.downloadToml(result.toml, `attack-graph-${parent.fileName || 'binary'}_${dateStr}.toml`);
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+        usecvislibExporter.downloadToml(
+          result.toml,
+          `attack-graph-${parent.fileName || 'binary'}_${dateStr}.toml`
+        )
       } catch (error) {
-        logger.error('Attack graph export error:', error);
-        this.$emit('error', 'Failed to export attack graph: ' + error.message);
+        logger.error('Attack graph export error:', error)
+        this.$emit('error', 'Failed to export attack graph: ' + error.message)
       }
     },
 
     async testApiConnection() {
-      this.apiTesting = true;
-      this.apiStatus = null;
-      this.apiVersion = null;
-      this.apiError = null;
-      this.availableStyles = [];
+      this.apiTesting = true
+      this.apiStatus = null
+      this.apiVersion = null
+      this.apiError = null
+      this.availableStyles = []
       try {
-        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js');
-        usecvislibExporter.setApiUrl(this.apiUrl);
-        usecvislibExporter.setApiKey(this.apiKey);
-        const result = await usecvislibExporter.testConnection();
+        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js')
+        usecvislibExporter.setApiUrl(this.apiUrl)
+        usecvislibExporter.setApiKey(this.apiKey)
+        const result = await usecvislibExporter.testConnection()
         if (result.available) {
-          this.apiStatus = 'ok';
-          this.apiVersion = result.version;
-          this.availableStyles = result.styles.filter(s => s !== 'default');
+          this.apiStatus = 'ok'
+          this.apiVersion = result.version
+          this.availableStyles = result.styles.filter((s) => s !== 'default')
         } else {
-          this.apiStatus = 'fail';
-          this.apiError = result.error;
+          this.apiStatus = 'fail'
+          this.apiError = result.error
         }
       } catch (error) {
-        logger.error('API connection test error:', error);
-        this.apiStatus = 'fail';
-        this.apiError = error.message;
+        logger.error('API connection test error:', error)
+        this.apiStatus = 'fail'
+        this.apiError = error.message
       } finally {
-        this.apiTesting = false;
+        this.apiTesting = false
       }
     },
 
     async generateApiVisualization() {
-      this.apiGenerating = true;
+      this.apiGenerating = true
       try {
-        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js');
-        const parent = this.$parent;
-        usecvislibExporter.setApiUrl(this.apiUrl);
-        usecvislibExporter.setApiKey(this.apiKey);
+        const { usecvislibExporter } = await import('../services/UsecvislibExporter.js')
+        const parent = this.$parent
+        usecvislibExporter.setApiUrl(this.apiUrl)
+        usecvislibExporter.setApiKey(this.apiKey)
 
         const blob = await usecvislibExporter.requestVisualization(parent.fileBytes, {
           visType: this.usecvisOptions.visType,
           style: this.usecvisOptions.style,
           format: this.usecvisOptions.format
-        });
+        })
 
-        const ext = this.usecvisOptions.format;
-        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
-        usecvislibExporter.downloadBlob(blob, `visualization-${parent.fileName || 'binary'}_${dateStr}.${ext}`);
+        const ext = this.usecvisOptions.format
+        const dateStr = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19)
+        usecvislibExporter.downloadBlob(
+          blob,
+          `visualization-${parent.fileName || 'binary'}_${dateStr}.${ext}`
+        )
       } catch (error) {
-        logger.error('API visualization error:', error);
-        this.$emit('error', 'Failed to generate visualization: ' + error.message);
+        logger.error('API visualization error:', error)
+        this.$emit('error', 'Failed to generate visualization: ' + error.message)
       } finally {
-        this.apiGenerating = false;
+        this.apiGenerating = false
       }
     },
 
@@ -520,7 +509,7 @@ export default {
         structure: true,
         strings: false,
         yaraMatches: false
-      };
+      }
       this.usecvisOptions = {
         binVisJson: false,
         attackGraph: false,
@@ -528,64 +517,63 @@ export default {
         visType: 'entropy',
         style: 'bv_default',
         format: 'png'
-      };
-      this.apiStatus = null;
-      this.apiVersion = null;
-      this.apiError = null;
-      this.availableStyles = [];
+      }
+      this.apiStatus = null
+      this.apiVersion = null
+      this.apiError = null
+      this.availableStyles = []
     },
     async extractStrings() {
       try {
         // Get the StringAnalysisView component if it exists
-        const stringAnalysisView = this.$parent.$refs.stringAnalysisView;
+        const stringAnalysisView = this.$parent.$refs.stringAnalysisView
         if (stringAnalysisView && stringAnalysisView.strings) {
-          return stringAnalysisView.strings.map(str => ({
+          return stringAnalysisView.strings.map((str) => ({
             offset: str.offset,
             type: str.type,
             length: str.length,
             value: str.value,
             printable: str.printable
-          }));
+          }))
         }
 
         // Fallback: Extract strings directly from fileBytes
-        const fileBytes = this.$parent.fileBytes;
+        const fileBytes = this.$parent.fileBytes
         if (!fileBytes || fileBytes.length === 0) {
-          return [];
+          return []
         }
 
         // Use the string analyzer utility if available
-        const { analyzeStrings } = await import('../utils/stringAnalyzer');
-        const strings = await analyzeStrings(fileBytes);
-        return strings;
+        const { analyzeStrings } = await import('../utils/stringAnalyzer')
+        const strings = await analyzeStrings(fileBytes)
+        return strings
       } catch (error) {
-        logger.error('Failed to extract strings:', error);
-        return [];
+        logger.error('Failed to extract strings:', error)
+        return []
       }
     },
 
     async getStringAnalysisSummary() {
       try {
         // Try to get data from StringAnalysisView component
-        const stringAnalysisView = this.$parent.$refs.stringAnalysisView;
+        const stringAnalysisView = this.$parent.$refs.stringAnalysisView
         if (stringAnalysisView && stringAnalysisView.strings) {
-          const strings = stringAnalysisView.strings;
+          const strings = stringAnalysisView.strings
           return {
             totalStrings: strings.length,
-            asciiStrings: strings.filter(s => s.type === 'ASCII').length,
-            utf8Strings: strings.filter(s => s.type === 'UTF-8').length,
-            utf16Strings: strings.filter(s => s.type && s.type.includes('UTF-16')).length,
-            averageLength: strings.length > 0
-              ? Math.round(strings.reduce((sum, s) => sum + s.length, 0) / strings.length)
-              : 0,
-            longestString: strings.length > 0
-              ? Math.max(...strings.map(s => s.length))
-              : 0
-          };
+            asciiStrings: strings.filter((s) => s.type === 'ASCII').length,
+            utf8Strings: strings.filter((s) => s.type === 'UTF-8').length,
+            utf16Strings: strings.filter((s) => s.type && s.type.includes('UTF-16')).length,
+            averageLength:
+              strings.length > 0
+                ? Math.round(strings.reduce((sum, s) => sum + s.length, 0) / strings.length)
+                : 0,
+            longestString: strings.length > 0 ? Math.max(...strings.map((s) => s.length)) : 0
+          }
         }
 
         // Fallback: Calculate summary from fileBytes
-        const fileBytes = this.$parent.fileBytes;
+        const fileBytes = this.$parent.fileBytes
         if (!fileBytes || fileBytes.length === 0) {
           return {
             totalStrings: 0,
@@ -594,27 +582,26 @@ export default {
             utf16Strings: 0,
             averageLength: 0,
             longestString: 0
-          };
+          }
         }
 
         // Quick string analysis for summary
-        const { analyzeStrings } = await import('../utils/stringAnalyzer');
-        const strings = await analyzeStrings(fileBytes);
+        const { analyzeStrings } = await import('../utils/stringAnalyzer')
+        const strings = await analyzeStrings(fileBytes)
 
         return {
           totalStrings: strings.length,
-          asciiStrings: strings.filter(s => s.type === 'ASCII').length,
-          utf8Strings: strings.filter(s => s.type === 'UTF-8').length,
-          utf16Strings: strings.filter(s => s.type && s.type.includes('UTF-16')).length,
-          averageLength: strings.length > 0
-            ? Math.round(strings.reduce((sum, s) => sum + s.length, 0) / strings.length)
-            : 0,
-          longestString: strings.length > 0
-            ? Math.max(...strings.map(s => s.length))
-            : 0
-        };
+          asciiStrings: strings.filter((s) => s.type === 'ASCII').length,
+          utf8Strings: strings.filter((s) => s.type === 'UTF-8').length,
+          utf16Strings: strings.filter((s) => s.type && s.type.includes('UTF-16')).length,
+          averageLength:
+            strings.length > 0
+              ? Math.round(strings.reduce((sum, s) => sum + s.length, 0) / strings.length)
+              : 0,
+          longestString: strings.length > 0 ? Math.max(...strings.map((s) => s.length)) : 0
+        }
       } catch (error) {
-        logger.error('Failed to get string analysis summary:', error);
+        logger.error('Failed to get string analysis summary:', error)
         return {
           totalStrings: 0,
           asciiStrings: 0,
@@ -622,21 +609,21 @@ export default {
           utf16Strings: 0,
           averageLength: 0,
           longestString: 0
-        };
+        }
       }
     },
 
     formatFileSize(bytes) {
-      const units = ['B', 'KB', 'MB', 'GB'];
-      let size = bytes;
-      let unitIndex = 0;
+      const units = ['B', 'KB', 'MB', 'GB']
+      let size = bytes
+      let unitIndex = 0
 
       while (size >= 1024 && unitIndex < units.length - 1) {
-        size /= 1024;
-        unitIndex++;
+        size /= 1024
+        unitIndex++
       }
 
-      return `${size.toFixed(2)} ${units[unitIndex]}`;
+      return `${size.toFixed(2)} ${units[unitIndex]}`
     }
   }
 }

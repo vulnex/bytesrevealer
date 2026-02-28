@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: EntropyGraph.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: EntropyGraph.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="entropy-graph">
@@ -19,20 +10,24 @@
         class="tab-button"
         :class="{ active: activeGraphTab === 'entropy' }"
         @click="$emit('update:activeGraphTab', 'entropy')"
-      >Entropy Distribution</button>
+      >
+        Entropy Distribution
+      </button>
       <button
         class="tab-button"
         :class="{ active: activeGraphTab === 'frequency' }"
         @click="$emit('update:activeGraphTab', 'frequency')"
-      >Byte Frequency</button>
+      >
+        Byte Frequency
+      </button>
     </div>
-    <div class="graph-container" ref="graphContainer">
-      <div class="graph-legend" v-if="activeGraphTab === 'entropy'">
+    <div ref="graphContainer" class="graph-container">
+      <div v-if="activeGraphTab === 'entropy'" class="graph-legend">
         <div class="legend-item">
           <div class="legend-color" style="background: #42b983"></div>
           <span>Entropy (0-8)</span>
         </div>
-        <div class="legend-item high-entropy" v-if="hasHighEntropy">
+        <div v-if="hasHighEntropy" class="legend-item high-entropy">
           <div class="legend-color" style="background: #ff6b6b"></div>
           <span>High Entropy Regions</span>
         </div>
@@ -56,6 +51,7 @@ export default {
       required: true
     }
   },
+  emits: ['update:activeGraphTab'],
   data() {
     return {
       hasHighEntropy: false,
@@ -93,6 +89,12 @@ export default {
         this.drawGraph()
       }
     })
+  },
+  beforeUnmount() {
+    if (this.resizeObserver) {
+      this.resizeObserver.disconnect()
+      this.resizeObserver = null
+    }
   },
   methods: {
     setupCanvas() {
@@ -138,8 +140,9 @@ export default {
 
     async drawEntropyDistribution(ctx, canvasWidth, canvasHeight) {
       // Clear canvas
-      ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--bg-primary').trim() || '#1a202c'
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() ||
+        '#1a202c'
       ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
       // Define margins
@@ -164,7 +167,7 @@ export default {
         const sampleSize = Math.min(10 * 1024 * 1024, this.fileBytes.length)
         try {
           bytesToProcess = await this.fileBytes.getChunk(0, sampleSize)
-        } catch (err) {
+        } catch (_err) {
           bytesToProcess = this.fileBytes
         }
       } else {
@@ -174,7 +177,7 @@ export default {
       for (let i = 0; i < bytesToProcess.length; i += blockSize) {
         const block = bytesToProcess.slice(i, i + blockSize)
         const frequencies = new Array(256).fill(0)
-        block.forEach(byte => frequencies[byte]++)
+        block.forEach((byte) => frequencies[byte]++)
 
         const entropy = this.calculateEntropy(frequencies, block.length)
         entropyValues.push(entropy)
@@ -183,8 +186,9 @@ export default {
       }
 
       // Draw grid
-      ctx.strokeStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--border-color').trim() || '#4a5568'
+      ctx.strokeStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() ||
+        '#4a5568'
       ctx.lineWidth = 0.5
 
       // Horizontal grid lines (Y-axis)
@@ -234,8 +238,9 @@ export default {
       }
 
       // Draw Y-axis labels
-      ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--text-primary').trim() || '#f7fafc'
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() ||
+        '#f7fafc'
       ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
       ctx.textAlign = 'right'
       ctx.textBaseline = 'middle'
@@ -253,8 +258,9 @@ export default {
 
     async drawByteFrequency(ctx, canvasWidth, canvasHeight) {
       // Clear canvas
-      ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--bg-primary').trim() || '#1a202c'
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--bg-primary').trim() ||
+        '#1a202c'
       ctx.fillRect(0, 0, canvasWidth, canvasHeight)
 
       // Define margins
@@ -277,19 +283,20 @@ export default {
         const sampleSize = Math.min(10 * 1024 * 1024, this.fileBytes.length)
         try {
           bytesToProcess = await this.fileBytes.getChunk(0, sampleSize)
-        } catch (err) {
+        } catch (_err) {
           bytesToProcess = this.fileBytes
         }
       } else {
         bytesToProcess = this.fileBytes
       }
 
-      bytesToProcess.forEach(byte => frequencies[byte]++)
+      bytesToProcess.forEach((byte) => frequencies[byte]++)
       const maxFreq = Math.max(...frequencies)
 
       // Draw grid
-      ctx.strokeStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--border-color').trim() || '#4a5568'
+      ctx.strokeStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--border-color').trim() ||
+        '#4a5568'
       ctx.lineWidth = 0.5
 
       // Horizontal grid lines
@@ -328,8 +335,9 @@ export default {
       }
 
       // Draw Y-axis labels
-      ctx.fillStyle = getComputedStyle(document.documentElement)
-        .getPropertyValue('--text-primary').trim() || '#f7fafc'
+      ctx.fillStyle =
+        getComputedStyle(document.documentElement).getPropertyValue('--text-primary').trim() ||
+        '#f7fafc'
       ctx.font = '12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace'
       ctx.textAlign = 'right'
       ctx.textBaseline = 'middle'
@@ -361,12 +369,6 @@ export default {
       if (byte === 0) return '#ff6b6b'
       if (byte >= 32 && byte <= 126) return '#4a90e2'
       return '#42b983'
-    }
-  },
-  beforeUnmount() {
-    if (this.resizeObserver) {
-      this.resizeObserver.disconnect()
-      this.resizeObserver = null
     }
   }
 }

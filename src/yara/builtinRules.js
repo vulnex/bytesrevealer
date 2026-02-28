@@ -97,7 +97,8 @@ rule Suspicious_Strings_Combo
   {
     id: 'crypto_indicators',
     name: 'Crypto Indicators',
-    description: 'Cryptocurrency mining strings, wallet address patterns, and crypto library references',
+    description:
+      'Cryptocurrency mining strings, wallet address patterns, and crypto library references',
     rules: `rule Crypto_Mining_Strings
 {
     meta:
@@ -254,7 +255,8 @@ rule MPRESS_Packed
   {
     id: 'suspicious_strings',
     name: 'Suspicious Strings',
-    description: 'Debug strings, registry persistence keys, suspicious commands, and indicators of compromise',
+    description:
+      'Debug strings, registry persistence keys, suspicious commands, and indicators of compromise',
     rules: `rule Persistence_Registry_Keys
 {
     meta:

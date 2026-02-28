@@ -37,7 +37,7 @@ export const useSessionStore = defineStore('session', {
 
     // Auto-save settings
     autoSaveEnabled: false,
-    autoSaveInterval: 300000, // 5 minutes default
+    autoSaveInterval: 300000 // 5 minutes default
   }),
 
   getters: {
@@ -46,13 +46,11 @@ export const useSessionStore = defineStore('session', {
 
     currentSession: (state) => {
       if (!state.currentSessionId) return null
-      return state.sessions.find(s => s.id === state.currentSessionId)
+      return state.sessions.find((s) => s.id === state.currentSessionId)
     },
 
     sortedSessions: (state) => {
-      return [...state.sessions].sort((a, b) =>
-        new Date(b.modified) - new Date(a.modified)
-      )
+      return [...state.sessions].sort((a, b) => new Date(b.modified) - new Date(a.modified))
     }
   },
 
@@ -90,7 +88,7 @@ export const useSessionStore = defineStore('session', {
 
     // Add a new session to the list
     addSession(session) {
-      const existing = this.sessions.findIndex(s => s.id === session.id)
+      const existing = this.sessions.findIndex((s) => s.id === session.id)
       if (existing >= 0) {
         this.sessions[existing] = session
       } else {
@@ -100,7 +98,7 @@ export const useSessionStore = defineStore('session', {
 
     // Remove session from list
     removeSession(id) {
-      const index = this.sessions.findIndex(s => s.id === id)
+      const index = this.sessions.findIndex((s) => s.id === id)
       if (index >= 0) {
         this.sessions.splice(index, 1)
       }
@@ -111,7 +109,7 @@ export const useSessionStore = defineStore('session', {
 
     // Update session metadata
     updateSessionMetadata(id, metadata) {
-      const session = this.sessions.find(s => s.id === id)
+      const session = this.sessions.find((s) => s.id === id)
       if (session) {
         Object.assign(session, metadata)
       }

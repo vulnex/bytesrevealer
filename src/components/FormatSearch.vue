@@ -1,15 +1,6 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: FormatSearch.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: FormatSearch.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="format-search-container">
@@ -29,12 +20,12 @@
           placeholder="Search formats by name, extension, or description..."
           class="search-input"
           @input="handleSearch"
-        >
-        <button v-if="searchQuery" @click="clearSearch" class="clear-btn">✕</button>
+        />
+        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">✕</button>
       </div>
 
       <!-- Category Filter -->
-      <select v-model="selectedCategory" @change="handleCategoryChange" class="category-select">
+      <select v-model="selectedCategory" class="category-select" @change="handleCategoryChange">
         <option value="">All Categories</option>
         <option v-for="cat in categories" :key="cat.key" :value="cat.key">
           {{ cat.name }} ({{ cat.count }})
@@ -44,27 +35,34 @@
       <!-- View Toggle -->
       <div class="view-toggle">
         <button
-          @click="viewMode = 'grid'"
           :class="['view-btn', { active: viewMode === 'grid' }]"
           title="Grid View"
-        >⊞</button>
+          @click="viewMode = 'grid'"
+        >
+          ⊞
+        </button>
         <button
-          @click="viewMode = 'list'"
           :class="['view-btn', { active: viewMode === 'list' }]"
           title="List View"
-        >☰</button>
+          @click="viewMode = 'list'"
+        >
+          ☰
+        </button>
       </div>
     </div>
 
     <!-- Recently Used -->
-    <div v-if="recentFormats.length > 0 && !searchQuery && !selectedCategory" class="recent-section">
+    <div
+      v-if="recentFormats.length > 0 && !searchQuery && !selectedCategory"
+      class="recent-section"
+    >
       <h4>Recently Used</h4>
       <div class="recent-formats">
         <button
           v-for="format in recentFormats"
           :key="format.id"
-          @click="selectFormat(format)"
           class="recent-format-btn"
+          @click="selectFormat(format)"
         >
           {{ format.name }}
         </button>
@@ -82,7 +80,7 @@
       <!-- No Results -->
       <div v-else-if="filteredFormats.length === 0" class="no-results">
         <p>No formats found matching "{{ searchQuery || selectedCategory }}"</p>
-        <button @click="clearFilters" class="reset-btn">Clear Filters</button>
+        <button class="reset-btn" @click="clearFilters">Clear Filters</button>
       </div>
 
       <!-- Format Grid/List -->
@@ -90,8 +88,8 @@
         <div
           v-for="format in paginatedFormats"
           :key="format.id"
-          @click="selectFormat(format)"
           :class="['format-item', { selected: format.id === selectedFormatId }]"
+          @click="selectFormat(format)"
         >
           <div class="format-header">
             <span class="format-name">{{ format.name }}</span>
@@ -112,19 +110,13 @@
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="pagination">
-        <button
-          @click="currentPage--"
-          :disabled="currentPage === 1"
-          class="page-btn"
-        >‹</button>
+        <button :disabled="currentPage === 1" class="page-btn" @click="currentPage--">‹</button>
 
         <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
 
-        <button
-          @click="currentPage++"
-          :disabled="currentPage === totalPages"
-          class="page-btn"
-        >›</button>
+        <button :disabled="currentPage === totalPages" class="page-btn" @click="currentPage++">
+          ›
+        </button>
       </div>
     </div>
 
@@ -133,19 +125,15 @@
       <div v-if="previewFormat" class="format-preview">
         <div class="preview-header">
           <h4>{{ previewFormat.name }}</h4>
-          <button @click="previewFormat = null" class="close-btn">✕</button>
+          <button class="close-btn" @click="previewFormat = null">✕</button>
         </div>
 
         <div class="preview-content">
-          <div class="preview-field">
-            <strong>ID:</strong> {{ previewFormat.id }}
-          </div>
+          <div class="preview-field"><strong>ID:</strong> {{ previewFormat.id }}</div>
           <div class="preview-field">
             <strong>Extension:</strong> .{{ previewFormat.extension }}
           </div>
-          <div class="preview-field">
-            <strong>Category:</strong> {{ previewFormat.category }}
-          </div>
+          <div class="preview-field"><strong>Category:</strong> {{ previewFormat.category }}</div>
           <div v-if="previewFormat.mimeType" class="preview-field">
             <strong>MIME Type:</strong> {{ previewFormat.mimeType }}
           </div>
@@ -155,9 +143,7 @@
         </div>
 
         <div class="preview-actions">
-          <button @click="applyFormat(previewFormat)" class="apply-btn">
-            Apply Format
-          </button>
+          <button class="apply-btn" @click="applyFormat(previewFormat)">Apply Format</button>
         </div>
       </div>
     </transition>
@@ -187,11 +173,13 @@ const previewFormat = ref(null)
 
 // Categories from metadata
 const categories = computed(() => {
-  return Object.entries(categoryMetadata).map(([key, meta]) => ({
-    key,
-    name: meta.name,
-    count: meta.count
-  })).sort((a, b) => a.name.localeCompare(b.name))
+  return Object.entries(categoryMetadata)
+    .map(([key, meta]) => ({
+      key,
+      name: meta.name,
+      count: meta.count
+    }))
+    .sort((a, b) => a.name.localeCompare(b.name))
 })
 
 // Total formats count
@@ -205,17 +193,18 @@ const filteredFormats = computed(() => {
 
   // Filter by category
   if (selectedCategory.value) {
-    results = results.filter(f => f.category === selectedCategory.value)
+    results = results.filter((f) => f.category === selectedCategory.value)
   }
 
   // Filter by search query
   if (searchQuery.value) {
     const query = searchQuery.value.toLowerCase()
-    results = results.filter(f =>
-      f.name?.toLowerCase().includes(query) ||
-      f.id?.toLowerCase().includes(query) ||
-      f.extension?.toLowerCase().includes(query) ||
-      f.description?.toLowerCase().includes(query)
+    results = results.filter(
+      (f) =>
+        f.name?.toLowerCase().includes(query) ||
+        f.id?.toLowerCase().includes(query) ||
+        f.extension?.toLowerCase().includes(query) ||
+        f.description?.toLowerCase().includes(query)
     )
   }
 
@@ -223,9 +212,7 @@ const filteredFormats = computed(() => {
 })
 
 // Pagination
-const totalPages = computed(() =>
-  Math.ceil(filteredFormats.value.length / itemsPerPage.value)
-)
+const totalPages = computed(() => Math.ceil(filteredFormats.value.length / itemsPerPage.value))
 
 const paginatedFormats = computed(() => {
   const start = (currentPage.value - 1) * itemsPerPage.value
@@ -247,7 +234,7 @@ const loadFormatMetadata = async () => {
     const { formatIndex } = await import('../kaitai/ksy/formats-index.js')
 
     // Transform to array with category info
-    allFormats.value = formatIndex.map(format => ({
+    allFormats.value = formatIndex.map((format) => ({
       ...format,
       category: getCategoryForFormat(format.id)
     }))
@@ -257,19 +244,19 @@ const loadFormatMetadata = async () => {
     if (stored) {
       const recentIds = JSON.parse(stored)
       recentFormats.value = recentIds
-        .map(id => allFormats.value.find(f => f.id === id))
+        .map((id) => allFormats.value.find((f) => f.id === id))
         .filter(Boolean)
         .slice(0, 5)
     }
-  } catch (error) {
-    // console.error('Failed to load format metadata:', error)
+  } catch (_error) {
+    // console.error('Failed to load format metadata:', _error)
   } finally {
     isLoading.value = false
   }
 }
 
 // Get category for a format
-const getCategoryForFormat = (formatId) => {
+const getCategoryForFormat = (_formatId) => {
   // This would map format IDs to categories
   // For now, return a default
   return 'common'
@@ -307,7 +294,7 @@ const selectFormat = (format) => {
 // Apply format
 const applyFormat = (format) => {
   // Update recent formats
-  const recentIds = [format.id, ...recentFormats.value.map(f => f.id)]
+  const recentIds = [format.id, ...recentFormats.value.map((f) => f.id)]
     .filter((id, index, self) => self.indexOf(id) === index)
     .slice(0, 10)
 
@@ -490,7 +477,9 @@ onMounted(() => {
 }
 
 @keyframes spin {
-  to { transform: rotate(360deg); }
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .reset-btn {

@@ -1,24 +1,13 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: HelpDialog.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-29
- * Last Modified: 2025-09-29
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: HelpDialog.vue * Author: Simon Roses Femerling * Created:
+2025-09-29 * Last Modified: 2025-09-29 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="help-dialog-overlay" @click="handleOverlayClick">
     <div class="help-dialog" @click.stop>
       <div class="dialog-header">
         <h2 class="dialog-title">Help & Information</h2>
-        <button @click="$emit('close')" class="close-btn">
-          ✕
-        </button>
+        <button class="close-btn" @click="$emit('close')">✕</button>
       </div>
 
       <div class="dialog-tabs">
@@ -125,11 +114,15 @@
 
           <div class="manual-section">
             <h4>Color Schemes</h4>
-            <p>Both Visual View and Hex View offer two color schemes to help identify byte patterns:</p>
+            <p>
+              Both Visual View and Hex View offer two color schemes to help identify byte patterns:
+            </p>
 
             <h5>Blue Color Scheme (Default)</h5>
             <ul>
-              <li><strong>Purpose:</strong> Provides a gradient visualization based on byte values</li>
+              <li>
+                <strong>Purpose:</strong> Provides a gradient visualization based on byte values
+              </li>
               <li><strong>Color Range:</strong> Dark blue (0x00) to bright cyan (0xFF)</li>
               <li><strong>Best for:</strong> General file analysis and pattern recognition</li>
               <li><strong>Null bytes (0x00):</strong> Dark blue/black</li>
@@ -139,15 +132,25 @@
 
             <h5>Hex Category Color Scheme</h5>
             <ul>
-              <li><strong>Purpose:</strong> Groups bytes by their characteristics for easier identification</li>
+              <li>
+                <strong>Purpose:</strong> Groups bytes by their characteristics for easier
+                identification
+              </li>
               <li><strong>Null (0x00):</strong> Black - Empty/null bytes</li>
               <li><strong>Low (0x01-0x1F):</strong> Dark purple - Control characters</li>
-              <li><strong>ASCII Printable (0x20-0x7E):</strong> Green - Readable text characters</li>
+              <li>
+                <strong>ASCII Printable (0x20-0x7E):</strong> Green - Readable text characters
+              </li>
               <li><strong>Delete (0x7F):</strong> Yellow - DEL control character</li>
-              <li><strong>Extended ASCII (0x80-0xFF):</strong> Orange/Red - Binary data, encrypted content</li>
+              <li>
+                <strong>Extended ASCII (0x80-0xFF):</strong> Orange/Red - Binary data, encrypted
+                content
+              </li>
             </ul>
 
-            <p><strong>Toggle between schemes:</strong> Click the 🎨 button in Visual or Hex View</p>
+            <p>
+              <strong>Toggle between schemes:</strong> Click the 🎨 button in Visual or Hex View
+            </p>
             <p><strong>Use cases:</strong></p>
             <ul>
               <li>Blue scheme: Better for visualizing gradients and data distribution</li>
@@ -169,7 +172,9 @@
             <ul>
               <li><strong>Hex Search:</strong> Enter hex values (e.g., "FF D8" or "FFD8")</li>
               <li><strong>ASCII Search:</strong> Enter text to search for ASCII strings</li>
-              <li><strong>Regular Expression:</strong> Use regex patterns for advanced searching</li>
+              <li>
+                <strong>Regular Expression:</strong> Use regex patterns for advanced searching
+              </li>
             </ul>
           </div>
 
@@ -191,23 +196,28 @@
             <h4>MIT License</h4>
             <p>Copyright (c) 2025 VULNEX</p>
 
-            <p>Permission is hereby granted, free of charge, to any person obtaining a copy
-            of this software and associated documentation files (the "Software"), to deal
-            in the Software without restriction, including without limitation the rights
-            to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
-            copies of the Software, and to permit persons to whom the Software is
-            furnished to do so, subject to the following conditions:</p>
+            <p>
+              Permission is hereby granted, free of charge, to any person obtaining a copy of this
+              software and associated documentation files (the "Software"), to deal in the Software
+              without restriction, including without limitation the rights to use, copy, modify,
+              merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
+              permit persons to whom the Software is furnished to do so, subject to the following
+              conditions:
+            </p>
 
-            <p>The above copyright notice and this permission notice shall be included in all
-            copies or substantial portions of the Software.</p>
+            <p>
+              The above copyright notice and this permission notice shall be included in all copies
+              or substantial portions of the Software.
+            </p>
 
-            <p>THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
-            IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
-            FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
-            AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
-            LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
-            OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
-            SOFTWARE.</p>
+            <p>
+              THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
+              INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
+              PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
+              HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
+              CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
+              OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+            </p>
           </div>
         </div>
 
@@ -217,8 +227,8 @@
 
           <div class="credits-section">
             <p class="credits-intro">
-              BytesRevealer is built with the help of excellent open-source libraries and tools.
-              We would like to thank the developers and maintainers of these projects:
+              BytesRevealer is built with the help of excellent open-source libraries and tools. We
+              would like to thank the developers and maintainers of these projects:
             </p>
 
             <div class="credits-category">
@@ -248,15 +258,23 @@
 
               <div class="credit-item">
                 <h5>Kaitai Struct</h5>
-                <p>A declarative language for describing binary data structures. Used for parsing and analyzing 100+ binary file formats.</p>
+                <p>
+                  A declarative language for describing binary data structures. Used for parsing and
+                  analyzing 100+ binary file formats.
+                </p>
                 <a href="https://kaitai.io/" target="_blank">https://kaitai.io/</a>
                 <p class="credit-license">License: GPLv3+</p>
               </div>
 
               <div class="credit-item">
                 <h5>File Type</h5>
-                <p>Detect the file type of a Buffer/Uint8Array/ArrayBuffer. Used for advanced file signature detection.</p>
-                <a href="https://github.com/sindresorhus/file-type" target="_blank">https://github.com/sindresorhus/file-type</a>
+                <p>
+                  Detect the file type of a Buffer/Uint8Array/ArrayBuffer. Used for advanced file
+                  signature detection.
+                </p>
+                <a href="https://github.com/sindresorhus/file-type" target="_blank"
+                  >https://github.com/sindresorhus/file-type</a
+                >
                 <p class="credit-license">License: MIT</p>
               </div>
             </div>
@@ -266,43 +284,71 @@
 
               <div class="credit-item">
                 <h5>CryptoJS</h5>
-                <p>JavaScript library of crypto standards. Used for hash calculations (MD5, SHA-1, SHA-256).</p>
-                <a href="https://github.com/brix/crypto-js" target="_blank">https://github.com/brix/crypto-js</a>
+                <p>
+                  JavaScript library of crypto standards. Used for hash calculations (MD5, SHA-1,
+                  SHA-256).
+                </p>
+                <a href="https://github.com/brix/crypto-js" target="_blank"
+                  >https://github.com/brix/crypto-js</a
+                >
                 <p class="credit-license">License: MIT</p>
               </div>
 
               <div class="credit-item">
                 <h5>JSZip</h5>
-                <p>Create, read and edit .zip files with JavaScript. Used for export functionality.</p>
-                <a href="https://stuk.github.io/jszip/" target="_blank">https://stuk.github.io/jszip/</a>
+                <p>
+                  Create, read and edit .zip files with JavaScript. Used for export functionality.
+                </p>
+                <a href="https://stuk.github.io/jszip/" target="_blank"
+                  >https://stuk.github.io/jszip/</a
+                >
                 <p class="credit-license">License: MIT</p>
               </div>
 
               <div class="credit-item">
                 <h5>iconv-lite</h5>
-                <p>Pure JS character encoding conversion. Used for text encoding detection and conversion.</p>
-                <a href="https://github.com/ashtuchkin/iconv-lite" target="_blank">https://github.com/ashtuchkin/iconv-lite</a>
+                <p>
+                  Pure JS character encoding conversion. Used for text encoding detection and
+                  conversion.
+                </p>
+                <a href="https://github.com/ashtuchkin/iconv-lite" target="_blank"
+                  >https://github.com/ashtuchkin/iconv-lite</a
+                >
                 <p class="credit-license">License: MIT</p>
               </div>
 
               <div class="credit-item">
                 <h5>Buffer</h5>
-                <p>The buffer module from Node.js, for the browser. Used for binary data manipulation.</p>
-                <a href="https://github.com/feross/buffer" target="_blank">https://github.com/feross/buffer</a>
+                <p>
+                  The buffer module from Node.js, for the browser. Used for binary data
+                  manipulation.
+                </p>
+                <a href="https://github.com/feross/buffer" target="_blank"
+                  >https://github.com/feross/buffer</a
+                >
                 <p class="credit-license">License: MIT</p>
               </div>
 
               <div class="credit-item">
                 <h5>YAML</h5>
-                <p>JavaScript parser and stringifier for YAML. Used for Kaitai format definitions.</p>
-                <a href="https://github.com/eemeli/yaml" target="_blank">https://github.com/eemeli/yaml</a>
+                <p>
+                  JavaScript parser and stringifier for YAML. Used for Kaitai format definitions.
+                </p>
+                <a href="https://github.com/eemeli/yaml" target="_blank"
+                  >https://github.com/eemeli/yaml</a
+                >
                 <p class="credit-license">License: ISC</p>
               </div>
 
               <div class="credit-item">
                 <h5>IndexedDB (idb)</h5>
-                <p>A tiny library that mirrors IndexedDB API. Used for efficient chunk storage in large files.</p>
-                <a href="https://github.com/jakearchibald/idb" target="_blank">https://github.com/jakearchibald/idb</a>
+                <p>
+                  A tiny library that mirrors IndexedDB API. Used for efficient chunk storage in
+                  large files.
+                </p>
+                <a href="https://github.com/jakearchibald/idb" target="_blank"
+                  >https://github.com/jakearchibald/idb</a
+                >
                 <p class="credit-license">License: ISC</p>
               </div>
             </div>
@@ -325,8 +371,14 @@
 
             <div class="credits-footer">
               <p><strong>Special Thanks</strong></p>
-              <p>To all the open-source contributors who make projects like BytesRevealer possible. Your work enables developers worldwide to build better tools for the community.</p>
-              <p>If you find BytesRevealer useful, please consider supporting the open-source projects listed above.</p>
+              <p>
+                To all the open-source contributors who make projects like BytesRevealer possible.
+                Your work enables developers worldwide to build better tools for the community.
+              </p>
+              <p>
+                If you find BytesRevealer useful, please consider supporting the open-source
+                projects listed above.
+              </p>
             </div>
           </div>
         </div>
@@ -340,9 +392,18 @@
             <p class="about-tagline">Uncover the Secrets of Binary Files</p>
 
             <div class="about-description">
-              <p>Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files.</p>
+              <p>
+                Bytes Revealer is a powerful reverse engineering and binary analysis tool designed
+                for security researchers, forensic analysts, and developers. With features like hex
+                view, visual representation, string extraction, entropy calculation, and file
+                signature detection, it helps users uncover hidden data inside files.
+              </p>
 
-              <p>Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.</p>
+              <p>
+                Whether you are analyzing malware, debugging binaries, or investigating unknown file
+                formats, Bytes Revealer makes it easy to explore, search, and extract valuable
+                information from any binary file.
+              </p>
 
               <p><strong>Key Features:</strong></p>
               <ul>
@@ -358,8 +419,14 @@
             <div class="about-links">
               <h4>Resources</h4>
               <ul>
-                <li><a href="https://bytesrevealer.online/" target="_blank">Official Website</a></li>
-                <li><a href="https://github.com/vulnex/bytesrevealer" target="_blank">GitHub Repository</a></li>
+                <li>
+                  <a href="https://bytesrevealer.online/" target="_blank">Official Website</a>
+                </li>
+                <li>
+                  <a href="https://github.com/vulnex/bytesrevealer" target="_blank"
+                    >GitHub Repository</a
+                  >
+                </li>
                 <li><a href="https://www.vulnex.com" target="_blank">VULNEX</a></li>
               </ul>
             </div>
@@ -378,6 +445,7 @@
 <script>
 export default {
   name: 'HelpDialog',
+  emits: ['close'],
 
   data() {
     return {
@@ -389,14 +457,6 @@ export default {
         { id: 'credits', label: 'Credits' },
         { id: 'about', label: 'About' }
       ]
-    }
-  },
-
-  methods: {
-    handleOverlayClick(event) {
-      if (event.target === event.currentTarget) {
-        this.$emit('close')
-      }
     }
   },
 
@@ -412,6 +472,14 @@ export default {
 
   beforeUnmount() {
     window.removeEventListener('keydown', this.handleEscKey)
+  },
+
+  methods: {
+    handleOverlayClick(event) {
+      if (event.target === event.currentTarget) {
+        this.$emit('close')
+      }
+    }
   }
 }
 </script>
@@ -438,7 +506,9 @@ export default {
   max-height: 80vh;
   display: flex;
   flex-direction: column;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1), 0 2px 4px rgba(0, 0, 0, 0.06);
+  box-shadow:
+    0 4px 6px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.06);
 }
 
 .dialog-header {
@@ -598,7 +668,8 @@ export default {
   color: var(--text-secondary);
 }
 
-.manual-section ul, .manual-section ol {
+.manual-section ul,
+.manual-section ol {
   margin-top: 10px;
   margin-left: 20px;
 }

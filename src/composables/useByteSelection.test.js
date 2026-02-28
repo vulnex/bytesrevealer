@@ -2,15 +2,13 @@ import { describe, it, expect, vi } from 'vitest'
 import { useByteSelection } from './useByteSelection'
 
 function mockByteEvent(byteIndex, button = 0) {
-  const element = byteIndex !== null
-    ? { dataset: { byteIndex: String(byteIndex) } }
-    : null
+  const element = byteIndex !== null ? { dataset: { byteIndex: String(byteIndex) } } : null
   return {
     button,
     preventDefault: vi.fn(),
     clientX: 100,
     clientY: 200,
-    target: { closest: vi.fn(sel => sel === '[data-byte-index]' ? element : null) }
+    target: { closest: vi.fn((sel) => (sel === '[data-byte-index]' ? element : null)) }
   }
 }
 
@@ -81,7 +79,14 @@ describe('useByteSelection', () => {
 
   describe('endSelection', () => {
     it('with selectedColor emits byte-selection and clears', () => {
-      const { selectedColor, selectionStart, selectionEnd, startSelection, updateSelection, endSelection } = useByteSelection()
+      const {
+        selectedColor,
+        selectionStart,
+        selectionEnd,
+        startSelection,
+        updateSelection,
+        endSelection
+      } = useByteSelection()
       const emit = vi.fn()
       selectedColor.value = '#ff0000'
       startSelection(mockByteEvent(5), emit)
@@ -103,7 +108,8 @@ describe('useByteSelection', () => {
     })
 
     it('without color keeps selection for context menu', () => {
-      const { selectionStart, selectionEnd, startSelection, updateSelection, endSelection } = useByteSelection()
+      const { selectionStart, selectionEnd, startSelection, updateSelection, endSelection } =
+        useByteSelection()
       const emit = vi.fn()
       startSelection(mockByteEvent(5), emit)
       updateSelection(mockByteEvent(15))

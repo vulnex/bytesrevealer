@@ -1,15 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: HashSection.vue
- * Author: Simon Roses Femerling
- * Created: 2025-02-12
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: HashSection.vue * Author: Simon Roses Femerling * Created:
+2025-02-12 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="hashes-section">
@@ -22,19 +13,33 @@
           <div class="hash-actions">
             <button
               v-if="hashes.md5 && hashes.md5 !== 'N/A (file > 50MB)'"
-              @click="copyHash('md5', hashes.md5)"
               class="copy-btn"
               title="Copy MD5 hash"
+              @click="copyHash('md5', hashes.md5)"
             >
               📋
             </button>
-            <div v-if="hashes.md5 && hashes.md5 !== 'N/A (file > 50MB)'" class="dropdown" :class="{ active: activeDropdown === 'md5' }">
-              <button class="dropdown-trigger" @click="toggleDropdown('md5', $event)">Search 🔍</button>
+            <div
+              v-if="hashes.md5 && hashes.md5 !== 'N/A (file > 50MB)'"
+              class="dropdown"
+              :class="{ active: activeDropdown === 'md5' }"
+            >
+              <button class="dropdown-trigger" @click="toggleDropdown('md5', $event)">
+                Search 🔍
+              </button>
               <div class="dropdown-content">
-                <a :href="`https://www.virustotal.com/gui/search/${hashes.md5}`" target="_blank">VirusTotal</a>
-                <a :href="`https://www.google.com/search?q=${hashes.md5}`" target="_blank">Google</a>
-                <a :href="`https://metadefender.com/results/file/${hashes.md5}/`" target="_blank">MetaDefender</a>
-                <a :href="`https://hybrid-analysis.com/search?query=${hashes.md5}`" target="_blank">Hybrid Analysis</a>
+                <a :href="`https://www.virustotal.com/gui/search/${hashes.md5}`" target="_blank"
+                  >VirusTotal</a
+                >
+                <a :href="`https://www.google.com/search?q=${hashes.md5}`" target="_blank"
+                  >Google</a
+                >
+                <a :href="`https://metadefender.com/results/file/${hashes.md5}/`" target="_blank"
+                  >MetaDefender</a
+                >
+                <a :href="`https://hybrid-analysis.com/search?query=${hashes.md5}`" target="_blank"
+                  >Hybrid Analysis</a
+                >
               </div>
             </div>
           </div>
@@ -48,19 +53,33 @@
           <div class="hash-actions">
             <button
               v-if="hashes.sha1 && hashes.sha1 !== 'N/A (file > 50MB)'"
-              @click="copyHash('sha1', hashes.sha1)"
               class="copy-btn"
               title="Copy SHA-1 hash"
+              @click="copyHash('sha1', hashes.sha1)"
             >
               📋
             </button>
-            <div v-if="hashes.sha1 && hashes.sha1 !== 'N/A (file > 50MB)'" class="dropdown" :class="{ active: activeDropdown === 'sha1' }">
-              <button class="dropdown-trigger" @click="toggleDropdown('sha1', $event)">Search 🔍</button>
+            <div
+              v-if="hashes.sha1 && hashes.sha1 !== 'N/A (file > 50MB)'"
+              class="dropdown"
+              :class="{ active: activeDropdown === 'sha1' }"
+            >
+              <button class="dropdown-trigger" @click="toggleDropdown('sha1', $event)">
+                Search 🔍
+              </button>
               <div class="dropdown-content">
-                <a :href="`https://www.virustotal.com/gui/search/${hashes.sha1}`" target="_blank">VirusTotal</a>
-                <a :href="`https://www.google.com/search?q=${hashes.sha1}`" target="_blank">Google</a>
-                <a :href="`https://metadefender.com/results/file/${hashes.sha1}/`" target="_blank">MetaDefender</a>
-                <a :href="`https://hybrid-analysis.com/search?query=${hashes.sha1}`" target="_blank">Hybrid Analysis</a>
+                <a :href="`https://www.virustotal.com/gui/search/${hashes.sha1}`" target="_blank"
+                  >VirusTotal</a
+                >
+                <a :href="`https://www.google.com/search?q=${hashes.sha1}`" target="_blank"
+                  >Google</a
+                >
+                <a :href="`https://metadefender.com/results/file/${hashes.sha1}/`" target="_blank"
+                  >MetaDefender</a
+                >
+                <a :href="`https://hybrid-analysis.com/search?query=${hashes.sha1}`" target="_blank"
+                  >Hybrid Analysis</a
+                >
               </div>
             </div>
           </div>
@@ -74,19 +93,35 @@
           <div class="hash-actions">
             <button
               v-if="hashes.sha256 && hashes.sha256 !== 'N/A (file > 50MB)'"
-              @click="copyHash('sha256', hashes.sha256)"
               class="copy-btn"
               title="Copy SHA-256 hash"
+              @click="copyHash('sha256', hashes.sha256)"
             >
               📋
             </button>
-            <div v-if="hashes.sha256 && hashes.sha256 !== 'N/A (file > 50MB)'" class="dropdown" :class="{ active: activeDropdown === 'sha256' }">
-              <button class="dropdown-trigger" @click="toggleDropdown('sha256', $event)">Search 🔍</button>
+            <div
+              v-if="hashes.sha256 && hashes.sha256 !== 'N/A (file > 50MB)'"
+              class="dropdown"
+              :class="{ active: activeDropdown === 'sha256' }"
+            >
+              <button class="dropdown-trigger" @click="toggleDropdown('sha256', $event)">
+                Search 🔍
+              </button>
               <div class="dropdown-content">
-                <a :href="`https://www.virustotal.com/gui/search/${hashes.sha256}`" target="_blank">VirusTotal</a>
-                <a :href="`https://www.google.com/search?q=${hashes.sha256}`" target="_blank">Google</a>
-                <a :href="`https://metadefender.com/results/file/${hashes.sha256}/`" target="_blank">MetaDefender</a>
-                <a :href="`https://hybrid-analysis.com/search?query=${hashes.sha256}`" target="_blank">Hybrid Analysis</a>
+                <a :href="`https://www.virustotal.com/gui/search/${hashes.sha256}`" target="_blank"
+                  >VirusTotal</a
+                >
+                <a :href="`https://www.google.com/search?q=${hashes.sha256}`" target="_blank"
+                  >Google</a
+                >
+                <a :href="`https://metadefender.com/results/file/${hashes.sha256}/`" target="_blank"
+                  >MetaDefender</a
+                >
+                <a
+                  :href="`https://hybrid-analysis.com/search?query=${hashes.sha256}`"
+                  target="_blank"
+                  >Hybrid Analysis</a
+                >
               </div>
             </div>
           </div>
@@ -108,8 +143,8 @@ export default {
     hashes: {
       type: Object,
       required: true,
-      validator: function(obj) {
-        return ['md5', 'sha1', 'sha256'].every(key => key in obj)
+      validator: function (obj) {
+        return ['md5', 'sha1', 'sha256'].every((key) => key in obj)
       }
     }
   },
@@ -122,35 +157,35 @@ export default {
   },
   mounted() {
     // Close dropdown when clicking outside
-    document.addEventListener('click', this.handleOutsideClick);
+    document.addEventListener('click', this.handleOutsideClick)
   },
   beforeUnmount() {
-    document.removeEventListener('click', this.handleOutsideClick);
+    document.removeEventListener('click', this.handleOutsideClick)
   },
   methods: {
     async copyHash(type, hash) {
       try {
-        await navigator.clipboard.writeText(hash);
-        this.copyMessage = `${type.toUpperCase()} hash copied!`;
-        this.showCopyNotification = true;
+        await navigator.clipboard.writeText(hash)
+        this.copyMessage = `${type.toUpperCase()} hash copied!`
+        this.showCopyNotification = true
         setTimeout(() => {
-          this.showCopyNotification = false;
-        }, 2000);
-      } catch (err) {
-        // console.error('Failed to copy hash:', err);
+          this.showCopyNotification = false
+        }, 2000)
+      } catch (_err) {
+        // console.error('Failed to copy hash:', _err);
       }
     },
     toggleDropdown(hashType, event) {
-      event.stopPropagation();
+      event.stopPropagation()
       if (this.activeDropdown === hashType) {
-        this.activeDropdown = null;
+        this.activeDropdown = null
       } else {
-        this.activeDropdown = hashType;
+        this.activeDropdown = hashType
       }
     },
     handleOutsideClick(event) {
       if (!event.target.closest('.dropdown')) {
-        this.activeDropdown = null;
+        this.activeDropdown = null
       }
     }
   }
@@ -186,7 +221,9 @@ export default {
   background: linear-gradient(135deg, var(--bg-primary), var(--bg-secondary));
   border: 1px solid var(--border-color);
   border-radius: 8px;
-  transition: transform 0.2s, box-shadow 0.2s;
+  transition:
+    transform 0.2s,
+    box-shadow 0.2s;
   position: relative;
   z-index: auto;
 }

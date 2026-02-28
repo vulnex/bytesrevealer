@@ -13,10 +13,10 @@ export function useStringExtraction(fileBytes) {
   let worker = null
 
   function escapeString(str) {
-    return str
-      .replace(/[\x00-\x1F\x7F-\x9F]/g, (char) =>
-        `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`
-      )
+    return str.replace(
+      /[\x00-\x1F\x7F-\x9F]/g, // eslint-disable-line no-control-regex
+      (char) => `\\x${char.charCodeAt(0).toString(16).padStart(2, '0')}`
+    )
   }
 
   function cleanupWorker() {
@@ -138,7 +138,7 @@ export function useStringExtraction(fileBytes) {
 
     // Process ASCII strings
     if (results.ascii && results.ascii.length > 0) {
-      results.ascii.forEach(str => {
+      results.ascii.forEach((str) => {
         strings.value.push({
           type: 'ASCII',
           size: str.length,
@@ -151,7 +151,7 @@ export function useStringExtraction(fileBytes) {
     // Process UTF-16 strings
     const utf16le = results.utf16le || []
     const utf16be = results.utf16be || []
-    ;[...utf16le, ...utf16be].forEach(str => {
+    ;[...utf16le, ...utf16be].forEach((str) => {
       strings.value.push({
         type: str.encoding,
         size: str.length,
@@ -169,7 +169,7 @@ export function useStringExtraction(fileBytes) {
       worker = createStringAnalysisWorker()
 
       worker.addEventListener('message', (event) => {
-        const { type, results, progress: prog, error } = event.data
+        const { type, results, progress: prog, error: _error } = event.data
 
         if (type === 'progress') {
           progress.value = prog
@@ -195,7 +195,7 @@ export function useStringExtraction(fileBytes) {
           encoding: 'all'
         }
       })
-    } catch (error) {
+    } catch (_error) {
       isLoading.value = false
       // Fallback to synchronous extraction
       extractStringsSynchronous()
@@ -203,7 +203,8 @@ export function useStringExtraction(fileBytes) {
   }
 
   function addString(str, type, offset = 0) {
-    if (str.trim().length > 3) {  // Minimum 4 characters
+    if (str.trim().length > 3) {
+      // Minimum 4 characters
       strings.value.push({
         type: type,
         size: str.length,
@@ -223,7 +224,7 @@ export function useStringExtraction(fileBytes) {
     for (let i = 0; i < bytes.length; i++) {
       const byte = bytes[i]
 
-      if (byte >= 0x20 && byte <= 0x7E) {
+      if (byte >= 0x20 && byte <= 0x7e) {
         if (currentString.length === 0) {
           startOffset = i
         }

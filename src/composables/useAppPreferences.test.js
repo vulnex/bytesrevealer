@@ -15,7 +15,12 @@ vi.mock('../utils/logger', () => ({
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   const pinia = createPinia()
   app.use(pinia)
   setActivePinia(pinia)
@@ -75,13 +80,16 @@ describe('useAppPreferences', () => {
 
   describe('loadAnalysisPreferences', () => {
     it('loads saved preferences from localStorage', async () => {
-      localStorage.setItem('analysisOptions', JSON.stringify({
-        fileAnalysis: false,
-        visualView: false,
-        hexView: true,
-        stringAnalysis: false,
-        yaraScanning: true
-      }))
+      localStorage.setItem(
+        'analysisOptions',
+        JSON.stringify({
+          fileAnalysis: false,
+          visualView: false,
+          hexView: true,
+          stringAnalysis: false,
+          yaraScanning: true
+        })
+      )
       const [result, app] = await loadComposable()
       expect(result.features.fileAnalysis).toBe(false)
       expect(result.features.visualView).toBe(false)

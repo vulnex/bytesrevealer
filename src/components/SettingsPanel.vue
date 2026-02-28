@@ -1,37 +1,28 @@
-/** 
- * VULNEX -Bytes Revealer-
- *
- * File: ExportOptions.vue
- * Author: Simon Roses Femerling
- * Created: 2025-04-03
- * Last Modified: 2025-004-03
- * Version: 0.2
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: ExportOptions.vue * Author: Simon Roses Femerling * Created:
+2025-04-03 * Last Modified: 2025-004-03 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="settings-panel p-4">
     <h3 class="text-xl font-semibold mb-4">Settings</h3>
-    
+
     <!-- Theme Settings -->
     <div class="setting-section mb-6">
       <h4 class="text-lg font-medium mb-3">Theme</h4>
       <div class="theme-options flex gap-4">
-        <button 
-          @click="setTheme('light')"
+        <button
           class="theme-button"
           :class="{ active: settings.theme === 'light' }"
+          @click="setTheme('light')"
         >
           <span class="theme-icon">☀️</span>
           <span>Light Mode</span>
         </button>
-        
-        <button 
-          @click="setTheme('dark')"
+
+        <button
           class="theme-button"
           :class="{ active: settings.theme === 'dark' }"
+          @click="setTheme('dark')"
         >
           <span class="theme-icon">🌙</span>
           <span>Dark Mode</span>
@@ -44,20 +35,13 @@
       <h4 class="text-lg font-medium mb-3">Display</h4>
       <div class="space-y-3">
         <label class="flex items-center space-x-2">
-          <input
-            type="checkbox"
-            v-model="settings.hexUppercase"
-            class="form-checkbox"
-          >
+          <input v-model="settings.hexUppercase" type="checkbox" class="form-checkbox" />
           <span>Show Hex Values in Uppercase</span>
         </label>
-        
+
         <div class="flex items-center space-x-4">
           <span>Bytes per Row:</span>
-          <select 
-            v-model="settings.bytesPerRow"
-            class="form-select rounded border px-2 py-1"
-          >
+          <select v-model="settings.bytesPerRow" class="form-select rounded border px-2 py-1">
             <option value="8">8 bytes</option>
             <option value="16">16 bytes</option>
             <option value="32">32 bytes</option>
@@ -72,11 +56,11 @@
       <div class="space-y-3">
         <label class="flex items-center space-x-2">
           <input
-            type="checkbox"
             v-model="settings.debugMode"
-            @change="toggleDebugMode"
+            type="checkbox"
             class="form-checkbox"
-          >
+            @change="toggleDebugMode"
+          />
           <span>Enable Debug Console Output</span>
         </label>
         <span class="hint text-sm text-gray-500">Shows detailed logging in browser console</span>
@@ -89,23 +73,17 @@
       <div class="setting-group">
         <div class="input-group">
           <div class="flex items-center space-x-2">
-            <input 
-              type="number"
+            <input
               v-model.number="settings.baseOffset"
+              type="number"
               min="0"
+              class="form-input"
+              :class="{ error: offsetError }"
+              placeholder="Enter offset"
               @input="validateOffset"
               @change="updateOffset"
-              class="form-input"
-              :class="{ 'error': offsetError }"
-              placeholder="Enter offset"
-            >
-            <button 
-              @click="resetOffset"
-              class="reset-button"
-              title="Reset to 0"
-            >
-              ↺
-            </button>
+            />
+            <button class="reset-button" title="Reset to 0" @click="resetOffset">↺</button>
           </div>
           <span class="hint">Starting offset for byte numbering (decimal)</span>
           <span v-if="offsetError" class="error-message">{{ offsetError }}</span>
@@ -117,15 +95,15 @@
     </div>
 
     <div class="mt-6 flex space-x-4">
-      <button 
-        @click="saveSettings"
+      <button
         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+        @click="saveSettings"
       >
         Save Settings
       </button>
-      <button 
-        @click="resetSettings"
+      <button
         class="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300"
+        @click="resetSettings"
       >
         Reset to Defaults
       </button>
@@ -141,6 +119,7 @@ const logger = createLogger('SettingsPanel')
 
 export default {
   name: 'SettingsPanel',
+  emits: ['settings-updated'],
   data() {
     const settingsStore = useSettingsStore()
     return {
@@ -154,110 +133,115 @@ export default {
       offsetError: ''
     }
   },
+  mounted() {
+    this.loadSettings()
+  },
   methods: {
     setTheme(theme) {
-      this.settings.theme = theme;
-      this.applyTheme(theme);
+      this.settings.theme = theme
+      this.applyTheme(theme)
       // Save the theme preference immediately
-      this.saveSettings();
+      this.saveSettings()
     },
     applyTheme(theme) {
-      document.documentElement.classList.remove('light-mode', 'dark-mode');
-      document.documentElement.classList.add(`${theme}-mode`);
-      localStorage.setItem('theme', theme);
+      document.documentElement.classList.remove('light-mode', 'dark-mode')
+      document.documentElement.classList.add(`${theme}-mode`)
+      localStorage.setItem('theme', theme)
 
       // Update meta theme-color for mobile browsers
-      const metaThemeColor = document.querySelector('meta[name="theme-color"]');
+      const metaThemeColor = document.querySelector('meta[name="theme-color"]')
       if (metaThemeColor) {
-        metaThemeColor.setAttribute('content',
-          theme === 'dark' ? '#1a202c' : '#ffffff'
-        );
+        metaThemeColor.setAttribute('content', theme === 'dark' ? '#1a202c' : '#ffffff')
       }
     },
     toggleDebugMode() {
       // Save debug mode preference to localStorage
-      localStorage.setItem('debugMode', this.settings.debugMode.toString());
+      localStorage.setItem('debugMode', this.settings.debugMode.toString())
 
       // Show feedback to user
       if (this.settings.debugMode) {
-        logger.info('Debug mode enabled - console logging is now active');
-        alert('Debug mode enabled. Console logging is now active. Refresh the page to see debug messages.');
+        logger.info('Debug mode enabled - console logging is now active')
+        alert(
+          'Debug mode enabled. Console logging is now active. Refresh the page to see debug messages.'
+        )
       } else {
-        logger.info('Debug mode disabled - console logging is now inactive');
-        alert('Debug mode disabled. Console logging is now inactive. Refresh the page to hide debug messages.');
+        logger.info('Debug mode disabled - console logging is now inactive')
+        alert(
+          'Debug mode disabled. Console logging is now inactive. Refresh the page to hide debug messages.'
+        )
       }
     },
     saveSettings() {
       try {
-        localStorage.setItem('bytesRevealerSettings', JSON.stringify(this.settings));
-        this.$emit('settings-updated', this.settings);
+        localStorage.setItem('bytesRevealerSettings', JSON.stringify(this.settings))
+        this.$emit('settings-updated', this.settings)
       } catch (error) {
-        logger.error('Error saving settings:', error);
+        logger.error('Error saving settings:', error)
       }
     },
     resetSettings() {
       // Don't reset the theme when resetting other settings
-      const currentTheme = this.settings.theme;
+      const currentTheme = this.settings.theme
       this.settings = {
         theme: currentTheme, // Preserve current theme
         hexUppercase: false,
         bytesPerRow: '16',
         baseOffset: this.settings.baseOffset
-      };
-      this.saveSettings();
+      }
+      this.saveSettings()
     },
     loadSettings() {
       try {
         // First try to get the theme from localStorage
-        const savedTheme = localStorage.getItem('theme');
+        const savedTheme = localStorage.getItem('theme')
         if (savedTheme) {
-          this.settings.theme = savedTheme;
+          this.settings.theme = savedTheme
         }
-        
+
         // Then load all settings
-        const saved = localStorage.getItem('bytesRevealerSettings');
+        const saved = localStorage.getItem('bytesRevealerSettings')
         if (saved) {
-          const parsedSettings = JSON.parse(saved);
-          this.settings = { ...this.settings, ...parsedSettings };
+          const parsedSettings = JSON.parse(saved)
+          this.settings = { ...this.settings, ...parsedSettings }
         }
-        
+
         // Apply the theme
-        this.applyTheme(this.settings.theme);
+        this.applyTheme(this.settings.theme)
       } catch (error) {
-        logger.error('Error loading settings:', error);
+        logger.error('Error loading settings:', error)
       }
     },
     validateOffset(event) {
       const value = event.target.value
-      
+
       // Clear previous error
       this.offsetError = ''
-      
+
       // Check if empty
       if (!value) {
         this.offsetError = 'Offset cannot be empty'
         return false
       }
-      
+
       // Check if negative
       if (value < 0) {
         this.offsetError = 'Offset cannot be negative'
         this.settings.baseOffset = 0
         return false
       }
-      
+
       // Check if it's a valid number
       if (isNaN(value)) {
         this.offsetError = 'Please enter a valid number'
         return false
       }
-      
+
       // Check if it's too large
       if (value > Number.MAX_SAFE_INTEGER) {
         this.offsetError = 'Offset value is too large'
         return false
       }
-      
+
       return true
     },
     updateOffset() {
@@ -277,9 +261,6 @@ export default {
     formatHex(value) {
       return value.toString(16).toUpperCase().padStart(8, '0')
     }
-  },
-  mounted() {
-    this.loadSettings();
   }
 }
 </script>
@@ -333,7 +314,8 @@ export default {
 }
 
 /* Settings section headers */
-h3, h4 {
+h3,
+h4 {
   color: var(--text-primary);
 }
 
@@ -455,4 +437,4 @@ button.bg-gray-200 {
   border-color: var(--link-color);
   color: var(--link-color);
 }
-</style> 
+</style>

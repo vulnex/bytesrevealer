@@ -1,14 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: FileSignatures.vue
- * Author: Simon Roses Femerling
- * Created: 2025-04-01
- * Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- */
+/** * VULNEX -Bytes Revealer- * * File: FileSignatures.vue * Author: Simon Roses Femerling *
+Created: 2025-04-01 * Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. */
 
 <template>
   <div v-if="signatures.length" class="file-signatures">
@@ -26,7 +18,7 @@
         </div>
 
         <div class="signature-body">
-          <table class="info-table" v-if="sig.pattern">
+          <table v-if="sig.pattern" class="info-table">
             <tbody>
               <tr>
                 <td class="info-label">Pattern:</td>
@@ -65,7 +57,12 @@
                   <td class="nested-type">{{ nested.type }}</td>
                   <td class="nested-name">{{ nested.name }}</td>
                   <td class="nested-offset">
-                    <code class="copyable-text" @click="copyToClipboard(nested.offset.toString(16).toUpperCase().padStart(8, '0'))">
+                    <code
+                      class="copyable-text"
+                      @click="
+                        copyToClipboard(nested.offset.toString(16).toUpperCase().padStart(8, '0'))
+                      "
+                    >
                       0x{{ nested.offset.toString(16).toUpperCase().padStart(8, '0') }}
                       <span class="copy-icon-small">📋</span>
                     </code>
@@ -99,9 +96,7 @@
     </div>
 
     <!-- Copy notification -->
-    <div v-if="showCopyNotification" class="copy-notification">
-      Copied to clipboard!
-    </div>
+    <div v-if="showCopyNotification" class="copy-notification">Copied to clipboard!</div>
   </div>
 </template>
 
@@ -125,88 +120,90 @@ export default {
   methods: {
     getConfidenceClass(confidence) {
       const classes = {
-        'High': 'confidence-high',
-        'Medium': 'confidence-medium',
-        'Low': 'confidence-low'
-      };
-      return classes[confidence] || classes['Medium'];
+        High: 'confidence-high',
+        Medium: 'confidence-medium',
+        Low: 'confidence-low'
+      }
+      return classes[confidence] || classes['Medium']
     },
 
     formatPattern(pattern) {
       if (Array.isArray(pattern)) {
-        return pattern.map(byte =>
-          byte.toString(16).padStart(2, '0').toUpperCase()
-        ).join(' ');
+        return pattern.map((byte) => byte.toString(16).padStart(2, '0').toUpperCase()).join(' ')
       }
-      return pattern;
+      return pattern
     },
 
     formatKey(key) {
-      const formattedKey = key.replace(/_/g, ' ');
-      return formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1);
+      const formattedKey = key.replace(/_/g, ' ')
+      return formattedKey.charAt(0).toUpperCase() + formattedKey.slice(1)
     },
 
     formatValue(value) {
-      if (value === null || value === undefined) return '';
-      if (typeof value === 'boolean') return value ? 'Yes' : 'No';
+      if (value === null || value === undefined) return ''
+      if (typeof value === 'boolean') return value ? 'Yes' : 'No'
       if (Array.isArray(value)) {
-        if (value.length === 0) return '(none)';
+        if (value.length === 0) return '(none)'
         if (typeof value[0] === 'object') {
-          return value.map(item => {
-            if (item.name && item.flags) return `${item.name} [${item.flags}]`;
-            if (item.name) return item.name;
-            return JSON.stringify(item);
-          }).join(', ');
+          return value
+            .map((item) => {
+              if (item.name && item.flags) return `${item.name} [${item.flags}]`
+              if (item.name) return item.name
+              return JSON.stringify(item)
+            })
+            .join(', ')
         }
-        return value.join(', ');
+        return value.join(', ')
       }
       if (typeof value === 'object') {
         const parts = Object.entries(value)
           .filter(([, v]) => v !== null && v !== undefined)
-          .map(([k, v]) => `${k}: ${typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}`);
-        return parts.join(', ');
+          .map(([k, v]) => `${k}: ${typeof v === 'boolean' ? (v ? 'Yes' : 'No') : v}`)
+        return parts.join(', ')
       }
-      return String(value);
+      return String(value)
     },
 
     flattenMetadata(metadata, prefix = '') {
-      const result = {};
+      const result = {}
 
       for (const [key, value] of Object.entries(metadata)) {
-        if (value === null || value === undefined) continue;
+        if (value === null || value === undefined) continue
 
         if (Array.isArray(value)) {
           if (value.length === 0) {
-            result[`${prefix}${key}`] = '(none)';
+            result[`${prefix}${key}`] = '(none)'
           } else if (typeof value[0] === 'object') {
             value.forEach((item, i) => {
-              const itemPrefix = item.name ? `${prefix}${key}.${item.name}.` : `${prefix}${key}[${i}].`;
-              const nested = this.flattenMetadata(item, itemPrefix);
-              Object.assign(result, nested);
-            });
+              const itemPrefix = item.name
+                ? `${prefix}${key}.${item.name}.`
+                : `${prefix}${key}[${i}].`
+              const nested = this.flattenMetadata(item, itemPrefix)
+              Object.assign(result, nested)
+            })
           } else {
-            result[`${prefix}${key}`] = value;
+            result[`${prefix}${key}`] = value
           }
         } else if (typeof value === 'object') {
-          const nested = this.flattenMetadata(value, `${prefix}${key}.`);
-          Object.assign(result, nested);
+          const nested = this.flattenMetadata(value, `${prefix}${key}.`)
+          Object.assign(result, nested)
         } else {
-          result[`${prefix}${key}`] = value;
+          result[`${prefix}${key}`] = value
         }
       }
 
-      return result;
+      return result
     },
 
     async copyToClipboard(text) {
       try {
-        await navigator.clipboard.writeText(text);
-        this.showCopyNotification = true;
+        await navigator.clipboard.writeText(text)
+        this.showCopyNotification = true
         setTimeout(() => {
-          this.showCopyNotification = false;
-        }, 2000);
-      } catch (err) {
-        // console.error('Failed to copy:', err);
+          this.showCopyNotification = false
+        }, 2000)
+      } catch (_err) {
+        // console.error('Failed to copy:', _err);
       }
     }
   }

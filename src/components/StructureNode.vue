@@ -1,46 +1,37 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: StructureNode.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: StructureNode.vue * Author: Simon Roses Femerling * Created:
+2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="structure-node">
-    <div 
+    <div
       class="node-header"
       :style="{ paddingLeft: `${depth * 16}px` }"
       @click="handleToggle"
       @mouseenter="handleHover"
       @mouseleave="handleHoverEnd"
     >
-      <span 
-        v-if="hasChildren" 
-        class="expand-icon"
-      >
+      <span v-if="hasChildren" class="expand-icon">
         {{ expanded ? '▼' : '▶' }}
       </span>
       <span v-else class="expand-spacer"></span>
-      
+
       <span class="field-name">{{ displayName }}</span>
-      
+
       <span v-if="displayValue" class="field-value">
         {{ displayValue }}
       </span>
-      
+
       <span class="field-offset">
         0x{{ (structure?.offset || 0).toString(16).toUpperCase().padStart(8, '0') }}
       </span>
     </div>
-    
+
     <div v-if="expanded && hasChildren" class="node-children">
-      <template v-for="(field, index) in (structure.fields || [])" :key="`${field ? field.name : 'field'}_${index}`">
+      <template
+        v-for="(field, index) in structure.fields || []"
+        :key="`${field ? field.name : 'field'}_${index}`"
+      >
         <StructureNode
           v-if="field && typeof field === 'object'"
           :structure="field"
@@ -62,7 +53,7 @@ const logger = createLogger('StructureNode')
 
 export default {
   name: 'StructureNode',
-  
+
   props: {
     structure: {
       type: Object,
@@ -77,29 +68,22 @@ export default {
       default: false
     }
   },
-  
+
   emits: ['toggle', 'hover', 'select'],
-  
-  mounted() {
-    logger.debug(`StructureNode mounted for ${this.structure?.name}:`, {
-      name: this.structure?.name,
-      offset: this.structure?.offset,
-      size: this.structure?.size,
-      fullStructure: this.structure
-    })
-  },
-  
+
   computed: {
     hasChildren() {
-      return this.structure && 
-             this.structure.fields && 
-             Array.isArray(this.structure.fields) && 
-             this.structure.fields.length > 0
+      return (
+        this.structure &&
+        this.structure.fields &&
+        Array.isArray(this.structure.fields) &&
+        this.structure.fields.length > 0
+      )
     },
-    
+
     displayName() {
       if (!this.structure) return 'Unknown'
-      
+
       if (this.structure.name) {
         return this.structure.name
       }
@@ -108,16 +92,16 @@ export default {
       }
       return 'Unknown'
     },
-    
+
     displayValue() {
       if (!this.structure) return null
-      
+
       const value = this.structure.value
-      
+
       if (value === null || value === undefined) {
         return null
       }
-      
+
       if (typeof value === 'object') {
         if (value.fields) {
           return `[${value.fields.length} fields]`
@@ -127,25 +111,34 @@ export default {
         }
         return null
       }
-      
+
       if (typeof value === 'number') {
         if (Number.isInteger(value)) {
           return `${value} (0x${value.toString(16).toUpperCase()})`
         }
         return value.toString()
       }
-      
+
       if (typeof value === 'string') {
         if (value.length > 50) {
           return `"${value.substring(0, 50)}..."`
         }
         return `"${value}"`
       }
-      
+
       return value.toString()
     }
   },
-  
+
+  mounted() {
+    logger.debug(`StructureNode mounted for ${this.structure?.name}:`, {
+      name: this.structure?.name,
+      offset: this.structure?.offset,
+      size: this.structure?.size,
+      fullStructure: this.structure
+    })
+  },
+
   methods: {
     handleToggle() {
       if (this.hasChildren) {
@@ -154,11 +147,11 @@ export default {
         this.$emit('select', this.structure)
       }
     },
-    
+
     handleHover() {
       this.$emit('hover', this.structure)
     },
-    
+
     handleHoverEnd() {
       this.$emit('hover', null)
     }

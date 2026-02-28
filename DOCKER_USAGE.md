@@ -5,11 +5,13 @@ BytesRevealer provides two Docker configurations to suit different deployment ne
 ## Option 1: Nginx-based (Recommended for Production)
 
 **Files:**
+
 - `Dockerfile.nginx` - Multi-stage build with Nginx
 - `docker-compose.nginx.yml` - Optimized production deployment
 - `nginx/nginx-optimized.conf` - High-performance Nginx configuration
 
 ### Advantages:
+
 - ✅ **Smaller image size** (~40MB vs ~170MB)
 - ✅ **Better performance** for static files
 - ✅ **Lower memory usage** (64-128MB)
@@ -18,6 +20,7 @@ BytesRevealer provides two Docker configurations to suit different deployment ne
 - ✅ **PWA and Service Worker support**
 
 ### Usage:
+
 ```bash
 # Build the image
 docker-compose -f docker-compose.nginx.yml build
@@ -30,6 +33,7 @@ docker-compose -f docker-compose.nginx.yml down
 ```
 
 ### Features:
+
 - Full PWA support with service worker
 - Optimized caching strategies
 - Gzip compression
@@ -43,16 +47,19 @@ docker-compose -f docker-compose.nginx.yml down
 ## Option 2: Node.js with Serve (Current Default)
 
 **Files:**
+
 - `Dockerfile` - Multi-stage build with Node.js
 - `docker-compose.yml` - Standard deployment
 
 ### Advantages:
+
 - ✅ **Development consistency** (same as Vite dev server)
 - ✅ **Easier debugging** with Node.js
 - ✅ **Potential for server-side features** in future
 - ✅ **Built-in SPA routing** with serve package
 
 ### Usage:
+
 ```bash
 # Build the image
 docker-compose build
@@ -65,6 +72,7 @@ docker-compose down
 ```
 
 ### Features:
+
 - Simple configuration
 - Health checks
 - Auto-restart on failure
@@ -74,24 +82,25 @@ docker-compose down
 
 ## Comparison Table
 
-| Feature | Nginx | Node.js + Serve |
-|---------|-------|-----------------|
-| Image Size | ~40MB | ~170MB |
-| Memory Usage | 64-128MB | 256-512MB |
-| CPU Usage | Very Low | Low-Medium |
-| Static File Performance | Excellent | Good |
-| Gzip Compression | Native | Via Serve |
-| Caching Control | Advanced | Basic |
-| Security Headers | Configured | Basic |
-| PWA Support | Full | Full |
-| Build Time | Fast | Fast |
-| Production Ready | Yes ✅ | Yes |
+| Feature                 | Nginx      | Node.js + Serve |
+| ----------------------- | ---------- | --------------- |
+| Image Size              | ~40MB      | ~170MB          |
+| Memory Usage            | 64-128MB   | 256-512MB       |
+| CPU Usage               | Very Low   | Low-Medium      |
+| Static File Performance | Excellent  | Good            |
+| Gzip Compression        | Native     | Via Serve       |
+| Caching Control         | Advanced   | Basic           |
+| Security Headers        | Configured | Basic           |
+| PWA Support             | Full       | Full            |
+| Build Time              | Fast       | Fast            |
+| Production Ready        | Yes ✅     | Yes             |
 
 ---
 
 ## Which Should You Use?
 
 ### Use **Nginx** (docker-compose.nginx.yml) when:
+
 - Deploying to production
 - Resource constraints (VPS, cloud)
 - Need maximum performance
@@ -99,6 +108,7 @@ docker-compose down
 - Want smallest footprint
 
 ### Use **Node.js** (docker-compose.yml) when:
+
 - Development environment
 - Need consistency with dev server
 - Planning server-side features
@@ -109,6 +119,7 @@ docker-compose down
 ## Quick Commands
 
 ### Nginx Version:
+
 ```bash
 # Build and run
 docker-compose -f docker-compose.nginx.yml up -d --build
@@ -124,6 +135,7 @@ docker-compose -f docker-compose.nginx.yml down
 ```
 
 ### Node.js Version:
+
 ```bash
 # Build and run
 docker-compose up -d --build
@@ -176,12 +188,14 @@ For production, we recommend using the **Nginx configuration** with these additi
 Both configurations support environment variables:
 
 ### Nginx Version:
+
 ```yaml
 environment:
-  - TZ=America/New_York  # Timezone
+  - TZ=America/New_York # Timezone
 ```
 
 ### Node Version:
+
 ```yaml
 environment:
   - NODE_ENV=production

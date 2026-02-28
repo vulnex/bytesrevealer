@@ -1,6 +1,5 @@
 import { ref, reactive } from 'vue'
 import {
-  processFileInChunks,
   analyzeFileInChunks,
   validateFileSize,
   formatFileSize as formatFileSizeUtil,
@@ -8,10 +7,8 @@ import {
   detectFileType,
   FILE_LIMITS
 } from '../utils/fileHandler'
-import { FILE_SIGNATURES, detectFileTypes, isFileType } from '../utils/fileSignatures'
+import { isFileType } from '../utils/fileSignatures'
 import {
-  findPEHeaderOffset,
-  analyzePEStructure,
   detectSpecificFileType,
   detectNestedFiles
 } from '../utils/advancedFileDetection'
@@ -106,11 +103,12 @@ export function useFileProcessing() {
       const enhancedTypes = await detectSpecificFileType(fileBytes.value)
       const nestedFiles = await detectNestedFiles(fileBytes.value)
 
-      fileSignatures.value = enhancedTypes.map(type => ({
+      fileSignatures.value = enhancedTypes.map((type) => ({
         ...type,
-        nestedFiles: nestedFiles.filter(nested =>
-          nested.offset >= type.offset &&
-          nested.offset < (type.offset + (type.size || fileBytes.value.length))
+        nestedFiles: nestedFiles.filter(
+          (nested) =>
+            nested.offset >= type.offset &&
+            nested.offset < type.offset + (type.size || fileBytes.value.length)
         )
       }))
 
@@ -126,14 +124,10 @@ export function useFileProcessing() {
     }
   }
 
-  async function handleFileUpload(event, {
-    features,
-    hasSessionData,
-    pendingSessionFile,
-    coloredBytes,
-    activeTab,
-    onSessionClear
-  }) {
+  async function handleFileUpload(
+    event,
+    { features, hasSessionData, pendingSessionFile, coloredBytes, activeTab, onSessionClear }
+  ) {
     const file = event.target.files[0]
     if (!file) return
 
@@ -142,8 +136,8 @@ export function useFileProcessing() {
       error.value = null
       resetProgress()
 
-      const isSessionFileReload = hasSessionData.value &&
-        pendingSessionFile.value?.name === file.name
+      const isSessionFileReload =
+        hasSessionData.value && pendingSessionFile.value?.name === file.name
 
       if (!isSessionFileReload) {
         coloredBytes.value = []
@@ -186,7 +180,7 @@ export function useFileProcessing() {
         error.value = `Loading large file (${(file.size / 1024 / 1024).toFixed(0)}MB). This may take a moment...`
       }
 
-      await new Promise(resolve => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 10))
 
       if (file.size > 50 * 1024 * 1024) {
         logger.info('Using chunk manager for large file')
@@ -215,8 +209,11 @@ export function useFileProcessing() {
       try {
         detectedFileType.value = await detectFileType(file)
 
-        if (detectedFileType.value && detectedFileType.value.ext === 'zip' &&
-            file.name.toLowerCase().endsWith('.app.zip')) {
+        if (
+          detectedFileType.value &&
+          detectedFileType.value.ext === 'zip' &&
+          file.name.toLowerCase().endsWith('.app.zip')
+        ) {
           detectedFileType.value.description = 'macOS Application Bundle (ZIP)'
         }
       } catch (err) {
@@ -274,27 +271,22 @@ export function useFileProcessing() {
             })
             entropy.value = entropyResult.globalEntropy
             logger.info(`Calculated entropy using optimized sampling: ${entropy.value.toFixed(4)}`)
-            logger.info(`Processed ${formatFileSize(entropyResult.processedBytes)} of ${formatFileSize(entropyResult.totalBytes)}`)
+            logger.info(
+              `Processed ${formatFileSize(entropyResult.processedBytes)} of ${formatFileSize(entropyResult.totalBytes)}`
+            )
 
             progress.value = 100
           } else {
-            const hashResult = await calculateFileHashes(
-              file,
-              (prog) => {
-                progress.value = 20 + prog * 0.4
-              }
-            )
+            const hashResult = await calculateFileHashes(file, (prog) => {
+              progress.value = 20 + prog * 0.4
+            })
             hashes.value = hashResult
 
             detectedFileType.value = await detectFileType(file)
 
-            const results = await analyzeFileInChunks(
-              file,
-              { fileAnalysis: true },
-              (prog) => {
-                progress.value = 60 + prog * 0.4
-              }
-            )
+            const results = await analyzeFileInChunks(file, { fileAnalysis: true }, (prog) => {
+              progress.value = 60 + prog * 0.4
+            })
             entropy.value = results.entropy
 
             progress.value = 100

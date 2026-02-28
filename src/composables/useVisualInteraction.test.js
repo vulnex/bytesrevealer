@@ -5,7 +5,12 @@ import { useVisualInteraction } from './useVisualInteraction'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
@@ -33,22 +38,20 @@ function makeDeps(overrides = {}) {
 }
 
 function mockByteEvent(byteIndex, button = 0) {
-  const element = byteIndex !== null
-    ? { dataset: { byteIndex: String(byteIndex) } }
-    : null
+  const element = byteIndex !== null ? { dataset: { byteIndex: String(byteIndex) } } : null
   return {
     button,
     preventDefault: vi.fn(),
     clientX: 100,
     clientY: 200,
-    target: { closest: vi.fn(sel => sel === '[data-byte-index]' ? element : null) }
+    target: { closest: vi.fn((sel) => (sel === '[data-byte-index]' ? element : null)) }
   }
 }
 
 function mockGlobalClickEvent(targetSelector = null) {
   return {
     target: {
-      closest: vi.fn(sel => sel === targetSelector ? {} : null)
+      closest: vi.fn((sel) => (sel === targetSelector ? {} : null))
     }
   }
 }
@@ -147,15 +150,15 @@ describe('useVisualInteraction', () => {
       const [result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
       expect(result.formatOffset(0)).toBe('00000000')
       expect(result.formatOffset(255)).toBe('000000FF')
-      expect(result.formatOffset(0x1234ABCD)).toBe('1234ABCD')
+      expect(result.formatOffset(0x1234abcd)).toBe('1234ABCD')
       app.unmount()
     })
 
     it('isAsciiByte returns true for printable ASCII (32-126)', () => {
       const emit = vi.fn()
       const [result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
-      expect(result.isAsciiByte(32)).toBe(true)  // space
-      expect(result.isAsciiByte(65)).toBe(true)  // A
+      expect(result.isAsciiByte(32)).toBe(true) // space
+      expect(result.isAsciiByte(65)).toBe(true) // A
       expect(result.isAsciiByte(126)).toBe(true) // ~
       expect(result.isAsciiByte(31)).toBe(false) // control
       expect(result.isAsciiByte(127)).toBe(false) // DEL
@@ -366,11 +369,7 @@ describe('useVisualInteraction', () => {
       const coloredBytes = [{ start: 10, end: 15, color: '#00ff00' }]
       const bookmarks = [{ offset: 10, color: '#0000ff' }]
       const [result, app] = withSetup(() =>
-        useVisualInteraction(
-          makeProps({ annotations, coloredBytes, bookmarks }),
-          emit,
-          makeDeps()
-        )
+        useVisualInteraction(makeProps({ annotations, coloredBytes, bookmarks }), emit, makeDeps())
       )
       const styles = result.getByteStyles(10)
       expect(styles.backgroundColor).toBe('#00ff00')
@@ -383,11 +382,7 @@ describe('useVisualInteraction', () => {
       const emit = vi.fn()
       const annotations = [{ startOffset: 10, endOffset: 20, color: '#ff0000' }]
       const [result, app] = withSetup(() =>
-        useVisualInteraction(
-          makeProps({ annotations }),
-          emit,
-          makeDeps({ baseOffset: ref(100) })
-        )
+        useVisualInteraction(makeProps({ annotations }), emit, makeDeps({ baseOffset: ref(100) }))
       )
       // displayOffset=110 => actualOffset=10, which is in annotation range
       const styles = result.getByteStyles(110)
@@ -771,11 +766,7 @@ describe('useVisualInteraction', () => {
     it('handleJump alerts when offset exceeds file bounds', () => {
       const emit = vi.fn()
       const [result, app] = withSetup(() =>
-        useVisualInteraction(
-          makeProps({ fileBytes: new Uint8Array(100) }),
-          emit,
-          makeDeps()
-        )
+        useVisualInteraction(makeProps({ fileBytes: new Uint8Array(100) }), emit, makeDeps())
       )
       result.jumpOffset.value = '100'
       result.handleJump()
@@ -854,7 +845,7 @@ describe('useVisualInteraction', () => {
     it('registers keydown listener on mount', () => {
       const addSpy = vi.spyOn(window, 'addEventListener')
       const emit = vi.fn()
-      const [result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
+      const [_result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
       expect(addSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
       addSpy.mockRestore()
       app.unmount()
@@ -863,7 +854,7 @@ describe('useVisualInteraction', () => {
     it('removes keydown listener on unmount', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener')
       const emit = vi.fn()
-      const [result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
+      const [_result, app] = withSetup(() => useVisualInteraction(makeProps(), emit, makeDeps()))
       app.unmount()
       expect(removeSpy).toHaveBeenCalledWith('keydown', expect.any(Function))
       removeSpy.mockRestore()

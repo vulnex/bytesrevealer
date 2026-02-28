@@ -3,13 +3,23 @@ import { ref, onMounted, onUnmounted, nextTick } from 'vue'
 /**
  * Composable for jump-to-offset UI logic, scroll navigation, and window event listener.
  */
-export function useHexNavigation(props, {
-  containerRef, ROW_HEIGHT, BYTES_PER_ROW,
-  totalRows, scrollTop, forceViewRow,
-  useVirtualNavigation, virtualOffset,
-  navigationInProgress, handleScroll,
-  hoveredByte, baseOffset
-}) {
+export function useHexNavigation(
+  props,
+  {
+    containerRef,
+    ROW_HEIGHT,
+    BYTES_PER_ROW,
+    totalRows,
+    scrollTop,
+    forceViewRow,
+    useVirtualNavigation,
+    virtualOffset,
+    navigationInProgress,
+    handleScroll,
+    hoveredByte,
+    baseOffset
+  }
+) {
   const jumpOffset = ref('')
 
   function handleJump() {
@@ -74,8 +84,8 @@ export function useHexNavigation(props, {
         try {
           await Promise.all(loadPromises)
           await nextTick()
-          await new Promise(resolve => setTimeout(resolve, 100))
-        } catch (error) {
+          await new Promise((resolve) => setTimeout(resolve, 100))
+        } catch (_error) {
           // chunk loading failed
         }
       }
@@ -133,13 +143,13 @@ export function useHexNavigation(props, {
             const nextEnd = Math.min((chunkIndex + 2) * CHUNK_SIZE, props.fileBytes.length)
             props.chunkManager.getRange(nextStart, nextEnd)
           }
-        } catch (error) {
+        } catch (_error) {
           // chunk loading failed
         }
       }
 
       await nextTick()
-      await new Promise(resolve => setTimeout(resolve, 100))
+      await new Promise((resolve) => setTimeout(resolve, 100))
 
       return true
     }
@@ -162,7 +172,7 @@ export function useHexNavigation(props, {
     return true
   }
 
-  async function scrollToOffset(offset, length = 1) {
+  async function scrollToOffset(offset, _length = 1) {
     await navigateToOffset(offset)
   }
 

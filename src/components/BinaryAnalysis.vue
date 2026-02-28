@@ -1,14 +1,6 @@
-/**
- * VULNEX -Bytes Revealer-
- *
- * File: BinaryAnalysis.vue
- * Author: Simon Roses Femerling
- * Created: 2026-02-09
- * Version: 0.1
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: BinaryAnalysis.vue * Author: Simon Roses Femerling *
+Created: 2026-02-09 * Version: 0.1 * License: Apache-2.0 * Copyright (c) 2025 VULNEX. All rights
+reserved. * https://www.vulnex.com */
 
 <template>
   <div v-if="binaryDetails" class="binary-analysis">
@@ -115,13 +107,15 @@ export default {
   },
   computed: {
     executableSig() {
-      return this.fileSignatures.find(s =>
-        s.name && (
-          s.name.includes('Windows Executable (PE)') ||
-          s.name === 'ELF Binary' ||
-          s.name.includes('Mach-O')
-        )
-      ) || null
+      return (
+        this.fileSignatures.find(
+          (s) =>
+            s.name &&
+            (s.name.includes('Windows Executable (PE)') ||
+              s.name === 'ELF Binary' ||
+              s.name.includes('Mach-O'))
+        ) || null
+      )
     },
 
     binaryDetails() {
@@ -147,14 +141,16 @@ export default {
 
       if (this.fileFormat === 'PE') {
         if (d.machine) f['Machine'] = d.machine
-        if (d.is64bit !== undefined) f['Architecture'] = d.is64bit ? '64-bit (PE32+)' : '32-bit (PE32)'
+        if (d.is64bit !== undefined)
+          f['Architecture'] = d.is64bit ? '64-bit (PE32+)' : '32-bit (PE32)'
         if (d.subsystem) f['Subsystem'] = d.subsystem
         if (d.entryPoint) f['Entry Point'] = d.entryPoint
         if (d.imageBase) f['Image Base'] = d.imageBase
         if (d.timestamp) f['Timestamp'] = d.timestamp
         if (d.characteristics) f['Characteristics'] = d.characteristics.join(', ')
         if (d.isNet) f['.NET Assembly'] = 'Yes'
-        if (d.hasCertificate !== undefined) f['Authenticode Signed'] = d.hasCertificate ? `Yes (${d.certificateSize} bytes)` : 'No'
+        if (d.hasCertificate !== undefined)
+          f['Authenticode Signed'] = d.hasCertificate ? `Yes (${d.certificateSize} bytes)` : 'No'
         if (d.hasDebugInfo !== undefined) f['Debug Info'] = d.hasDebugInfo ? 'Present' : 'Stripped'
       } else if (this.fileFormat === 'ELF') {
         if (d.class) f['Class'] = d.class
@@ -162,7 +158,9 @@ export default {
         if (d.machine) f['Machine'] = d.machine
         if (d.entryPoint) f['Entry Point'] = d.entryPoint
         if (d.interpreter) f['Interpreter'] = d.interpreter
-        if (d.sections !== undefined) f['Sections'] = typeof d.sections === 'number' ? d.sections : (d.sectionNames || []).length
+        if (d.sections !== undefined)
+          f['Sections'] =
+            typeof d.sections === 'number' ? d.sections : (d.sectionNames || []).length
         if (d.isStripped !== undefined) f['Stripped'] = d.isStripped ? 'Yes' : 'No'
         if (d.rpath) f['RPATH'] = d.rpath
         if (d.runpath) f['RUNPATH'] = d.runpath
@@ -192,24 +190,104 @@ export default {
 
       if (this.fileFormat === 'PE') {
         const s = d.security || {}
-        feats.push({ name: 'ASLR', status: s.aslr ? 'Enabled' : 'Disabled', icon: s.aslr ? '+' : '!', cls: s.aslr ? 'ba-sec-ok' : 'ba-sec-bad' })
-        feats.push({ name: 'DEP/NX', status: s.dep ? 'Enabled' : 'Disabled', icon: s.dep ? '+' : '!', cls: s.dep ? 'ba-sec-ok' : 'ba-sec-bad' })
-        feats.push({ name: 'CFG', status: s.cfg ? 'Enabled' : 'Disabled', icon: s.cfg ? '+' : '!', cls: s.cfg ? 'ba-sec-ok' : 'ba-sec-bad' })
-        feats.push({ name: 'High Entropy VA', status: s.highEntropyVA ? 'Enabled' : 'Disabled', icon: s.highEntropyVA ? '+' : '!', cls: s.highEntropyVA ? 'ba-sec-ok' : 'ba-sec-warn' })
-        feats.push({ name: 'SEH', status: s.noSEH ? 'Not Used' : 'Used', icon: s.noSEH ? '+' : '~', cls: s.noSEH ? 'ba-sec-ok' : 'ba-sec-info' })
-        feats.push({ name: 'Force Integrity', status: s.forceIntegrity ? 'Enabled' : 'Disabled', icon: s.forceIntegrity ? '+' : '~', cls: s.forceIntegrity ? 'ba-sec-ok' : 'ba-sec-info' })
-        if (d.hasRWXSections) feats.push({ name: 'RWX Sections', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
+        feats.push({
+          name: 'ASLR',
+          status: s.aslr ? 'Enabled' : 'Disabled',
+          icon: s.aslr ? '+' : '!',
+          cls: s.aslr ? 'ba-sec-ok' : 'ba-sec-bad'
+        })
+        feats.push({
+          name: 'DEP/NX',
+          status: s.dep ? 'Enabled' : 'Disabled',
+          icon: s.dep ? '+' : '!',
+          cls: s.dep ? 'ba-sec-ok' : 'ba-sec-bad'
+        })
+        feats.push({
+          name: 'CFG',
+          status: s.cfg ? 'Enabled' : 'Disabled',
+          icon: s.cfg ? '+' : '!',
+          cls: s.cfg ? 'ba-sec-ok' : 'ba-sec-bad'
+        })
+        feats.push({
+          name: 'High Entropy VA',
+          status: s.highEntropyVA ? 'Enabled' : 'Disabled',
+          icon: s.highEntropyVA ? '+' : '!',
+          cls: s.highEntropyVA ? 'ba-sec-ok' : 'ba-sec-warn'
+        })
+        feats.push({
+          name: 'SEH',
+          status: s.noSEH ? 'Not Used' : 'Used',
+          icon: s.noSEH ? '+' : '~',
+          cls: s.noSEH ? 'ba-sec-ok' : 'ba-sec-info'
+        })
+        feats.push({
+          name: 'Force Integrity',
+          status: s.forceIntegrity ? 'Enabled' : 'Disabled',
+          icon: s.forceIntegrity ? '+' : '~',
+          cls: s.forceIntegrity ? 'ba-sec-ok' : 'ba-sec-info'
+        })
+        if (d.hasRWXSections)
+          feats.push({ name: 'RWX Sections', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
       } else if (this.fileFormat === 'ELF') {
-        if (d.pie !== undefined) feats.push({ name: 'PIE/ASLR', status: d.pie ? 'Enabled' : 'Disabled', icon: d.pie ? '+' : '!', cls: d.pie ? 'ba-sec-ok' : 'ba-sec-bad' })
-        if (d.relro) feats.push({ name: 'RELRO', status: d.relro, icon: d.relro === 'full' ? '+' : (d.relro === 'partial' ? '~' : '!'), cls: d.relro === 'full' ? 'ba-sec-ok' : (d.relro === 'partial' ? 'ba-sec-warn' : 'ba-sec-bad') })
-        if (d.executableStack !== undefined) feats.push({ name: 'NX Stack', status: d.executableStack ? 'Disabled (Exec Stack)' : 'Enabled', icon: d.executableStack ? '!' : '+', cls: d.executableStack ? 'ba-sec-bad' : 'ba-sec-ok' })
-        if (d.textrel !== undefined) feats.push({ name: 'TEXTREL', status: d.textrel ? 'Present' : 'None', icon: d.textrel ? '!' : '+', cls: d.textrel ? 'ba-sec-bad' : 'ba-sec-ok' })
-        if (d.hasRWXSegments) feats.push({ name: 'RWX Segments', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
+        if (d.pie !== undefined)
+          feats.push({
+            name: 'PIE/ASLR',
+            status: d.pie ? 'Enabled' : 'Disabled',
+            icon: d.pie ? '+' : '!',
+            cls: d.pie ? 'ba-sec-ok' : 'ba-sec-bad'
+          })
+        if (d.relro)
+          feats.push({
+            name: 'RELRO',
+            status: d.relro,
+            icon: d.relro === 'full' ? '+' : d.relro === 'partial' ? '~' : '!',
+            cls:
+              d.relro === 'full'
+                ? 'ba-sec-ok'
+                : d.relro === 'partial'
+                  ? 'ba-sec-warn'
+                  : 'ba-sec-bad'
+          })
+        if (d.executableStack !== undefined)
+          feats.push({
+            name: 'NX Stack',
+            status: d.executableStack ? 'Disabled (Exec Stack)' : 'Enabled',
+            icon: d.executableStack ? '!' : '+',
+            cls: d.executableStack ? 'ba-sec-bad' : 'ba-sec-ok'
+          })
+        if (d.textrel !== undefined)
+          feats.push({
+            name: 'TEXTREL',
+            status: d.textrel ? 'Present' : 'None',
+            icon: d.textrel ? '!' : '+',
+            cls: d.textrel ? 'ba-sec-bad' : 'ba-sec-ok'
+          })
+        if (d.hasRWXSegments)
+          feats.push({ name: 'RWX Segments', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
       } else if (this.fileFormat === 'MachO') {
-        if (d.pie !== undefined) feats.push({ name: 'PIE/ASLR', status: d.pie ? 'Enabled' : 'Disabled', icon: d.pie ? '+' : '!', cls: d.pie ? 'ba-sec-ok' : 'ba-sec-bad' })
-        if (d.allowStackExecution !== undefined) feats.push({ name: 'Stack Execution', status: d.allowStackExecution ? 'Allowed' : 'Blocked', icon: d.allowStackExecution ? '!' : '+', cls: d.allowStackExecution ? 'ba-sec-bad' : 'ba-sec-ok' })
-        if (d.noHeapExecution !== undefined) feats.push({ name: 'Heap Execution', status: d.noHeapExecution ? 'Blocked' : 'Allowed', icon: d.noHeapExecution ? '+' : '~', cls: d.noHeapExecution ? 'ba-sec-ok' : 'ba-sec-info' })
-        if (d.hasRWXSegments) feats.push({ name: 'RWX Segments', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
+        if (d.pie !== undefined)
+          feats.push({
+            name: 'PIE/ASLR',
+            status: d.pie ? 'Enabled' : 'Disabled',
+            icon: d.pie ? '+' : '!',
+            cls: d.pie ? 'ba-sec-ok' : 'ba-sec-bad'
+          })
+        if (d.allowStackExecution !== undefined)
+          feats.push({
+            name: 'Stack Execution',
+            status: d.allowStackExecution ? 'Allowed' : 'Blocked',
+            icon: d.allowStackExecution ? '!' : '+',
+            cls: d.allowStackExecution ? 'ba-sec-bad' : 'ba-sec-ok'
+          })
+        if (d.noHeapExecution !== undefined)
+          feats.push({
+            name: 'Heap Execution',
+            status: d.noHeapExecution ? 'Blocked' : 'Allowed',
+            icon: d.noHeapExecution ? '+' : '~',
+            cls: d.noHeapExecution ? 'ba-sec-ok' : 'ba-sec-info'
+          })
+        if (d.hasRWXSegments)
+          feats.push({ name: 'RWX Segments', status: 'Detected', icon: '!', cls: 'ba-sec-bad' })
       }
 
       return feats
@@ -222,7 +300,7 @@ export default {
       if (this.fileFormat === 'PE') {
         const secs = d.sections
         if (!Array.isArray(secs)) return []
-        return secs.map(s => ({
+        return secs.map((s) => ({
           name: s.name || '?',
           virtualSize: s.virtualSize !== undefined ? `0x${s.virtualSize.toString(16)}` : '-',
           rawSize: s.sizeOfRawData !== undefined ? `0x${s.sizeOfRawData.toString(16)}` : '-',
@@ -234,7 +312,7 @@ export default {
       if (this.fileFormat === 'MachO') {
         const segs = d.segments
         if (!Array.isArray(segs)) return []
-        return segs.map(s => ({
+        return segs.map((s) => ({
           name: s.name || '?',
           virtualSize: s.vmsize !== undefined ? `0x${s.vmsize.toString(16)}` : '-',
           rawSize: '-',
@@ -247,7 +325,7 @@ export default {
       if (this.fileFormat === 'ELF') {
         const segs = d.segments
         if (!Array.isArray(segs)) return []
-        return segs.map(s => ({
+        return segs.map((s) => ({
           name: s.type || 'PT_LOAD',
           virtualSize: s.memsz !== undefined ? `0x${s.memsz.toString(16)}` : '-',
           rawSize: '-',
@@ -402,29 +480,45 @@ export default {
   background-color: rgba(72, 187, 120, 0.12);
   border: 1px solid rgba(72, 187, 120, 0.3);
 }
-.ba-sec-ok .ba-security-icon { color: rgb(72, 187, 120); }
-.ba-sec-ok .ba-security-name { color: rgb(72, 187, 120); }
+.ba-sec-ok .ba-security-icon {
+  color: rgb(72, 187, 120);
+}
+.ba-sec-ok .ba-security-name {
+  color: rgb(72, 187, 120);
+}
 
 .ba-sec-bad {
   background-color: rgba(239, 68, 68, 0.12);
   border: 1px solid rgba(239, 68, 68, 0.3);
 }
-.ba-sec-bad .ba-security-icon { color: rgb(239, 68, 68); }
-.ba-sec-bad .ba-security-name { color: rgb(239, 68, 68); }
+.ba-sec-bad .ba-security-icon {
+  color: rgb(239, 68, 68);
+}
+.ba-sec-bad .ba-security-name {
+  color: rgb(239, 68, 68);
+}
 
 .ba-sec-warn {
   background-color: rgba(237, 137, 54, 0.12);
   border: 1px solid rgba(237, 137, 54, 0.3);
 }
-.ba-sec-warn .ba-security-icon { color: rgb(237, 137, 54); }
-.ba-sec-warn .ba-security-name { color: rgb(237, 137, 54); }
+.ba-sec-warn .ba-security-icon {
+  color: rgb(237, 137, 54);
+}
+.ba-sec-warn .ba-security-name {
+  color: rgb(237, 137, 54);
+}
 
 .ba-sec-info {
   background-color: rgba(99, 179, 237, 0.12);
   border: 1px solid rgba(99, 179, 237, 0.3);
 }
-.ba-sec-info .ba-security-icon { color: rgb(99, 179, 237); }
-.ba-sec-info .ba-security-name { color: rgb(99, 179, 237); }
+.ba-sec-info .ba-security-icon {
+  color: rgb(99, 179, 237);
+}
+.ba-sec-info .ba-security-name {
+  color: rgb(99, 179, 237);
+}
 
 /* Sections table */
 .ba-table {

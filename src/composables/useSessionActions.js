@@ -19,9 +19,7 @@ export function useSessionActions(props, emit, { updateStorageUsage }) {
   const isBusy = computed(() => sessionStore.isLoading || sessionStore.isSaving)
 
   const canSave = computed(() => {
-    return props.hasFileLoaded &&
-           newSessionName.value.trim().length > 0 &&
-           !isBusy.value
+    return props.hasFileLoaded && newSessionName.value.trim().length > 0 && !isBusy.value
   })
 
   // Display helpers
@@ -74,10 +72,7 @@ export function useSessionActions(props, emit, { updateStorageUsage }) {
       sessionStore.setSaving(true)
       sessionStore.clearError()
 
-      const session = await sessionManager.saveSession(
-        newSessionName.value.trim(),
-        props.appState
-      )
+      const session = await sessionManager.saveSession(newSessionName.value.trim(), props.appState)
 
       sessionStore.addSession(sessionManager.extractMetadata(session))
       sessionStore.setCurrentSession(session.id, session.name)

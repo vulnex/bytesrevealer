@@ -5,7 +5,12 @@ import { useVisualScroll } from './useVisualScroll'
 
 function withSetup(fn) {
   let result
-  const app = createApp({ setup() { result = fn(); return () => {} } })
+  const app = createApp({
+    setup() {
+      result = fn()
+      return () => {}
+    }
+  })
   app.mount(document.createElement('div'))
   return [result, app]
 }
@@ -309,7 +314,7 @@ describe('useVisualScroll', () => {
       result.containerRef.value = mockContainer(240)
       result.handleScroll()
       expect(result.scrollTop.value).toBe(0) // not yet
-      rafCallbacks.forEach(cb => cb())
+      rafCallbacks.forEach((cb) => cb())
       expect(result.scrollTop.value).toBe(240)
       app.unmount()
     })
@@ -328,7 +333,7 @@ describe('useVisualScroll', () => {
       const [result, app] = withSetup(() => useVisualScroll(makeProps(), ref(0)))
       result.containerRef.value = null
       result.handleScroll()
-      rafCallbacks.forEach(cb => cb())
+      rafCallbacks.forEach((cb) => cb())
       expect(result.scrollTop.value).toBe(0)
       app.unmount()
     })
@@ -365,7 +370,7 @@ describe('useVisualScroll', () => {
   describe('lifecycle', () => {
     it('registers resize listener on mount', () => {
       const addSpy = vi.spyOn(window, 'addEventListener')
-      const [result, app] = withSetup(() => useVisualScroll(makeProps(), ref(0)))
+      const [_result, app] = withSetup(() => useVisualScroll(makeProps(), ref(0)))
       expect(addSpy).toHaveBeenCalledWith('resize', expect.any(Function))
       addSpy.mockRestore()
       app.unmount()
@@ -373,15 +378,16 @@ describe('useVisualScroll', () => {
 
     it('removes resize listener on unmount', () => {
       const removeSpy = vi.spyOn(window, 'removeEventListener')
-      const [result, app] = withSetup(() => useVisualScroll(makeProps(), ref(0)))
+      const [_result, app] = withSetup(() => useVisualScroll(makeProps(), ref(0)))
       app.unmount()
       expect(removeSpy).toHaveBeenCalledWith('resize', expect.any(Function))
       removeSpy.mockRestore()
     })
 
+    // eslint-disable-next-line vitest/expect-expect -- smoke test: verifies no throw
     it('adds scroll listener to containerRef on mount', () => {
       const container = mockContainer(0)
-      const [result, app] = withSetup(() => {
+      const [_result, app] = withSetup(() => {
         const scroll = useVisualScroll(makeProps(), ref(0))
         scroll.containerRef.value = container
         return scroll

@@ -1,49 +1,35 @@
-/** 
- * VULNEX -Bytes Revealer-
- * 
- * File: KaitaiStructureView.vue
- * Author: Simon Roses Femerling
- * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
- * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
- * https://www.vulnex.com
- */
+/** * VULNEX -Bytes Revealer- * * File: KaitaiStructureView.vue * Author: Simon Roses Femerling *
+Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache-2.0 * Copyright (c)
+2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="kaitai-structure-view">
     <!-- Format Selector -->
     <FormatSelector
-      :fileBytes="fileBytes"
-      :fileName="fileName"
-      :detectedFormat="formatName"
+      :file-bytes="fileBytes"
+      :file-name="fileName"
+      :detected-format="formatName"
       @format-changed="handleFormatChanged"
       @error="handleFormatError"
     />
-    
-    <div v-if="loading" class="loading">
-      Parsing structure...
-    </div>
-    
+
+    <div v-if="loading" class="loading">Parsing structure...</div>
+
     <div v-else-if="error" class="error">
       {{ error }}
     </div>
-    
+
     <div v-else-if="safeStructures && safeStructures.length > 0" class="structure-tree">
       <div class="structure-header">
         <span class="format-name">{{ formatName }} Structure</span>
-        <button @click="toggleExpanded" class="toggle-btn">
+        <button class="toggle-btn" @click="toggleExpanded">
           {{ allExpanded ? 'Collapse All' : 'Expand All' }}
         </button>
       </div>
-      
+
       <div class="structure-content">
         <template v-for="(struct, index) in safeStructures" :key="index">
-          <div 
-            v-if="struct && typeof struct === 'object'"
-            class="structure-item"
-          >
+          <div v-if="struct && typeof struct === 'object'" class="structure-item">
             <StructureNode
               :structure="struct"
               :depth="0"
@@ -56,10 +42,8 @@
         </template>
       </div>
     </div>
-    
-    <div v-else class="no-structure">
-      No structure available for this format
-    </div>
+
+    <div v-else class="no-structure">No structure available for this format</div>
   </div>
 </template>
 
@@ -73,12 +57,12 @@ const logger = createLogger('KaitaiStructureView')
 
 export default {
   name: 'KaitaiStructureView',
-  
+
   components: {
     StructureNode,
     FormatSelector
   },
-  
+
   props: {
     structures: {
       type: Array,
@@ -110,31 +94,31 @@ export default {
       default: null
     }
   },
-  
+
   emits: ['hover', 'select', 'highlight', 'format-changed'],
-  
+
   setup(props, { emit }) {
     // Use toRefs for better reactivity
-    const { structures, formatName, loading, error, currentOffset } = toRefs(props)
-    
+    const { structures, formatName: _formatName, loading: _loading, error: _error, currentOffset } = toRefs(props)
+
     const expandedNodes = ref(new Set())
     const allExpanded = ref(false)
-    
+
     // Ensure props have default values
     const safeStructures = computed(() => {
       const structs = structures.value
       logger.debug('KaitaiStructureView received structures:', structs)
       if (!structs || !Array.isArray(structs)) return []
-      const filtered = structs.filter(s => s && typeof s === 'object')
+      const filtered = structs.filter((s) => s && typeof s === 'object')
       logger.debug('KaitaiStructureView filtered structures:', filtered)
       return filtered
     })
-    
+
     const getNodeKey = (struct, index) => {
       if (!struct) return `null_${index}`
       return `${struct.offset || 0}_${index}`
     }
-    
+
     const toggleNode = (key) => {
       if (expandedNodes.value.has(key)) {
         expandedNodes.value.delete(key)
@@ -142,7 +126,7 @@ export default {
         expandedNodes.value.add(key)
       }
     }
-    
+
     const toggleExpanded = () => {
       if (allExpanded.value) {
         expandedNodes.value.clear()
@@ -162,7 +146,7 @@ export default {
       }
       allExpanded.value = !allExpanded.value
     }
-    
+
     const addNestedKeys = (fields, prefix) => {
       if (!fields || !Array.isArray(fields)) return
       fields.forEach((field, index) => {
@@ -174,7 +158,7 @@ export default {
         }
       })
     }
-    
+
     const handleHover = (structure) => {
       if (!structure) {
         // Clear highlight when hover ends
@@ -183,26 +167,31 @@ export default {
         return
       }
       emit('hover', structure)
-      if (structure && structure.offset !== undefined && structure.offset !== null && structure.size) {
+      if (
+        structure &&
+        structure.offset !== undefined &&
+        structure.offset !== null &&
+        structure.size
+      ) {
         emit('highlight', {
           start: structure.offset,
           end: structure.offset + structure.size
         })
       }
     }
-    
+
     const handleSelect = (structure) => {
       emit('select', structure)
     }
-    
+
     const handleFormatChanged = (event) => {
       emit('format-changed', event)
     }
-    
+
     const handleFormatError = (error) => {
       logger.error('Format error:', error)
     }
-    
+
     // Auto-expand structures at current offset
     watch(currentOffset, (newOffset) => {
       if (!newOffset || typeof newOffset !== 'number') return
@@ -216,7 +205,7 @@ export default {
         }
       })
     })
-    
+
     return {
       expandedNodes,
       allExpanded,
@@ -286,7 +275,9 @@ export default {
   margin-bottom: 4px;
 }
 
-.loading, .error, .no-structure {
+.loading,
+.error,
+.no-structure {
   padding: 20px;
   text-align: center;
   color: var(--text-secondary);
