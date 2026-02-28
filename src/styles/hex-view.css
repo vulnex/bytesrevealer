@@ -1,0 +1,648 @@
+.hex-view-container {
+  display: flex;
+  width: 100%;
+  height: 600px; /* Optimized height */
+  gap: 0;
+  max-width: 100%;
+  overflow: hidden;
+}
+
+.main-panel {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+}
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color);
+}
+
+.jump-control {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.jump-input {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.jump-button {
+  padding: 6px 12px;
+  background-color: var(--link-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.content-area {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 12px; /* Reduced padding for more compact layout */
+}
+
+.color-controls {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+  padding: 0 8px 10px 8px;
+}
+
+.hex-options {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.capitalize-button,
+.color-toggle-button {
+  padding: 6px 12px;
+  background: var(--button-bg, #4a5568);
+  color: var(--button-text, white);
+  border: 1px solid var(--button-border, #2d3748);
+  border-radius: 4px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.capitalize-button:hover,
+.color-toggle-button:hover {
+  background: var(--button-hover-bg, #2d3748);
+  transform: translateY(-1px);
+}
+
+.color-toggle-button.colors-disabled {
+  opacity: 0.6;
+}
+
+.color-icon {
+  font-size: 16px;
+}
+
+.case-icon {
+  display: inline-block;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  letter-spacing: -2px;
+}
+
+/* Right panel with tabs */
+.right-panel {
+  flex: 0 0 450px; /* Increased for better content display */
+  width: 450px;
+  border-left: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Tab styles exactly matching main navigation */
+.tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 1px;
+  background-color: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 8px 12px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+  white-space: nowrap;
+  font-size: 0.85rem;
+}
+
+.tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--tab-active-color, #48bb78); /* Use green color, fallback if not defined */
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Tab content */
+.tab-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  background-color: var(--bg-primary);
+}
+
+.tab-pane {
+  height: 100%;
+  overflow: auto;
+  padding: 0;
+}
+
+/* Ensure the container takes full height */
+:deep(.data-inspector) {
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Update container styles */
+.hex-view {
+  background-color: var(--bg-secondary);
+  padding: 0;
+  border-radius: 8px;
+  height: 600px;
+  display: flex;
+  flex-direction: row;
+  user-select: none;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 20px;
+  overflow: hidden;
+}
+
+/* Content area styles */
+.hex-content {
+  flex: 1;
+  height: 100%;
+  overflow-x: auto;
+  overflow-y: auto;
+  position: relative;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+/* Virtual scrolling styles */
+.virtual-scroll-content {
+  position: absolute;
+  width: 100%;
+}
+
+.visible-window {
+  position: absolute;
+  width: 100%;
+  will-change: transform;
+}
+
+/* Column Headers */
+.hex-header {
+  padding: 8px 8px;
+  background: var(--header-bg, #2d3748);
+  color: var(--header-text, #e2e8f0);
+  border-bottom: 2px solid var(--header-border, #4a5568);
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  font-weight: 600;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  white-space: nowrap;
+}
+
+/* CSS Grid Layout */
+.hex-grid-row {
+  display: grid;
+  grid-template-columns: 96px repeat(16, 24px) 1fr;
+  gap: 4px;
+  align-items: center;
+}
+
+.grid-offset {
+  color: var(--hex-offset);
+  text-align: left;
+  padding-right: 8px;
+}
+
+.grid-hex-byte {
+  text-align: center;
+  padding: 1px 0;
+  border-radius: 2px;
+  cursor: pointer;
+  color: var(--hex-text);
+}
+
+.grid-hex-byte.empty {
+  cursor: default;
+}
+
+.grid-ascii {
+  padding-left: 8px;
+  white-space: nowrap;
+}
+
+/* Header row ASCII text should match other headers */
+.hex-header .grid-ascii {
+  color: inherit; /* Use header text color */
+  font-weight: 600;
+}
+
+/* Data row ASCII text uses normal ascii color */
+.hex-row .grid-ascii {
+  color: var(--hex-ascii);
+}
+
+.header-offset {
+  display: inline-block;
+  width: 96px;
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-right: 16px;
+}
+
+.header-hex-values {
+  display: inline-block;
+  width: 380px; /* 16 bytes * 20px + 15 spaces * 4px = 320px + 60px = 380px */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  white-space: nowrap;
+  letter-spacing: 0;
+  margin-right: 16px;
+}
+
+.header-ascii {
+  display: inline-block;
+  min-width: 160px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Row styles */
+.hex-row {
+  padding: 2px 8px;
+  white-space: nowrap;
+  height: 24px;
+  line-height: 18px;
+  color: var(--text-primary);
+  font-size: 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+}
+
+/* Offset column styles */
+.offset {
+  display: inline-block;
+  width: 96px;
+  color: var(--hex-offset);
+  text-align: left;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  margin-right: 16px;
+}
+
+/* Hex values section styles */
+.hex-values {
+  display: inline-block;
+  width: 380px; /* Match header width exactly: 16*20px + 15*4px = 380px */
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  color: var(--hex-text);
+  white-space: nowrap;
+  letter-spacing: 0;
+  margin-right: 16px;
+}
+
+/* ASCII section styles */
+.ascii-column {
+  display: inline-block;
+  min-width: 160px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  color: var(--hex-ascii);
+  white-space: nowrap;
+}
+
+/* Common styles for both hex and ASCII characters */
+.hex-byte,
+.ascii-char {
+  cursor: pointer;
+  transition: all 0.15s ease;
+  color: var(--hex-text);
+}
+
+.header-byte {
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+}
+
+.hex-byte {
+  display: inline-block;
+  width: 20px;
+  text-align: center;
+  padding: 1px 0;
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+.hex-byte.empty {
+  cursor: default;
+}
+
+.hex-spacer {
+  display: inline-block;
+  width: 4px;
+}
+
+.ascii-char {
+  padding: 1px;
+  border-radius: 2px;
+}
+
+/* Spacing for hex bytes */
+/* Remove the old margin rule as we handle spacing inline */
+
+/* Interactive states - Light mode (blue theme) */
+.grid-hex-byte.hovered,
+.ascii-char.hovered {
+  background-color: rgba(59, 130, 246, 0.2); /* Semi-transparent blue */
+  outline: 1px solid #3b82f6;
+  outline-offset: -1px;
+}
+
+.grid-hex-byte.highlighted,
+.ascii-char.highlighted {
+  background-color: #3b82f6 !important; /* Blue background for light mode */
+  color: white !important;
+  font-weight: 500;
+}
+
+/* Light mode styles for new elements */
+:root:not([class='dark-mode']) .capitalize-button,
+:root:not([class='dark-mode']) .color-toggle-button {
+  background: #e2e8f0;
+  color: #2d3748;
+  border-color: #cbd5e0;
+}
+
+:root:not([class='dark-mode']) .capitalize-button:hover,
+:root:not([class='dark-mode']) .color-toggle-button:hover {
+  background: #cbd5e0;
+}
+
+:root:not([class='dark-mode']) .hex-header {
+  background: #f7fafc;
+  color: #2d3748;
+  border-bottom-color: #cbd5e0;
+}
+
+.grid-hex-byte.selected,
+.ascii-char.selected {
+  outline: 2px solid #3b82f6;
+  outline-offset: -2px;
+}
+
+/* Dark mode specific overrides */
+:root[class='dark-mode'] .hex-view {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .hex-byte,
+:root[class='dark-mode'] .ascii-char {
+  color: var(--hex-text);
+}
+
+:root[class='dark-mode'] .capitalize-button,
+:root[class='dark-mode'] .color-toggle-button {
+  background: #4a5568;
+  color: #e2e8f0;
+  border-color: #2d3748;
+}
+
+:root[class='dark-mode'] .capitalize-button:hover,
+:root[class='dark-mode'] .color-toggle-button:hover {
+  background: #2d3748;
+}
+
+:root[class='dark-mode'] .hex-header {
+  background: #1a202c;
+  color: #e2e8f0;
+  border-bottom-color: #2d3748;
+}
+
+:root[class='dark-mode'] .offset {
+  color: var(--hex-offset);
+}
+
+:root[class='dark-mode'] .ascii-column {
+  color: var(--hex-ascii);
+}
+
+/* Byte value-based coloring for better visibility */
+.byte-null {
+  color: #999;
+}
+
+.byte-white {
+  color: var(--text-primary) !important;
+}
+
+.byte-printable {
+  color: #333;
+}
+
+.byte-control {
+  color: #666;
+}
+
+.byte-extended {
+  color: #555;
+}
+
+.byte-ff {
+  color: #777;
+}
+
+.byte-default {
+  color: #444;
+}
+
+/* Dark mode byte coloring - much brighter colors for visibility */
+:root[class='dark-mode'] .byte-null {
+  color: #888 !important;
+}
+
+:root[class='dark-mode'] .byte-printable {
+  color: #f0f0f0 !important;  /* Bright white for printable ASCII */
+}
+
+:root[class='dark-mode'] .byte-control {
+  color: #ffb86c !important;  /* Orange for control characters */
+}
+
+:root[class='dark-mode'] .byte-extended {
+  color: #bd93f9 !important;  /* Purple for extended ASCII */
+}
+
+:root[class='dark-mode'] .byte-ff {
+  color: #ff79c6 !important;  /* Pink for FF bytes */
+}
+
+:root[class='dark-mode'] .byte-default {
+  color: #e0e0e0 !important;  /* Light gray default */
+}
+
+/* Fix highlight visibility in dark mode */
+:root[class='dark-mode'] .grid-hex-byte.highlighted,
+:root[class='dark-mode'] .ascii-char.highlighted {
+  background-color: #fb923c !important; /* Orange background for better consistency */
+  color: white !important;
+  font-weight: 500;
+}
+
+:root[class='dark-mode'] .grid-hex-byte.hovered,
+:root[class='dark-mode'] .ascii-char.hovered {
+  background-color: rgba(251, 146, 60, 0.3); /* Semi-transparent orange for hover */
+  color: white;
+  outline: 1px solid #fb923c;
+  outline-offset: -1px;
+}
+
+/* Utilities */
+::selection {
+  background: transparent;
+}
+
+/* Add to existing styles */
+.grid-hex-byte.locked {
+  outline: 2px solid var(--link-color);
+  outline-offset: -2px;
+  background-color: var(--link-color);
+  color: white;
+}
+
+/* Add these styles */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.base-offset-indicator {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--link-color);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  margin-bottom: 8px;
+  justify-content: space-between;
+}
+
+.jump-button {
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.jump-button:hover {
+  background-color: white;
+  color: var(--link-color);
+}
+
+.jump-dialog {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.jump-dialog input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.jump-dialog button {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.jump-dialog button:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+/* Dark mode support for tabs - matching main navigation */
+:root[class='dark-mode'] .tabs {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .tab {
+  color: var(--text-secondary);
+}
+
+:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .tab.active {
+  background-color: var(--bg-primary);
+  color: var(--tab-active-color, #68d391); /* Use green color, fallback if not defined */
+}
+
+/* Kaitai Structure Panel Styles */
