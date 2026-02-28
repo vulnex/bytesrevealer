@@ -670,3 +670,200 @@ input[type='search'] {
 :root[class='dark-mode'] .view-container > div {
   color: var(--text-primary);
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  body {
+    padding: 10px;
+  }
+
+  .container {
+    padding: 10px;
+  }
+
+  h1 {
+    font-size: 20px;
+    margin-bottom: 12px;
+  }
+
+  .title {
+    font-size: 20px;
+    margin-bottom: 6px;
+  }
+
+  .subtitle {
+    font-size: 14px;
+    margin-bottom: 4px;
+  }
+
+  .copyright {
+    font-size: 13px;
+    margin-bottom: 12px;
+  }
+
+  /* Tabs: horizontal scroll on tablet */
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    flex-wrap: nowrap;
+    scrollbar-width: thin;
+  }
+
+  .tab {
+    padding: 6px 12px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* Analysis options grid: 2 columns on tablet */
+  .analysis-options .grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  /* View container */
+  .view-container {
+    padding: 12px;
+    min-height: 300px;
+  }
+
+  /* File input area */
+  .custom-file-input {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .file-name {
+    white-space: normal;
+    word-break: break-all;
+  }
+
+  /* Info tab content */
+  .view-container .bg-gray-100 {
+    padding: 12px;
+  }
+
+  /* Session restore banner */
+  .session-restore-banner {
+    padding: 12px 14px;
+  }
+
+  .session-restore-banner .banner-file-info {
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  /* Squares group: fewer columns on tablet */
+  .squares-group {
+    grid-template-columns: repeat(16, 12px);
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  body {
+    padding: 6px;
+  }
+
+  .container {
+    padding: 6px;
+    max-width: 100%;
+  }
+
+  h1 {
+    font-size: 16px;
+    margin-bottom: 8px;
+  }
+
+  .title {
+    font-size: 16px;
+  }
+
+  .subtitle {
+    font-size: 12px;
+  }
+
+  .copyright {
+    font-size: 11px;
+    margin-bottom: 8px;
+  }
+
+  /* Tabs: smaller on phone */
+  .tabs {
+    padding: 2px;
+    gap: 0;
+  }
+
+  .tab {
+    padding: 5px 8px;
+    font-size: 12px;
+  }
+
+  /* Analysis options: single column on phone */
+  .analysis-options .grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .analysis-options {
+    padding: 10px;
+    margin-bottom: 12px;
+  }
+
+  /* View container */
+  .view-container {
+    padding: 8px;
+    min-height: 250px;
+    border-radius: 6px;
+  }
+
+  /* File input */
+  .custom-file-input {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .file-button {
+    padding: 8px 14px;
+    font-size: 13px;
+  }
+
+  .file-name {
+    font-size: 13px;
+  }
+
+  .help-section {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  /* Performance indicator */
+  .performance-indicator {
+    font-size: 12px;
+    padding: 6px 10px;
+  }
+
+  /* Info tab: tighter spacing */
+  .view-container .bg-gray-100 {
+    padding: 8px;
+  }
+
+  .view-container .bg-gray-100 h2 {
+    font-size: 1rem;
+  }
+
+  .view-container .bg-gray-100 ul,
+  .view-container .bg-gray-100 ol {
+    margin-left: 16px;
+  }
+
+  /* Squares group: 8 columns on phone */
+  .squares-group {
+    grid-template-columns: repeat(8, 12px);
+  }
+}

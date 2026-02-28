@@ -980,7 +980,11 @@ export default {
   color: var(--text-primary);
 }
 
-/* Responsive */
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
 @media (max-width: 768px) {
   .control-row {
     flex-direction: column;
@@ -989,10 +993,133 @@ export default {
 
   .rule-select {
     width: 100%;
+    min-width: unset;
   }
 
   .highlight-toggle {
     margin-left: 0;
+  }
+
+  .header-section {
+    padding: 16px;
+  }
+
+  .header-section h2 {
+    font-size: 1.25rem;
+  }
+
+  .editor-section {
+    padding: 14px;
+  }
+
+  .action-bar {
+    padding: 12px 14px;
+  }
+
+  .results-section {
+    padding: 14px;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 10px;
+  }
+
+  .no-results-banner {
+    padding: 16px;
+    margin: 12px;
+  }
+
+  .match-table th,
+  .match-table td {
+    padding: 6px 8px;
+    font-size: 0.8rem;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .header-section {
+    padding: 12px;
+  }
+
+  .header-section h2 {
+    font-size: 1.1rem;
+  }
+
+  .header-section p {
+    font-size: 0.85rem;
+  }
+
+  .editor-section {
+    padding: 10px;
+  }
+
+  .rules-editor {
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+
+  .action-bar {
+    padding: 10px;
+    gap: 8px;
+  }
+
+  .scan-btn {
+    padding: 6px 16px;
+    font-size: 0.85rem;
+  }
+
+  .clear-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .results-section {
+    padding: 10px;
+  }
+
+  .rule-header {
+    padding: 10px 12px;
+    gap: 6px;
+  }
+
+  .rule-body {
+    padding: 8px 12px;
+  }
+
+  .no-results-banner {
+    flex-direction: column;
+    text-align: center;
+    padding: 16px;
+    margin: 10px;
+  }
+
+  .empty-state {
+    padding: 30px 12px;
+  }
+
+  .import-btn {
+    width: 100%;
+    text-align: center;
+  }
+
+  .warning-banner {
+    padding: 10px 14px;
+    font-size: 0.85rem;
   }
 }
 </style>

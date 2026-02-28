@@ -449,4 +449,37 @@ button.bg-gray-200 {
   border-color: var(--link-color);
   color: var(--link-color);
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .theme-options {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .theme-button {
+    width: 100%;
+    justify-content: center;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .settings-panel {
+    padding: 10px;
+  }
+
+  .theme-button {
+    padding: 6px 12px;
+    font-size: 0.9rem;
+  }
+
+  .form-input {
+    width: 100%;
+  }
+}
 </style>

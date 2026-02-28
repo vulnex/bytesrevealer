@@ -977,4 +977,101 @@ kbd {
 .dialog-content::-webkit-scrollbar-thumb:hover {
   background: var(--text-secondary);
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .help-dialog {
+    width: 95%;
+    max-height: 85vh;
+  }
+
+  .dialog-header {
+    padding: 14px;
+  }
+
+  .dialog-title {
+    font-size: 20px;
+  }
+
+  .dialog-tabs {
+    padding: 0 10px;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab-button {
+    padding: 10px 16px;
+    font-size: 13px;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .dialog-content {
+    padding: 14px;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .help-dialog {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 90vh;
+    border-radius: 8px 8px 0 0;
+    margin: auto 0 0 0;
+  }
+
+  .dialog-header {
+    padding: 10px 12px;
+  }
+
+  .dialog-title {
+    font-size: 16px;
+  }
+
+  .dialog-tabs {
+    padding: 0 8px;
+  }
+
+  .tab-button {
+    padding: 8px 12px;
+    font-size: 12px;
+  }
+
+  .dialog-content {
+    padding: 10px;
+  }
+
+  .tab-content h3 {
+    font-size: 16px;
+  }
+
+  .tab-content h4 {
+    font-size: 14px;
+  }
+
+  .changelog-entry,
+  .manual-section,
+  .license-content,
+  .about-section,
+  .credits-section {
+    padding: 10px;
+  }
+
+  .credits-category {
+    padding: 10px;
+  }
+
+  .credit-item {
+    padding: 8px;
+  }
+
+  .license-content {
+    font-size: 12px;
+  }
+}
 </style>

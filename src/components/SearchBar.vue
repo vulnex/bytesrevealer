@@ -329,4 +329,61 @@ export default {
 :root[class='dark-mode'] .progress-bar {
   background-color: var(--bg-tertiary);
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .search-box {
+    flex-wrap: wrap;
+  }
+
+  .search-type {
+    min-width: 80px;
+  }
+
+  .search-box input {
+    flex: 1 1 200px;
+  }
+
+  .search-results {
+    flex-wrap: wrap;
+    gap: 0.25rem;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .search-box {
+    flex-direction: column;
+    gap: 0.25rem;
+  }
+
+  .search-type {
+    width: 100%;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .search-button,
+  .clear-button,
+  .cancel-button {
+    width: 100%;
+    text-align: center;
+  }
+
+  .search-results {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .nav-button {
+    padding: 0.25rem 0.75rem;
+    font-size: 0.8rem;
+  }
+}
 </style>

@@ -122,3 +122,57 @@ button:disabled {
   position: relative;
   min-height: 200px;
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+@media (max-width: 768px) {
+  .container {
+    padding: 10px;
+  }
+
+  .search-box {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .search-box input {
+    width: 100%;
+    min-width: 0;
+  }
+
+  .tabs {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .tab {
+    padding: 8px 14px;
+    font-size: 14px;
+    white-space: nowrap;
+  }
+}
+
+@media (max-width: 480px) {
+  .container {
+    padding: 6px;
+  }
+
+  .search-box {
+    flex-direction: column;
+  }
+
+  .search-box input {
+    width: 100%;
+  }
+
+  .tab {
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+
+  .view-container {
+    min-height: 150px;
+  }
+}

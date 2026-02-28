@@ -715,4 +715,19 @@ export default {
   border-radius: 0.375rem;
   background: var(--bg-primary, #1e1e1e);
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .api-section {
+    padding: 0.5rem;
+  }
+
+  .api-url-input {
+    width: 100%;
+  }
+}
 </style>

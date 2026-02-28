@@ -429,3 +429,94 @@
   --text-secondary: #9ca3af;
   --border-color: #374151;
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .session-controls {
+    padding: 0.75rem;
+  }
+
+  .current-session {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .current-session-actions {
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .save-form {
+    flex-direction: column;
+  }
+
+  .session-item {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .session-item-actions {
+    margin-left: 0;
+    align-self: flex-end;
+  }
+
+  .storage-item {
+    flex-wrap: wrap;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .session-controls {
+    padding: 0.5rem;
+  }
+
+  .session-header h3 {
+    font-size: 1.1rem;
+  }
+
+  .sessions-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 0.5rem;
+  }
+
+  .sessions-actions {
+    width: 100%;
+  }
+
+  .session-item {
+    padding: 0.5rem 0.75rem;
+  }
+
+  .session-item-header {
+    flex-wrap: wrap;
+  }
+
+  .session-item-meta {
+    font-size: 0.7rem;
+  }
+
+  .session-list {
+    max-height: 300px;
+  }
+
+  .modal-content {
+    width: 95%;
+    max-width: 95vw;
+  }
+
+  .btn {
+    padding: 0.375rem 0.75rem;
+    font-size: 0.8rem;
+  }
+
+  .storage-label {
+    min-width: 80px;
+  }
+}

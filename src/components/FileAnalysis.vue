@@ -634,4 +634,103 @@ export default {
     transform: rotate(360deg);
   }
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .analysis-panel {
+    padding: 12px;
+  }
+
+  .stats-section h3,
+  .entropy-analysis h3 {
+    font-size: 1.25rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+    padding: 10px;
+  }
+
+  .file-type-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .file-type-section {
+    padding: 12px;
+  }
+
+  .graph-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .graph-tabs button {
+    padding: 6px 12px;
+    font-size: 13px;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .analysis-panel {
+    padding: 8px;
+  }
+
+  .stats-section h3,
+  .entropy-analysis h3 {
+    font-size: 1.1rem;
+    margin-bottom: 10px;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .stat-item {
+    padding: 8px;
+  }
+
+  .stat-item label {
+    font-size: 0.8rem;
+  }
+
+  .stat-item span {
+    font-size: 0.85rem;
+  }
+
+  .file-type-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .file-type-section {
+    padding: 10px;
+    margin-bottom: 16px;
+  }
+
+  .file-type-section h3 {
+    font-size: 1rem;
+  }
+
+  .type-value {
+    font-size: 0.9rem;
+  }
+
+  .graph-tabs button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .entropy-placeholder {
+    padding: 16px;
+  }
+}
 </style>

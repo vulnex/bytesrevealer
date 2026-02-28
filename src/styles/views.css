@@ -165,3 +165,67 @@
   background-color: rgba(59, 130, 246, 0.2) !important;
   outline: 1px solid rgba(59, 130, 246, 0.5) !important;
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .visual-view,
+  .hex-view {
+    padding: 12px;
+  }
+
+  .byte-row,
+  .hex-line {
+    font-size: 11px;
+  }
+
+  /* Color palette: wrap nicely */
+  .color-palette {
+    padding: 6px;
+    margin-bottom: 8px;
+  }
+
+  /* Squares group: fewer columns */
+  .squares-group {
+    grid-template-columns: repeat(16, 12px);
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .visual-view,
+  .hex-view {
+    padding: 8px;
+  }
+
+  .byte-row,
+  .hex-line {
+    font-size: 10px;
+    padding: 1px 2px;
+  }
+
+  .offset {
+    margin-right: 1ch;
+  }
+
+  .hex-values {
+    margin-right: 1ch;
+  }
+
+  .byte-square {
+    width: 10px;
+    height: 10px;
+  }
+
+  .squares-group {
+    grid-template-columns: repeat(8, 10px);
+    gap: 0;
+  }
+
+  .color-palette {
+    padding: 4px;
+  }
+}

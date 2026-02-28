@@ -529,10 +529,18 @@
   background-color: var(--bg-secondary);
 }
 
-/* Responsive design */
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
 @media (max-width: 768px) {
   .filter-controls {
     flex-direction: column;
+  }
+
+  .search-container {
+    min-width: 100%;
   }
 
   .search-input {
@@ -547,5 +555,187 @@
   .cell-offset,
   .cell-size {
     display: none;
+  }
+
+  .header-section {
+    padding: 16px;
+  }
+
+  .header-section h2 {
+    font-size: 1.25rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    padding: 12px;
+  }
+
+  .stat-value {
+    font-size: 1.25rem;
+  }
+
+  .filter-section {
+    padding: 12px;
+  }
+
+  .table-container {
+    padding: 10px;
+  }
+
+  .strings-table th,
+  .string-row td {
+    padding: 8px;
+    font-size: 0.8rem;
+  }
+
+  .string-value {
+    max-width: 250px;
+    font-size: 0.8rem;
+  }
+
+  .pagination {
+    padding: 12px;
+    gap: 10px;
+  }
+
+  .page-btn {
+    padding: 6px 12px;
+    font-size: 0.8rem;
+  }
+
+  /* Modal responsive */
+  .modal-content {
+    width: 95%;
+    max-width: 95vw;
+  }
+
+  .modal-header {
+    padding: 14px;
+  }
+
+  .modal-body {
+    padding: 14px;
+  }
+
+  .modal-actions {
+    padding: 14px;
+    flex-wrap: wrap;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .header-section {
+    padding: 12px;
+  }
+
+  .header-section h2 {
+    font-size: 1.1rem;
+  }
+
+  .header-section p {
+    font-size: 0.85rem;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    padding: 8px;
+  }
+
+  .stat-card {
+    padding: 10px;
+  }
+
+  .stat-label {
+    font-size: 0.75rem;
+  }
+
+  .stat-value {
+    font-size: 1.1rem;
+  }
+
+  .filter-section {
+    padding: 8px;
+  }
+
+  .filter-select {
+    width: 100%;
+    font-size: 0.85rem;
+  }
+
+  /* Hide type and actions columns on phone */
+  .th-type,
+  .th-actions {
+    display: none;
+  }
+
+  .string-row td:nth-child(2),
+  .cell-actions {
+    display: none;
+  }
+
+  .string-value {
+    max-width: 200px;
+    font-size: 0.75rem;
+  }
+
+  .table-container {
+    padding: 6px;
+  }
+
+  .strings-table th,
+  .string-row td {
+    padding: 6px;
+  }
+
+  .pagination {
+    padding: 8px;
+    gap: 8px;
+    flex-wrap: wrap;
+  }
+
+  .page-btn {
+    padding: 5px 10px;
+    font-size: 0.75rem;
+  }
+
+  /* Modal full width on phone */
+  .modal-content {
+    width: 100%;
+    max-width: 100vw;
+    max-height: 90vh;
+    border-radius: 8px 8px 0 0;
+    margin: auto 0 0 0;
+  }
+
+  .modal-header {
+    padding: 12px;
+  }
+
+  .modal-header h3 {
+    font-size: 1rem;
+  }
+
+  .modal-body {
+    padding: 12px;
+  }
+
+  .modal-actions {
+    padding: 12px;
+  }
+
+  .string-full-content {
+    font-size: 0.8rem;
+    padding: 8px;
+  }
+
+  .empty-state {
+    padding: 30px 12px;
+  }
+
+  .loading-section {
+    padding: 12px;
   }
 }

@@ -203,3 +203,72 @@
   margin-top: 0.25rem;
   text-align: right;
 }
+
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .stats-grid {
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+  }
+
+  .graph-tabs {
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .graph-tabs button {
+    padding: 5px 10px;
+    font-size: 12px;
+  }
+
+  .graph-legend {
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+
+  .graph-container {
+    height: 120px;
+    padding: 10px;
+  }
+
+  .loading-overlay {
+    padding: 20px;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .stats-grid {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .stat-item {
+    padding: 8px;
+    font-size: 12px;
+  }
+
+  .graph-container {
+    height: 100px;
+    padding: 8px;
+  }
+
+  .graph-tabs button {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
+
+  .graph-legend {
+    font-size: 11px;
+    padding: 6px;
+    gap: 8px;
+  }
+
+  .analysis-panel {
+    padding: 12px;
+  }
+}

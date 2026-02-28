@@ -645,4 +645,198 @@
   color: var(--tab-active-color, #68d391); /* Use green color, fallback if not defined */
 }
 
+/* =============================================
+   RESPONSIVE / MOBILE SUPPORT
+   ============================================= */
+
+/* --- Tablet breakpoint (768px) --- */
+@media (max-width: 768px) {
+  .hex-view-container {
+    flex-direction: column;
+    height: auto;
+    min-height: 500px;
+  }
+
+  .hex-view {
+    height: auto;
+    min-height: 500px;
+    flex-direction: column;
+  }
+
+  /* Right panel stacks below main panel */
+  .right-panel {
+    flex: none;
+    width: 100%;
+    height: 300px;
+    border-left: none;
+    border-top: 1px solid var(--border-color);
+  }
+
+  /* Controls bar wraps */
+  .controls-bar {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 6px;
+  }
+
+  .jump-control {
+    max-width: 100%;
+    flex: 1 1 200px;
+  }
+
+  .toolbar-buttons {
+    margin-left: 0;
+    padding-left: 0;
+    border-left: none;
+  }
+
+  /* Hex content: allow horizontal scroll */
+  .hex-content {
+    font-size: 12px;
+    overflow-x: auto;
+  }
+
+  .hex-row {
+    font-size: 12px;
+  }
+
+  /* Reduce offset column width */
+  .offset,
+  .grid-offset,
+  .header-offset {
+    width: 72px;
+    min-width: 72px;
+  }
+
+  /* Hex grid layout: narrower */
+  .hex-grid-row {
+    grid-template-columns: 72px repeat(16, 20px) 1fr;
+    gap: 2px;
+  }
+
+  .hex-values {
+    width: auto;
+  }
+
+  .header-hex-values {
+    width: auto;
+  }
+
+  /* Content area: less padding */
+  .content-area {
+    padding: 8px;
+  }
+
+  /* Tabs in right panel */
+  .right-panel .tabs {
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .right-panel .tab {
+    flex-shrink: 0;
+    font-size: 0.8rem;
+    padding: 6px 10px;
+  }
+}
+
+/* --- Phone breakpoint (480px) --- */
+@media (max-width: 480px) {
+  .hex-view-container {
+    min-height: 400px;
+  }
+
+  .hex-view {
+    min-height: 400px;
+  }
+
+  .right-panel {
+    height: 250px;
+  }
+
+  .controls-bar {
+    padding: 4px;
+    gap: 4px;
+  }
+
+  .jump-control {
+    flex: 1 1 100%;
+  }
+
+  .jump-input {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .jump-button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  /* Smaller hex font on phone */
+  .hex-content {
+    font-size: 11px;
+    line-height: 1.4;
+  }
+
+  .hex-row {
+    font-size: 11px;
+    height: 20px;
+    line-height: 16px;
+  }
+
+  .hex-header {
+    font-size: 11px;
+  }
+
+  /* Hide ASCII column on very small screens */
+  .grid-ascii,
+  .ascii-column,
+  .header-ascii {
+    display: none;
+  }
+
+  /* Compact hex grid */
+  .hex-grid-row {
+    grid-template-columns: 56px repeat(16, 18px);
+    gap: 1px;
+  }
+
+  .offset,
+  .grid-offset,
+  .header-offset {
+    width: 56px;
+    min-width: 56px;
+    font-size: 10px;
+  }
+
+  .hex-byte,
+  .grid-hex-byte {
+    width: 16px;
+    font-size: 11px;
+  }
+
+  .header-byte {
+    width: 16px;
+    font-size: 10px;
+  }
+
+  /* Capitalize and color buttons: compact */
+  .capitalize-button,
+  .color-toggle-button {
+    padding: 4px 8px;
+    font-size: 12px;
+  }
+
+  .content-area {
+    padding: 4px;
+  }
+
+  .base-offset-indicator {
+    font-size: 0.75rem;
+    padding: 3px 6px;
+  }
+}
+
 /* Kaitai Structure Panel Styles */
