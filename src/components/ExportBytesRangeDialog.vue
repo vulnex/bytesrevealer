@@ -225,9 +225,11 @@
 </template>
 
 <script>
-import { ref, computed, watch } from 'vue'
+import { computed, watch } from 'vue'
 import ByteFormatter from '../services/ByteFormatter'
 import { createLogger } from '../utils/logger'
+import { useExportRange } from '../composables/useExportRange'
+import { useExportFormat } from '../composables/useExportFormat'
 
 const logger = createLogger('ExportBytesRangeDialog')
 
@@ -260,117 +262,21 @@ export default {
   emits: ['close', 'save', 'copy'],
 
   setup(props, { emit }) {
-    // Language and format definitions (same as ExportBytesDialog)
-    const languages = [
-      { id: 'javascript', name: 'JavaScript' },
-      { id: 'python', name: 'Python' },
-      { id: 'c', name: 'C/C++' },
-      { id: 'java', name: 'Java' },
-      { id: 'csharp', name: 'C#' },
-      { id: 'go', name: 'Go' },
-      { id: 'rust', name: 'Rust' },
-      { id: 'assembler', name: 'Assembler (x86)' },
-      { id: 'clang', name: 'C Language' },
-      { id: 'data', name: 'Data' }
-    ]
+    const fileSize = computed(() => props.fileSize || 0)
 
-    const formats = {
-      javascript: [
-        { id: 'js-uint8array', name: 'Uint8Array' },
-        { id: 'js-array', name: 'Array' },
-        { id: 'js-hex', name: 'Hex String' },
-        { id: 'js-base64', name: 'Base64 String' }
-      ],
-      python: [
-        { id: 'py-bytes', name: 'bytes()' },
-        { id: 'py-bytearray', name: 'bytearray()' },
-        { id: 'py-list', name: 'List' },
-        { id: 'py-hex', name: 'Hex String' }
-      ],
-      c: [
-        { id: 'c-array', name: 'unsigned char[]' },
-        { id: 'c-uint8', name: 'uint8_t[]' },
-        { id: 'cpp-vector', name: 'std::vector<uint8_t>' },
-        { id: 'c-hex', name: 'Hex String' }
-      ],
-      java: [
-        { id: 'java-array', name: 'byte[]' },
-        { id: 'java-list', name: 'List<Byte>' },
-        { id: 'java-hex', name: 'Hex String' }
-      ],
-      csharp: [
-        { id: 'csharp-array', name: 'byte[]' },
-        { id: 'csharp-list', name: 'List<byte>' },
-        { id: 'csharp-hex', name: 'Hex String' }
-      ],
-      go: [
-        { id: 'go-slice', name: '[]byte' },
-        { id: 'go-array', name: '[N]byte' },
-        { id: 'go-hex', name: 'Hex String' }
-      ],
-      rust: [
-        { id: 'rust-vec', name: 'Vec<u8>' },
-        { id: 'rust-array', name: '[u8; N]' },
-        { id: 'rust-hex', name: 'Hex String' }
-      ],
-      assembler: [
-        { id: 'asm-db', name: 'DB (Define Byte)' },
-        { id: 'asm-nasm', name: 'NASM Format' },
-        { id: 'asm-masm', name: 'MASM Format' },
-        { id: 'asm-gas', name: 'GAS/AT&T Format' }
-      ],
-      clang: [
-        { id: 'clang-array', name: 'unsigned char[]' },
-        { id: 'clang-init', name: 'Array Initializer' },
-        { id: 'clang-string', name: 'String Literal' },
-        { id: 'clang-macro', name: 'Macro Definition' }
-      ],
-      data: [
-        { id: 'hex', name: 'Hex' },
-        { id: 'hex-spaced', name: 'Hex (Spaced)' },
-        { id: 'base64', name: 'Base64' },
-        { id: 'binary', name: 'Binary' },
-        { id: 'decimal', name: 'Decimal' },
-        { id: 'escape', name: 'Escape Sequences (Unquoted)' },
-        { id: 'escape-single', name: 'Escape Sequences (Single Quotes)' },
-        { id: 'escape-double', name: 'Escape Sequences (Double Quotes)' },
-        { id: 'csv', name: 'Comma-Separated Values (CSV)' }
-      ]
-    }
+    // Composables
+    const {
+      range, rangeValid, rangeError, parsedRange,
+      parseOffset, formatOffset, formatFileSize,
+      validateRange, setRange, clearRange
+    } = useExportRange(fileSize)
 
-    // State
-    const selectedLanguage = ref('javascript')
-    const selectedFormat = ref('js-uint8array')
-    const options = ref({
-      variableName: 'data',
-      splitLines: true,
-      bytesPerLine: 16,
-      includeOffset: false,
-      uppercase: true
-    })
+    const {
+      languages, selectedLanguage, selectedFormat,
+      options, currentFormats, syntaxClass
+    } = useExportFormat()
 
-    // Range state
-    const range = ref({
-      start: '',
-      end: ''
-    })
-    const rangeValid = ref(false)
-    const rangeError = ref('')
-    const parsedRange = ref({
-      start: 0,
-      end: 0,
-      length: 0
-    })
-
-    // Computed
-    const currentFormats = computed(() => {
-      return formats[selectedLanguage.value] || []
-    })
-
-    const fileSize = computed(() => {
-      return props.fileSize || 0
-    })
-
+    // Dialog-level computed
     const selectedBytes = computed(() => {
       if (!rangeValid.value || !props.fileData) {
         return new Uint8Array()
@@ -388,7 +294,6 @@ export default {
       }
 
       try {
-        // Enhanced options for formatting
         const formatOptions = {
           ...options.value,
           lineWidth: options.value.bytesPerLine,
@@ -407,123 +312,7 @@ export default {
       }
     })
 
-    const syntaxClass = computed(() => {
-      const lang = selectedLanguage.value
-      if (lang === 'data') return 'syntax-plain'
-      if (lang === 'assembler') return 'syntax-asm'
-      if (lang === 'clang') return 'syntax-c'
-      return `syntax-${lang}`
-    })
-
-    // Methods
-    const parseOffset = (value) => {
-      if (!value) return NaN
-
-      const trimmed = value.trim()
-
-      // Handle hex format (0x prefix)
-      if (trimmed.startsWith('0x') || trimmed.startsWith('0X')) {
-        return parseInt(trimmed.substring(2), 16)
-      }
-
-      // Try decimal
-      const decimal = parseInt(trimmed, 10)
-      if (!isNaN(decimal)) {
-        return decimal
-      }
-
-      // Try as hex without prefix
-      return parseInt(trimmed, 16)
-    }
-
-    const formatOffset = (offset) => {
-      return '0x' + offset.toString(16).toUpperCase().padStart(4, '0')
-    }
-
-    const validateRange = () => {
-      const start = parseOffset(range.value.start)
-      const end = parseOffset(range.value.end)
-
-      rangeValid.value = false
-      rangeError.value = ''
-
-      // Check if fileSize is valid
-      if (!fileSize.value || fileSize.value === 0) {
-        if (range.value.start || range.value.end) {
-          rangeError.value = 'File size is not available'
-        }
-        return
-      }
-
-      if (isNaN(start) && range.value.start) {
-        rangeError.value = 'Invalid start offset'
-        return
-      }
-
-      if (isNaN(end) && range.value.end) {
-        rangeError.value = 'Invalid end offset'
-        return
-      }
-
-      if (!range.value.start || !range.value.end) {
-        return
-      }
-
-      if (start < 0) {
-        rangeError.value = 'Start offset cannot be negative'
-        return
-      }
-
-      if (end < 0) {
-        rangeError.value = 'End offset cannot be negative'
-        return
-      }
-
-      if (start >= fileSize.value) {
-        rangeError.value = `Start offset exceeds file size (${fileSize.value} bytes)`
-        return
-      }
-
-      if (end > fileSize.value) {
-        rangeError.value = `End offset exceeds file size (${fileSize.value} bytes)`
-        return
-      }
-
-      if (start >= end) {
-        rangeError.value = 'Start offset must be less than end offset'
-        return
-      }
-
-      const length = end - start
-      if (length > 10 * 1024 * 1024) { // Warn for >10MB
-        rangeError.value = `Warning: Large range (${formatFileSize(length)})`
-      }
-
-      parsedRange.value = { start, end, length }
-      rangeValid.value = true
-    }
-
-    const setRange = (start, end) => {
-      range.value.start = '0x' + start.toString(16).toUpperCase()
-      range.value.end = '0x' + end.toString(16).toUpperCase()
-      validateRange()
-    }
-
-    const clearRange = () => {
-      range.value.start = ''
-      range.value.end = ''
-      parsedRange.value = { start: 0, end: 0, length: 0 }
-      rangeValid.value = false
-      rangeError.value = ''
-    }
-
-
-    const formatFileSize = (bytes) => {
-      if (bytes < 1024) return `${bytes} B`
-      if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
-      return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
-    }
-
+    // Dialog methods
     const handleOverlayClick = (event) => {
       if (event.target === event.currentTarget) {
         close()
@@ -547,7 +336,6 @@ export default {
           range: { ...parsedRange.value }
         })
 
-        // Auto-close after successful copy
         setTimeout(() => close(), 500)
       } catch (error) {
         logger.error('Failed to copy to clipboard:', error)
@@ -562,7 +350,6 @@ export default {
       if (!rangeValid.value) return
 
       try {
-        // Determine file extension based on format
         const extensions = {
           'javascript': 'js',
           'python': 'py',
@@ -578,7 +365,6 @@ export default {
         const rangeStr = `${formatOffset(parsedRange.value.start)}_${formatOffset(parsedRange.value.end)}`
         const filename = `${options.value.variableName || 'data'}_${rangeStr}.${ext}`
 
-        // Create blob and download
         const blob = new Blob([formattedCode.value], { type: 'text/plain' })
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
@@ -595,7 +381,6 @@ export default {
           range: { ...parsedRange.value }
         })
 
-        // Auto-close after successful save
         setTimeout(() => close(), 500)
       } catch (error) {
         logger.error('Failed to save file:', error)
@@ -606,25 +391,14 @@ export default {
       }
     }
 
-    // Watch for language changes
-    watch(selectedLanguage, (newLang) => {
-      // Auto-select first format when language changes
-      const newFormats = formats[newLang]
-      if (newFormats && newFormats.length > 0) {
-        selectedFormat.value = newFormats[0].id
-      }
-    })
-
     // Auto-set initial range when dialog opens
     watch(() => props.visible, (newVal) => {
       if (newVal) {
-        // Initialize with the provided range
         if (props.initialStart !== undefined && props.initialEnd !== undefined) {
           range.value.start = '0x' + props.initialStart.toString(16).toUpperCase()
           range.value.end = '0x' + props.initialEnd.toString(16).toUpperCase()
           validateRange()
         } else {
-          // Clear range if no initial values
           range.value.start = ''
           range.value.end = ''
         }
@@ -661,457 +435,5 @@ export default {
 </script>
 
 <style scoped>
-/* Inherit most styles from ExportBytesDialog */
-/* Modal Overlay */
-.modal-overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 9999;
-  backdrop-filter: blur(2px);
-}
-
-.modal-container {
-  background: var(--bg-primary);
-  border-radius: 12px;
-  width: 90%;
-  max-width: 900px;
-  max-height: 90vh;
-  display: flex;
-  flex-direction: column;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-}
-
-/* Modal Header */
-.modal-header {
-  padding: 20px 24px;
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.modal-header h2 {
-  margin: 0;
-  font-size: 20px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.close-btn {
-  background: none;
-  border: none;
-  font-size: 28px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  padding: 0;
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 4px;
-  transition: all 0.2s;
-}
-
-.close-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-/* Modal Body */
-.modal-body {
-  padding: 24px;
-  overflow-y: auto;
-  flex: 1;
-}
-
-/* Range Section */
-.range-section {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-  border: 1px solid var(--border-color);
-}
-
-.range-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: var(--text-primary);
-}
-
-.range-inputs {
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-}
-
-.range-row {
-  display: flex;
-  gap: 12px;
-  align-items: flex-end;
-}
-
-.range-field {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.range-field label {
-  font-size: 12px;
-  color: var(--text-secondary);
-  font-weight: 500;
-}
-
-.range-input {
-  flex: 1;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-family: monospace;
-  font-size: 13px;
-}
-
-.range-input:focus {
-  outline: none;
-  border-color: #3b82f6;
-}
-
-.clear-btn {
-  padding: 8px 16px;
-  background: var(--bg-tertiary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 13px;
-  transition: all 0.15s;
-  height: 36px;
-  white-space: nowrap;
-}
-
-.clear-btn:hover {
-  background: var(--hover-bg);
-  border-color: var(--accent-color);
-}
-
-.range-info {
-  display: flex;
-  align-items: center;
-  min-height: 24px;
-  margin-top: 8px;
-}
-
-.info-text {
-  font-size: 13px;
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.info-text.success {
-  color: #10b981;
-}
-
-.info-text.error {
-  color: #ef4444;
-}
-
-.info-text.warning {
-  color: #f59e0b;
-}
-
-.quick-ranges {
-  display: flex;
-  gap: 8px;
-  margin-top: 12px;
-  flex-wrap: wrap;
-}
-
-.quick-btn {
-  padding: 6px 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-primary);
-  border-radius: 6px;
-  font-size: 12px;
-  color: var(--text-secondary);
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.quick-btn:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
-  border-color: #3b82f6;
-}
-
-/* Format Section (reuse existing styles) */
-.format-section {
-  margin-bottom: 24px;
-}
-
-.format-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: var(--text-primary);
-}
-
-.format-tabs {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 12px;
-  flex-wrap: wrap;
-}
-
-.format-tab {
-  padding: 6px 12px;
-  border: 1px solid var(--border-color);
-  background: var(--bg-secondary);
-  border-radius: 6px;
-  cursor: pointer;
-  font-size: 13px;
-  color: var(--text-secondary);
-  transition: all 0.2s;
-}
-
-.format-tab:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-.format-tab.active {
-  background: #3b82f6;
-  color: white;
-  border-color: #3b82f6;
-}
-
-.format-select {
-  width: 100%;
-  padding: 8px 12px;
-  border: 1px solid var(--border-color);
-  border-radius: 6px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-/* Options Section */
-.options-section {
-  margin-bottom: 24px;
-  padding: 16px;
-  background: var(--bg-secondary);
-  border-radius: 8px;
-}
-
-.options-section h3 {
-  font-size: 14px;
-  font-weight: 600;
-  margin: 0 0 12px 0;
-  color: var(--text-primary);
-}
-
-.option-row {
-  margin-bottom: 12px;
-}
-
-.option-row:last-child {
-  margin-bottom: 0;
-}
-
-.option-row label {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 14px;
-  color: var(--text-primary);
-  cursor: pointer;
-}
-
-.option-input {
-  padding: 6px 10px;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  background: var(--input-bg);
-  color: var(--text-primary);
-  font-size: 14px;
-}
-
-.option-input.small {
-  width: 80px;
-}
-
-/* Preview Section */
-.preview-section {
-  border: 1px solid var(--border-color);
-  border-radius: 8px;
-  overflow: hidden;
-}
-
-.preview-header {
-  padding: 12px 16px;
-  background: var(--bg-secondary);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-}
-
-.preview-header h3 {
-  margin: 0;
-  font-size: 14px;
-  font-weight: 600;
-  color: var(--text-primary);
-}
-
-.preview-info {
-  font-size: 12px;
-  color: var(--text-secondary);
-}
-
-.preview-info .warning {
-  color: #f59e0b;
-}
-
-.code-preview {
-  max-height: 300px;
-  overflow: auto;
-  background: #1e1e1e;
-  padding: 16px;
-}
-
-.code-preview pre {
-  margin: 0;
-  font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
-  font-size: 13px;
-  line-height: 1.5;
-  color: #d4d4d4;
-}
-
-.code-preview code {
-  display: block;
-  white-space: pre;
-}
-
-/* Modal Footer */
-.modal-footer {
-  padding: 16px 24px;
-  border-top: 1px solid var(--border-color);
-  display: flex;
-  gap: 12px;
-  justify-content: flex-end;
-}
-
-/* Buttons */
-.btn {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.btn:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.btn-icon {
-  font-size: 16px;
-}
-
-.btn-primary {
-  background: #3b82f6;
-  color: white;
-}
-
-.btn-primary:hover:not(:disabled) {
-  background: #2563eb;
-}
-
-.btn-secondary {
-  background: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-}
-
-.btn-secondary:hover:not(:disabled) {
-  background: var(--hover-bg);
-}
-
-.btn-cancel {
-  background: transparent;
-  color: var(--text-secondary);
-}
-
-.btn-cancel:hover {
-  background: var(--hover-bg);
-  color: var(--text-primary);
-}
-
-/* Transitions */
-.modal-enter-active,
-.modal-leave-active {
-  transition: opacity 0.3s;
-}
-
-.modal-enter-from,
-.modal-leave-to {
-  opacity: 0;
-}
-
-.modal-enter-active .modal-container,
-.modal-leave-active .modal-container {
-  transition: transform 0.3s;
-}
-
-.modal-enter-from .modal-container,
-.modal-leave-to .modal-container {
-  transform: scale(0.9);
-}
-
-/* Dark mode adjustments */
-:root[class='dark-mode'] .modal-container {
-  background: #1a202c;
-}
-
-:root[class='dark-mode'] .code-preview {
-  background: #0d1117;
-}
-
-:root[class='dark-mode'] .format-tab.active {
-  background: #2563eb;
-}
-
-:root[class='dark-mode'] .range-section {
-  background: #2d3748;
-  border-color: #4a5568;
-}
-
-:root[class='dark-mode'] .quick-btn {
-  background: #2d3748;
-  border-color: #4a5568;
-}
-
-:root[class='dark-mode'] .quick-btn:hover {
-  background: #374151;
-  border-color: #60a5fa;
-}
+@import '../styles/export-bytes-range-dialog.css';
 </style>
