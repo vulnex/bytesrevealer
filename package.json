@@ -28,7 +28,7 @@
     "kaitai-struct": "0.11.0",
     "libyara-wasm": "1.2.1",
     "pinia": "2.1.7",
-    "vue": "3.4.15",
+    "vue": "3.5.29",
     "yaml": "2.3.4"
   },
   "lint-staged": {
