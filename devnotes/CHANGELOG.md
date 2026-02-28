@@ -6,6 +6,67 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4] - 2026-02-28 (Code Quality, A11y, Responsive & Dependency Upgrades)
+
+### Added
+- **ESLint & Prettier** — ESLint 9 flat config with vue/recommended, vitest plugin, eslint-config-prettier; Prettier with project conventions (no semi, single quotes, 100 char width, LF)
+- **Pre-commit hook** — husky + lint-staged: JS/Vue files get eslint --fix + prettier --write, CSS/JSON/MD get prettier --write
+- **GitHub Actions CI** — Workflow runs lint, format check, tests, and build on push to main and on pull requests
+- **Comprehensive accessibility** across 21 components:
+  - Tab navigation: role=tablist/tab/tabpanel, aria-selected, tabindex management
+  - Dialogs: role=dialog, aria-modal, focus trapping with Tab/Shift+Tab cycling, Escape to close, focus restore (HelpDialog, ExportBytesDialog, ExportBytesRangeDialog)
+  - Toasts: role=alert/status, aria-live=assertive/polite by severity
+  - Buttons: aria-label on all icon-only buttons across 12 components
+  - Forms: aria-label on all inputs/selects lacking visible labels
+  - Progress bars: role=progressbar with aria-valuenow/min/max
+  - Loading indicators: role=status, aria-live=polite
+  - HexView: aria-label, role=grid on byte grid, tabindex=0
+  - Context menu: role=menu with aria-label
+  - Decorative elements: aria-hidden=true on icons/spinners
+- **Responsive layout** for tablet (768px) and mobile (480px) across 17 files:
+  - Tabs: horizontal scrolling, reduced padding on small screens
+  - Hex/visual views: smaller fonts, hidden ASCII on phone, stacked side panels
+  - Dialogs: full-width bottom sheets on phone with touch-friendly sizing
+  - Grids: progressive column collapse (32→16→8 for byte grids)
+  - String analysis: hidden columns, compact tables
+  - Sessions/settings/export: stacked layouts on narrow screens
+- **Gzip/Brotli pre-compression** — vite-plugin-compression2 generates .gz and .br files on build (main bundle 326KB→72KB brotli)
+- **Bundle analyzer** — rollup-plugin-visualizer behind ANALYZE=true env var, new `build:analyze` script
+- **786 new tests** (902→1688 total) across 3 new + 3 expanded test files:
+  - `UsecvislibExporter.test.js` (154 tests, was 0%)
+  - `FileChunkManager.test.js` (86 tests, was 0%)
+  - `fileHandler.test.js` (+112 tests, 6.77%→~91%)
+  - `SessionManager.test.js` (expanded, 22%→94%)
+  - `metadataExtractor.test.js` (+133 tests, 40%→73%)
+  - `advancedFileDetection.test.js` (+189 tests, 42%→75%)
+
+### Changed
+- **Vue 3.4.15 → 3.5.29** — Non-breaking minor bump
+- **Pinia 2.1.7 → 3.0.4** — Major upgrade, zero source changes needed
+- **Vite 5.4.20 → 7.3.1** — Major upgrade, zero config changes needed
+- **@vitejs/plugin-vue 5.0.3 → 6.0.4**
+- **yaml 2.3.4 → 2.8.2** (Vite 7 peer dependency)
+
+### Fixed
+- **153 ESLint warnings** — Added missing defineEmits to 8 Vue components, prefixed unused vars/params with _, removed dead imports, eslint-disable no-console in logger
+- **7 Prettier formatting inconsistencies** across source files
+- **README** — Fixed version (0.3→0.4), corrected license (MIT→Apache-2.0), fixed LICENSE.md→LICENSE link
+
+### Technical Details
+- New files:
+  - `.github/workflows/ci.yml` — CI pipeline
+  - `eslint.config.js` — ESLint 9 flat config
+  - `prettier.config.js` — Prettier config
+  - `.prettierignore` — Prettier ignore patterns
+  - `.husky/pre-commit` — Pre-commit hook
+  - `src/services/UsecvislibExporter.test.js` — 154 tests
+  - `src/utils/FileChunkManager.test.js` — 86 tests
+- ESLint config includes `caughtErrorsIgnorePattern: '^_'` for catch block variables
+- All 1688 tests pass; production build succeeds with compressed assets
+- Desktop layout completely unchanged by responsive additions
+
+---
+
 ## [0.4] - 2026-02-28 (Component Decomposition & Test Expansion)
 
 ### Changed

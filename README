@@ -238,7 +238,16 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ## Changelog
 
-### Version 0.4 (September 2025)
+### Version 0.4 — Code Quality, A11y & Responsive (February 2026)
+- ESLint 9, Prettier, pre-commit hook (husky + lint-staged), GitHub Actions CI
+- Comprehensive accessibility across 21 components (ARIA roles, focus trapping, keyboard nav)
+- Responsive layout for tablet and mobile across 17 files
+- Upgraded Vue 3.4→3.5, Pinia 2→3, Vite 5→7
+- Gzip/brotli pre-compression and bundle analyzer
+- Test suite expanded from 902 to 1688 tests (+87%)
+- Fixed 153 lint warnings, 7 Prettier inconsistencies, README license correction
+
+### Version 0.4 — Kaitai, Sessions & YARA (September 2025)
 - Added Kaitai Struct integration for 100+ binary formats
 - Implemented progressive loading for files up to 1.5GB
 - Enhanced Visual View with toggleable color schemes
