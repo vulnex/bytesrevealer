@@ -24,7 +24,12 @@
       <div class="editor-controls">
         <div class="control-row">
           <label class="control-label">Rule Set:</label>
-          <select v-model="selectedBuiltIn" class="rule-select" @change="onBuiltInChange">
+          <select
+            v-model="selectedBuiltIn"
+            aria-label="YARA rule set"
+            class="rule-select"
+            @change="onBuiltInChange"
+          >
             <option value="">-- Custom / Manual --</option>
             <option v-for="rs in builtinRuleSets" :key="rs.id" :value="rs.id">
               {{ rs.name }}
@@ -49,6 +54,7 @@
       <textarea
         v-model="rulesText"
         class="rules-editor"
+        aria-label="YARA rules editor"
         placeholder="Enter YARA rules here, or select a built-in rule set above..."
         spellcheck="false"
         rows="12"
@@ -78,9 +84,16 @@
     </div>
 
     <!-- Progress Bar -->
-    <div v-if="yaraStore.isScanning" class="progress-section">
+    <div v-if="yaraStore.isScanning" class="progress-section" role="status" aria-live="polite">
       <div class="progress-text">Scanning... {{ yaraStore.scanProgress }}%</div>
-      <div class="progress-bar">
+      <div
+        class="progress-bar"
+        role="progressbar"
+        :aria-valuenow="yaraStore.scanProgress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="YARA scan progress"
+      >
         <div class="progress-fill" :style="{ width: `${yaraStore.scanProgress}%` }"></div>
       </div>
     </div>
@@ -164,7 +177,13 @@
                       <code class="match-data">{{ truncateData(match.data, 40) }}</code>
                     </td>
                     <td class="cell-action">
-                      <button class="go-btn" @click="goToOffset(match)">Go</button>
+                      <button
+                        class="go-btn"
+                        :aria-label="'Go to offset 0x' + match.offset.toString(16).toUpperCase()"
+                        @click="goToOffset(match)"
+                      >
+                        Go
+                      </button>
                     </td>
                   </tr>
                 </tbody>

@@ -4,10 +4,18 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="help-dialog-overlay" @click="handleOverlayClick">
-    <div class="help-dialog" @click.stop>
+    <div
+      ref="dialogRef"
+      class="help-dialog"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="help-dialog-title"
+      @click.stop
+      @keydown="handleKeydown"
+    >
       <div class="dialog-header">
-        <h2 class="dialog-title">Help & Information</h2>
-        <button class="close-btn" @click="$emit('close')">✕</button>
+        <h2 id="help-dialog-title" class="dialog-title">Help & Information</h2>
+        <button class="close-btn" aria-label="Close dialog" @click="$emit('close')">✕</button>
       </div>
 
       <div class="dialog-tabs">
@@ -456,28 +464,70 @@ export default {
         { id: 'license', label: 'License' },
         { id: 'credits', label: 'Credits' },
         { id: 'about', label: 'About' }
-      ]
+      ],
+      previouslyFocused: null
     }
   },
 
   mounted() {
-    // Add escape key listener
-    this.handleEscKey = (event) => {
-      if (event.key === 'Escape') {
-        this.$emit('close')
+    // Save the element that had focus before the dialog opened
+    this.previouslyFocused = document.activeElement
+
+    // Focus the dialog itself so keyboard users are inside it
+    this.$nextTick(() => {
+      if (this.$refs.dialogRef) {
+        this.$refs.dialogRef.focus()
       }
-    }
-    window.addEventListener('keydown', this.handleEscKey)
+    })
   },
 
   beforeUnmount() {
-    window.removeEventListener('keydown', this.handleEscKey)
+    // Restore focus to the element that was focused before dialog opened
+    if (this.previouslyFocused && this.previouslyFocused.focus) {
+      this.previouslyFocused.focus()
+    }
   },
 
   methods: {
     handleOverlayClick(event) {
       if (event.target === event.currentTarget) {
         this.$emit('close')
+      }
+    },
+
+    getFocusableElements() {
+      if (!this.$refs.dialogRef) return []
+      return Array.from(
+        this.$refs.dialogRef.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.disabled && el.offsetParent !== null)
+    },
+
+    handleKeydown(event) {
+      if (event.key === 'Escape') {
+        this.$emit('close')
+        return
+      }
+
+      if (event.key === 'Tab') {
+        const focusable = this.getFocusableElements()
+        if (focusable.length === 0) return
+
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }
       }
     }
   }

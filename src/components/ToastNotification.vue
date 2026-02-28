@@ -4,8 +4,14 @@ Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
 
 <template>
   <Transition name="toast">
-    <div v-if="visible" class="toast-notification" :class="[type]">
-      <span class="toast-icon">{{ icon }}</span>
+    <div
+      v-if="visible"
+      class="toast-notification"
+      :class="[type]"
+      :role="type === 'error' ? 'alert' : 'status'"
+      :aria-live="type === 'error' ? 'assertive' : 'polite'"
+    >
+      <span class="toast-icon" aria-hidden="true">{{ icon }}</span>
       <span class="toast-message">{{ message }}</span>
     </div>
   </Transition>

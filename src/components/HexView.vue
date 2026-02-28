@@ -3,13 +3,14 @@
 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
-  <div class="hex-view-container">
+  <div class="hex-view-container" aria-label="Hex editor">
     <div class="main-panel">
       <div class="controls-bar">
         <div class="jump-control">
           <input
             v-model="jumpOffset"
             type="text"
+            aria-label="Jump to offset"
             placeholder="Jump to offset (hex/dec)"
             class="jump-input"
             @keyup.enter="handleJump"
@@ -21,17 +22,19 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
             class="capitalize-button"
             :class="{ 'uppercase-mode': useUppercase }"
             :title="useUppercase ? 'Switch to lowercase (aa)' : 'Switch to uppercase (AA)'"
+            :aria-label="useUppercase ? 'Switch to lowercase hex' : 'Switch to uppercase hex'"
             @click="toggleCapitalization"
           >
-            <span class="case-icon">{{ useUppercase ? 'AA' : 'aa' }}</span>
+            <span class="case-icon" aria-hidden="true">{{ useUppercase ? 'AA' : 'aa' }}</span>
           </button>
           <button
             class="color-toggle-button"
             :class="{ 'colors-disabled': !useColors }"
             :title="useColors ? 'Disable byte coloring' : 'Enable byte coloring'"
+            :aria-label="useColors ? 'Disable byte coloring' : 'Enable byte coloring'"
             @click="toggleColors"
           >
-            <span class="color-icon">🎨</span>
+            <span class="color-icon" aria-hidden="true">🎨</span>
           </button>
         </div>
         <div v-if="baseOffset" class="base-offset-indicator">
@@ -43,6 +46,9 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <div
           ref="containerRef"
           class="hex-content"
+          role="grid"
+          tabindex="0"
+          aria-label="Hex byte grid"
           @mousedown="startSelection"
           @mousemove="updateSelection"
           @mouseup="endSelection"

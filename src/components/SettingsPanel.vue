@@ -41,7 +41,11 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
         <div class="flex items-center space-x-4">
           <span>Bytes per Row:</span>
-          <select v-model="settings.bytesPerRow" class="form-select rounded border px-2 py-1">
+          <select
+            v-model="settings.bytesPerRow"
+            aria-label="Bytes per row"
+            class="form-select rounded border px-2 py-1"
+          >
             <option value="8">8 bytes</option>
             <option value="16">16 bytes</option>
             <option value="32">32 bytes</option>
@@ -77,13 +81,21 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
               v-model.number="settings.baseOffset"
               type="number"
               min="0"
+              aria-label="Base offset"
               class="form-input"
               :class="{ error: offsetError }"
               placeholder="Enter offset"
               @input="validateOffset"
               @change="updateOffset"
             />
-            <button class="reset-button" title="Reset to 0" @click="resetOffset">↺</button>
+            <button
+              class="reset-button"
+              title="Reset to 0"
+              aria-label="Reset offset to zero"
+              @click="resetOffset"
+            >
+              ↺
+            </button>
           </div>
           <span class="hint">Starting offset for byte numbering (decimal)</span>
           <span v-if="offsetError" class="error-message">{{ offsetError }}</span>

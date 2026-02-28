@@ -17,15 +17,23 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <input
           v-model="searchQuery"
           type="text"
+          aria-label="Search formats"
           placeholder="Search formats by name, extension, or description..."
           class="search-input"
           @input="handleSearch"
         />
-        <button v-if="searchQuery" class="clear-btn" @click="clearSearch">✕</button>
+        <button v-if="searchQuery" class="clear-btn" aria-label="Clear search" @click="clearSearch">
+          ✕
+        </button>
       </div>
 
       <!-- Category Filter -->
-      <select v-model="selectedCategory" class="category-select" @change="handleCategoryChange">
+      <select
+        v-model="selectedCategory"
+        aria-label="Filter by category"
+        class="category-select"
+        @change="handleCategoryChange"
+      >
         <option value="">All Categories</option>
         <option v-for="cat in categories" :key="cat.key" :value="cat.key">
           {{ cat.name }} ({{ cat.count }})
@@ -37,6 +45,8 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <button
           :class="['view-btn', { active: viewMode === 'grid' }]"
           title="Grid View"
+          aria-label="Grid view"
+          :aria-pressed="viewMode === 'grid'"
           @click="viewMode = 'grid'"
         >
           ⊞
@@ -44,6 +54,8 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <button
           :class="['view-btn', { active: viewMode === 'list' }]"
           title="List View"
+          aria-label="List view"
+          :aria-pressed="viewMode === 'list'"
           @click="viewMode = 'list'"
         >
           ☰
@@ -110,11 +122,23 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
       <!-- Pagination -->
       <div v-if="totalPages > 1" class="pagination">
-        <button :disabled="currentPage === 1" class="page-btn" @click="currentPage--">‹</button>
+        <button
+          :disabled="currentPage === 1"
+          class="page-btn"
+          aria-label="Previous page"
+          @click="currentPage--"
+        >
+          ‹
+        </button>
 
         <span class="page-info">Page {{ currentPage }} of {{ totalPages }}</span>
 
-        <button :disabled="currentPage === totalPages" class="page-btn" @click="currentPage++">
+        <button
+          :disabled="currentPage === totalPages"
+          class="page-btn"
+          aria-label="Next page"
+          @click="currentPage++"
+        >
           ›
         </button>
       </div>
@@ -125,7 +149,9 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
       <div v-if="previewFormat" class="format-preview">
         <div class="preview-header">
           <h4>{{ previewFormat.name }}</h4>
-          <button class="close-btn" @click="previewFormat = null">✕</button>
+          <button class="close-btn" aria-label="Close format preview" @click="previewFormat = null">
+            ✕
+          </button>
         </div>
 
         <div class="preview-content">

@@ -5,8 +5,14 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 <template>
   <div v-if="fileBytes.length > 0 || hasSessionData" class="analysis-panel">
     <!-- Add loading indicator -->
-    <div v-if="isAnalyzing" class="analysis-loading">
-      <span class="loading-spinner"></span>
+    <div
+      v-if="isAnalyzing"
+      class="analysis-loading"
+      role="status"
+      aria-live="polite"
+      aria-label="Analyzing file"
+    >
+      <span class="loading-spinner" aria-hidden="true"></span>
       Analyzing file...
     </div>
 

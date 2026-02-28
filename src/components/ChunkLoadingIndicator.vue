@@ -3,8 +3,21 @@ Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
 2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
-  <div v-if="show" class="chunk-loading-indicator">
-    <div class="loading-bar">
+  <div
+    v-if="show"
+    class="chunk-loading-indicator"
+    role="status"
+    aria-live="polite"
+    aria-label="Loading file chunks"
+  >
+    <div
+      class="loading-bar"
+      role="progressbar"
+      :aria-valuenow="progress"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      aria-label="Chunk loading progress"
+    >
       <div class="loading-progress" :style="{ width: `${progress}%` }"></div>
     </div>
     <div class="loading-text">

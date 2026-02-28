@@ -10,9 +10,10 @@ rights reserved. * https://www.vulnex.com */
         v-model="filterText"
         type="text"
         placeholder="Filter by label..."
+        aria-label="Filter bookmarks and annotations"
         class="filter-input"
       />
-      <select v-model="sortBy" class="sort-select">
+      <select v-model="sortBy" aria-label="Sort order" class="sort-select">
         <option value="offset">Sort by Offset</option>
         <option value="name">Sort by Name</option>
         <option value="date">Sort by Date</option>
@@ -21,11 +22,20 @@ rights reserved. * https://www.vulnex.com */
 
     <!-- Bookmarks Section -->
     <div class="section">
-      <div class="section-header" @click="showBookmarks = !showBookmarks">
-        <span class="collapse-icon">{{ showBookmarks ? '▼' : '▶' }}</span>
+      <div
+        class="section-header"
+        role="button"
+        tabindex="0"
+        :aria-expanded="showBookmarks"
+        aria-controls="bookmarks-section-content"
+        @click="showBookmarks = !showBookmarks"
+        @keydown.enter="showBookmarks = !showBookmarks"
+        @keydown.space.prevent="showBookmarks = !showBookmarks"
+      >
+        <span class="collapse-icon" aria-hidden="true">{{ showBookmarks ? '▼' : '▶' }}</span>
         <span class="section-title">Bookmarks ({{ filteredBookmarks.length }})</span>
       </div>
-      <div v-if="showBookmarks" class="section-content">
+      <div v-if="showBookmarks" id="bookmarks-section-content" class="section-content">
         <div v-if="filteredBookmarks.length === 0" class="empty-message">
           No bookmarks yet. Right-click a byte in Hex View to add one.
         </div>
@@ -43,12 +53,18 @@ rights reserved. * https://www.vulnex.com */
             >
           </div>
           <div class="item-actions">
-            <button class="action-btn" title="Edit" @click.stop="startEdit('bookmark', bookmark)">
+            <button
+              class="action-btn"
+              title="Edit"
+              aria-label="Edit bookmark"
+              @click.stop="startEdit('bookmark', bookmark)"
+            >
               &#9998;
             </button>
             <button
               class="action-btn delete-btn"
               title="Delete"
+              aria-label="Delete bookmark"
               @click.stop="$emit('remove-bookmark', bookmark.id)"
             >
               &#10005;
@@ -60,11 +76,20 @@ rights reserved. * https://www.vulnex.com */
 
     <!-- Annotations Section -->
     <div class="section">
-      <div class="section-header" @click="showAnnotations = !showAnnotations">
-        <span class="collapse-icon">{{ showAnnotations ? '▼' : '▶' }}</span>
+      <div
+        class="section-header"
+        role="button"
+        tabindex="0"
+        :aria-expanded="showAnnotations"
+        aria-controls="annotations-section-content"
+        @click="showAnnotations = !showAnnotations"
+        @keydown.enter="showAnnotations = !showAnnotations"
+        @keydown.space.prevent="showAnnotations = !showAnnotations"
+      >
+        <span class="collapse-icon" aria-hidden="true">{{ showAnnotations ? '▼' : '▶' }}</span>
         <span class="section-title">Annotations ({{ filteredAnnotations.length }})</span>
       </div>
-      <div v-if="showAnnotations" class="section-content">
+      <div v-if="showAnnotations" id="annotations-section-content" class="section-content">
         <div v-if="filteredAnnotations.length === 0" class="empty-message">
           No annotations yet. Select a byte range in Hex View, then right-click to annotate.
         </div>
@@ -94,6 +119,7 @@ rights reserved. * https://www.vulnex.com */
             <button
               class="action-btn"
               title="Edit"
+              aria-label="Edit annotation"
               @click.stop="startEdit('annotation', annotation)"
             >
               &#9998;
@@ -101,6 +127,7 @@ rights reserved. * https://www.vulnex.com */
             <button
               class="action-btn delete-btn"
               title="Delete"
+              aria-label="Delete annotation"
               @click.stop="$emit('remove-annotation', annotation.id)"
             >
               &#10005;
@@ -115,7 +142,9 @@ rights reserved. * https://www.vulnex.com */
       <div class="edit-dialog">
         <div class="edit-header">
           <span>Edit {{ editType === 'bookmark' ? 'Bookmark' : 'Annotation' }}</span>
-          <button class="close-btn" @click="cancelEdit">&#10005;</button>
+          <button class="close-btn" aria-label="Close edit dialog" @click="cancelEdit">
+            &#10005;
+          </button>
         </div>
         <div class="edit-body">
           <label class="edit-label">Label</label>
@@ -134,10 +163,16 @@ rights reserved. * https://www.vulnex.com */
             <div
               v-for="color in paletteColors"
               :key="color"
+              role="button"
+              tabindex="0"
+              :aria-label="'Select color ' + color"
+              :aria-pressed="editForm.color === color"
               class="color-swatch"
               :class="{ selected: editForm.color === color }"
               :style="{ backgroundColor: color }"
               @click="editForm.color = color"
+              @keydown.enter="editForm.color = color"
+              @keydown.space.prevent="editForm.color = color"
             ></div>
           </div>
         </div>

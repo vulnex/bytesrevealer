@@ -10,7 +10,14 @@ Created: 2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache
         <span>{{ label }}</span>
         <span>{{ totalProgress.toFixed(1) }}%</span>
       </div>
-      <div class="w-full bg-gray-200 rounded-full h-2.5">
+      <div
+        class="w-full bg-gray-200 rounded-full h-2.5"
+        role="progressbar"
+        :aria-valuenow="Math.round(totalProgress)"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-label="label"
+      >
         <div
           class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
           :style="{ width: `${totalProgress}%` }"
@@ -24,7 +31,14 @@ Created: 2025-02-12 * Last Modified: 2025-02-12 * Version: 0.2 * License: Apache
         <span>{{ typeLabels[type] }}</span>
         <span>{{ progress[type].toFixed(1) }}%</span>
       </div>
-      <div class="w-full bg-gray-100 rounded-full h-1.5">
+      <div
+        class="w-full bg-gray-100 rounded-full h-1.5"
+        role="progressbar"
+        :aria-valuenow="Math.round(progress[type])"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        :aria-label="typeLabels[type] + ' progress'"
+      >
         <div
           class="bg-blue-400 h-1.5 rounded-full transition-all duration-300"
           :style="{ width: `${progress[type]}%` }"

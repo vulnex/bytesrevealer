@@ -11,6 +11,8 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         class="color-square"
         :class="{ selected: selectedColor === color.value }"
         :style="{ backgroundColor: color.value }"
+        :aria-label="'Select ' + color.id + ' highlight color'"
+        :aria-pressed="selectedColor === color.value"
         @click="selectColor(color.value)"
       ></button>
     </div>

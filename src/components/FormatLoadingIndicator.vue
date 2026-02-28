@@ -4,19 +4,33 @@ Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
 
 <template>
   <transition name="fade">
-    <div v-if="isLoading || message" class="format-loading-indicator">
+    <div
+      v-if="isLoading || message"
+      class="format-loading-indicator"
+      role="status"
+      aria-live="polite"
+      :aria-label="isLoading ? loadingText : message"
+    >
       <div class="loading-content">
         <div v-if="isLoading" class="spinner-container">
-          <div class="spinner"></div>
+          <div class="spinner" aria-hidden="true"></div>
           <span class="loading-text">{{ loadingText }}</span>
         </div>
 
         <div v-if="!isLoading && message" :class="['message', messageType]">
-          <span class="icon">{{ messageIcon }}</span>
+          <span class="icon" aria-hidden="true">{{ messageIcon }}</span>
           <span>{{ message }}</span>
         </div>
 
-        <div v-if="isLoading && progress > 0" class="progress-bar">
+        <div
+          v-if="isLoading && progress > 0"
+          class="progress-bar"
+          role="progressbar"
+          :aria-valuenow="Math.round(progress)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-label="Format loading progress"
+        >
           <div class="progress-fill" :style="{ width: progress + '%' }"></div>
         </div>
       </div>

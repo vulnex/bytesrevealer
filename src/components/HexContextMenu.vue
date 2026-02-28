@@ -7,6 +7,8 @@ reserved. * https://www.vulnex.com */
     v-if="visible"
     ref="menuRef"
     class="hex-context-menu"
+    role="menu"
+    aria-label="Hex byte operations"
     :style="menuStyle"
     @contextmenu.prevent
   >

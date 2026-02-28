@@ -41,6 +41,7 @@ Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache
           v-model="newSessionName"
           type="text"
           placeholder="Session name..."
+          aria-label="Session name"
           class="session-name-input"
           :disabled="!hasFileLoaded || isBusy"
           @keyup.enter="saveNewSession"
@@ -57,7 +58,13 @@ Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache
       <div class="sessions-header">
         <h4>Saved Sessions ({{ sessionStore.sessionCount }})</h4>
         <div class="sessions-actions">
-          <button :disabled="isBusy" class="btn btn-icon" title="Refresh" @click="refreshSessions">
+          <button
+            :disabled="isBusy"
+            class="btn btn-icon"
+            title="Refresh"
+            aria-label="Refresh sessions"
+            @click="refreshSessions"
+          >
             🔄
           </button>
           <label class="btn btn-secondary btn-sm import-btn">
@@ -146,7 +153,9 @@ Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache
     <!-- Error Display -->
     <div v-if="sessionStore.error" class="error-message">
       {{ sessionStore.error }}
-      <button class="btn-close" @click="sessionStore.clearError()">×</button>
+      <button class="btn-close" aria-label="Dismiss error" @click="sessionStore.clearError()">
+        ×
+      </button>
     </div>
 
     <!-- File Verification Warning -->

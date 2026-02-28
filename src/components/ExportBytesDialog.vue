@@ -5,10 +5,18 @@ Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
 <template>
   <Transition name="modal">
     <div v-if="visible" class="modal-overlay" @click="handleOverlayClick">
-      <div class="modal-container" @click.stop>
+      <div
+        ref="dialogRef"
+        class="modal-container"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="export-bytes-dialog-title"
+        @click.stop
+        @keydown="handleKeydown"
+      >
         <div class="modal-header">
-          <h2>Export Bytes As Code</h2>
-          <button class="close-btn" @click="close">×</button>
+          <h2 id="export-bytes-dialog-title">Export Bytes As Code</h2>
+          <button class="close-btn" aria-label="Close dialog" @click="close">×</button>
         </div>
 
         <div class="modal-body">
@@ -112,7 +120,7 @@ Created: 2025-09-24 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
 </template>
 
 <script>
-import { computed } from 'vue'
+import { computed, ref, watch, nextTick, onBeforeUnmount } from 'vue'
 import ByteFormatter from '../services/ByteFormatter'
 import { createLogger } from '../utils/logger'
 import { useExportFormat } from '../composables/useExportFormat'
@@ -138,6 +146,69 @@ export default {
   setup(props, { emit }) {
     const { languages, selectedLanguage, selectedFormat, options, currentFormats, syntaxClass } =
       useExportFormat()
+
+    // Focus trap
+    const dialogRef = ref(null)
+    let previouslyFocused = null
+
+    const getFocusableElements = () => {
+      if (!dialogRef.value) return []
+      return Array.from(
+        dialogRef.value.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+      ).filter((el) => !el.disabled && el.offsetParent !== null)
+    }
+
+    const handleKeydown = (event) => {
+      if (event.key === 'Escape') {
+        close()
+        return
+      }
+
+      if (event.key === 'Tab') {
+        const focusable = getFocusableElements()
+        if (focusable.length === 0) return
+
+        const first = focusable[0]
+        const last = focusable[focusable.length - 1]
+
+        if (event.shiftKey) {
+          if (document.activeElement === first) {
+            event.preventDefault()
+            last.focus()
+          }
+        } else {
+          if (document.activeElement === last) {
+            event.preventDefault()
+            first.focus()
+          }
+        }
+      }
+    }
+
+    watch(
+      () => props.visible,
+      (newVal) => {
+        if (newVal) {
+          previouslyFocused = document.activeElement
+          nextTick(() => {
+            if (dialogRef.value) {
+              dialogRef.value.focus()
+            }
+          })
+        } else if (previouslyFocused && previouslyFocused.focus) {
+          previouslyFocused.focus()
+          previouslyFocused = null
+        }
+      }
+    )
+
+    onBeforeUnmount(() => {
+      if (previouslyFocused && previouslyFocused.focus) {
+        previouslyFocused.focus()
+      }
+    })
 
     // Dialog-level computed
     const bytesCount = computed(() => {
@@ -242,6 +313,7 @@ export default {
     }
 
     return {
+      dialogRef,
       languages,
       selectedLanguage,
       selectedFormat,
@@ -252,6 +324,7 @@ export default {
       syntaxClass,
       formatFileSize,
       handleOverlayClick,
+      handleKeydown,
       close,
       copyToClipboard,
       saveToFile

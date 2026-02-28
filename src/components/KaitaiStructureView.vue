@@ -13,7 +13,7 @@ Created: 2025-09-27 * Last Modified: 2025-09-27 * Version: 0.3 * License: Apache
       @error="handleFormatError"
     />
 
-    <div v-if="loading" class="loading">Parsing structure...</div>
+    <div v-if="loading" class="loading" role="status" aria-live="polite">Parsing structure...</div>
 
     <div v-else-if="error" class="error">
       {{ error }}

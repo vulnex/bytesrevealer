@@ -89,19 +89,37 @@
           <span class="file-name">
             {{ fileName || 'No file selected' }}
           </span>
-          <button v-if="fileName" class="reset-btn" title="Clear file and reset" @click="resetFile">
+          <button
+            v-if="fileName"
+            class="reset-btn"
+            title="Clear file and reset"
+            aria-label="Clear file and reset"
+            @click="resetFile"
+          >
             ✕
           </button>
           <!-- Help button with separator -->
           <div class="help-section">
-            <button class="help-btn" title="Help & Information" @click="showHelpDialog = true">
+            <button
+              class="help-btn"
+              title="Help & Information"
+              aria-label="Help and information"
+              @click="showHelpDialog = true"
+            >
               ?
             </button>
           </div>
         </div>
       </div>
       <div v-if="progress > 0" class="mt-2">
-        <div class="w-full bg-gray-200 rounded-full h-2.5">
+        <div
+          class="w-full bg-gray-200 rounded-full h-2.5"
+          role="progressbar"
+          :aria-valuenow="Math.round(progress)"
+          aria-valuemin="0"
+          aria-valuemax="100"
+          aria-label="File loading progress"
+        >
           <div
             class="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
             :style="{ width: `${progress}%` }"
@@ -138,15 +156,27 @@
     </div>
 
     <!-- Navigation Tabs -->
-    <div class="tabs">
-      <button class="tab" :class="{ active: activeTab === 'info' }" @click="activeTab = 'info'">
+    <div class="tabs" role="tablist" aria-label="Analysis views">
+      <button
+        id="tab-info"
+        class="tab"
+        role="tab"
+        :class="{ active: activeTab === 'info' }"
+        :aria-selected="activeTab === 'info'"
+        :tabindex="activeTab === 'info' ? 0 : -1"
+        @click="activeTab = 'info'"
+      >
         Information
       </button>
 
       <button
         v-if="(fileBytes.length || hasSessionData) && features.fileAnalysis"
+        id="tab-file"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'file' }"
+        :aria-selected="activeTab === 'file'"
+        :tabindex="activeTab === 'file' ? 0 : -1"
         :disabled="loading.analysis"
         @click="activeTab = 'file'"
       >
@@ -155,8 +185,12 @@
 
       <button
         v-if="fileBytes.length && features.visualView"
+        id="tab-visual"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'visual' }"
+        :aria-selected="activeTab === 'visual'"
+        :tabindex="activeTab === 'visual' ? 0 : -1"
         :disabled="loading.analysis"
         @click="activeTab = 'visual'"
       >
@@ -165,8 +199,12 @@
 
       <button
         v-if="fileBytes.length && features.hexView"
+        id="tab-hex"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'hex' }"
+        :aria-selected="activeTab === 'hex'"
+        :tabindex="activeTab === 'hex' ? 0 : -1"
         :disabled="loading.analysis"
         @click="activeTab = 'hex'"
       >
@@ -175,8 +213,12 @@
 
       <button
         v-if="fileBytes.length && features.stringAnalysis"
+        id="tab-strings"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'strings' }"
+        :aria-selected="activeTab === 'strings'"
+        :tabindex="activeTab === 'strings' ? 0 : -1"
         :disabled="loading.analysis"
         @click="activeTab = 'strings'"
       >
@@ -185,8 +227,12 @@
 
       <button
         v-if="fileBytes.length && features.yaraScanning"
+        id="tab-yara"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'yara' }"
+        :aria-selected="activeTab === 'yara'"
+        :tabindex="activeTab === 'yara' ? 0 : -1"
         :disabled="loading.analysis"
         @click="activeTab = 'yara'"
       >
@@ -197,24 +243,36 @@
         v-if="
           (fileBytes.length || hasSessionData) && (features.fileAnalysis || features.stringAnalysis)
         "
+        id="tab-export"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'export' }"
+        :aria-selected="activeTab === 'export'"
+        :tabindex="activeTab === 'export' ? 0 : -1"
         @click="activeTab = 'export'"
       >
         Export
       </button>
 
       <button
+        id="tab-settings"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'settings' }"
+        :aria-selected="activeTab === 'settings'"
+        :tabindex="activeTab === 'settings' ? 0 : -1"
         @click="activeTab = 'settings'"
       >
         Settings
       </button>
 
       <button
+        id="tab-sessions"
         class="tab"
+        role="tab"
         :class="{ active: activeTab === 'sessions' }"
+        :aria-selected="activeTab === 'sessions'"
+        :tabindex="activeTab === 'sessions' ? 0 : -1"
         @click="activeTab = 'sessions'"
       >
         Sessions
@@ -258,6 +316,8 @@
         <FileAnalysis
           v-show="activeTab === 'file'"
           v-model:active-graph-tab="activeGraphTab"
+          role="tabpanel"
+          aria-labelledby="tab-file"
           :file-bytes="fileBytes"
           :entropy="entropy"
           :file-signatures="fileSignatures"
@@ -270,7 +330,7 @@
 
       <!-- Visual View -->
       <template v-if="features.visualView && fileBytes.length">
-        <div v-show="activeTab === 'visual'">
+        <div v-show="activeTab === 'visual'" role="tabpanel" aria-labelledby="tab-visual">
           <VisualView
             :file-bytes="fileBytes"
             :highlighted-bytes="highlightedBytes"
@@ -285,7 +345,7 @@
 
       <!-- Hex View -->
       <template v-if="features.hexView && fileBytes.length">
-        <div v-show="activeTab === 'hex'">
+        <div v-show="activeTab === 'hex'" role="tabpanel" aria-labelledby="tab-hex">
           <HexView
             :file-bytes="fileBytes"
             :file-name="fileName"
@@ -310,6 +370,8 @@
         <StringAnalysisView
           v-show="activeTab === 'strings'"
           ref="stringAnalysisView"
+          role="tabpanel"
+          aria-labelledby="tab-strings"
           :file-bytes="fileBytes"
         />
       </template>
@@ -318,13 +380,20 @@
       <template v-if="features.yaraScanning && fileBytes.length">
         <YaraPanel
           v-show="activeTab === 'yara'"
+          role="tabpanel"
+          aria-labelledby="tab-yara"
           :file-bytes="fileBytes"
           @navigate-to-offset="navigateToYaraMatch"
         />
       </template>
 
       <!-- New Information Tab Content -->
-      <div v-if="activeTab === 'info'" class="p-4 bg-gray-100 rounded-lg">
+      <div
+        v-if="activeTab === 'info'"
+        class="p-4 bg-gray-100 rounded-lg"
+        role="tabpanel"
+        aria-labelledby="tab-info"
+      >
         <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.4</h2>
 
         <p class="mt-3">
@@ -444,14 +513,26 @@
       </div>
 
       <!-- Export Options View -->
-      <ExportOptions v-if="activeTab === 'export'" @error="handleError" />
+      <ExportOptions
+        v-if="activeTab === 'export'"
+        role="tabpanel"
+        aria-labelledby="tab-export"
+        @error="handleError"
+      />
 
       <!-- Settings Panel View -->
-      <SettingsPanel v-if="activeTab === 'settings'" @settings-updated="handleSettingsUpdate" />
+      <SettingsPanel
+        v-if="activeTab === 'settings'"
+        role="tabpanel"
+        aria-labelledby="tab-settings"
+        @settings-updated="handleSettingsUpdate"
+      />
 
       <!-- Sessions Panel View -->
       <SessionControls
         v-if="activeTab === 'sessions'"
+        role="tabpanel"
+        aria-labelledby="tab-sessions"
         :app-state="currentAppState"
         :has-file-loaded="fileBytes.length > 0"
         @session-loaded="handleSessionLoaded"

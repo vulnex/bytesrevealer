@@ -5,7 +5,14 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 <template>
   <div v-if="show" class="progress-container">
     <div class="progress-label">{{ label }}</div>
-    <div class="progress-bar">
+    <div
+      class="progress-bar"
+      role="progressbar"
+      :aria-valuenow="Math.round(progress)"
+      aria-valuemin="0"
+      aria-valuemax="100"
+      :aria-label="label"
+    >
       <div class="progress-fill" :style="{ width: `${progress}%` }"></div>
     </div>
     <div class="progress-text">{{ progress.toFixed(1) }}%</div>

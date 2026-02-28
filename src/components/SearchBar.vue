@@ -5,7 +5,12 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 <template>
   <div class="search-container">
     <div class="search-box">
-      <select v-model="searchTypeLocal" class="search-type" :disabled="isSearching">
+      <select
+        v-model="searchTypeLocal"
+        class="search-type"
+        aria-label="Search type"
+        :disabled="isSearching"
+      >
         <option value="hex">Hex</option>
         <option value="ascii">ASCII</option>
         <option value="string">String</option>
@@ -14,6 +19,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
       <input
         v-model="searchPatternLocal"
         type="text"
+        aria-label="Search pattern"
         :placeholder="getPlaceholder()"
         :disabled="isSearching"
         @keyup.enter="search"
@@ -32,7 +38,14 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
     <!-- Progress Bar -->
     <div v-if="isSearching && progress > 0" class="search-progress">
-      <div class="progress-bar">
+      <div
+        class="progress-bar"
+        role="progressbar"
+        :aria-valuenow="progress"
+        aria-valuemin="0"
+        aria-valuemax="100"
+        aria-label="Search progress"
+      >
         <div class="progress-fill" :style="{ width: progress + '%' }"></div>
       </div>
       <span class="progress-text">{{ progress }}%</span>
