@@ -1,0 +1,430 @@
+.hex-view-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.main-panel {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  border-bottom: 1px solid var(--border-color);
+}
+
+.jump-control {
+  display: flex;
+  gap: 4px;
+  flex: 1;
+  max-width: 400px;
+}
+
+.jump-input {
+  flex: 1;
+  padding: 6px 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.jump-button {
+  padding: 6px 12px;
+  background-color: var(--link-color);
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.toolbar-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color);
+}
+
+.color-scheme-button {
+  padding: 8px 10px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  min-width: 40px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.color-scheme-button:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+}
+
+.color-scheme-button.hex-colors {
+  background-color: #4a90e2;
+  color: white;
+  border-color: #357abd;
+}
+
+.color-scheme-button.hex-colors:hover {
+  background-color: #357abd;
+}
+
+.content-area {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  padding: 16px;
+}
+
+.inspector-panel {
+  width: 450px; /* Increased to match HexView panel width */
+  border-left: 1px solid var(--border-color);
+  background-color: var(--bg-secondary);
+}
+
+.hex-view-container {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.visual-view {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+}
+
+.main-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px; /* Reduced for more compact layout */
+  overflow: hidden;
+}
+
+.visual-content {
+  flex: 1;
+  overflow: auto;
+  position: relative;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 14px;
+  line-height: 1.5;
+  color: var(--text-primary);
+}
+
+.virtual-scroll-content {
+  position: absolute;
+  width: 100%;
+}
+
+.visible-window {
+  position: absolute;
+  width: 100%;
+  will-change: transform;
+}
+
+.byte-row {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  white-space: nowrap;
+  height: 24px;
+}
+
+.offset {
+  color: var(--text-secondary);
+  margin-right: 16px;
+  min-width: 80px;
+}
+
+.squares-container {
+  display: grid;
+  grid-template-columns: repeat(32, 12px);
+  gap: 1px;
+  margin-right: 16px;
+}
+
+.byte-square {
+  width: 12px;
+  height: 12px;
+  border: 1px solid var(--border-color);
+  background-color: var(--bg-primary);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.byte-square.ascii-byte {
+  background-color: var(--link-color);
+}
+
+/* Hex View color scheme for byte squares */
+.byte-square.byte-null {
+  background-color: #e5e5e5 !important;
+  border-color: #999;
+}
+
+.byte-square.byte-printable {
+  background-color: #4a90e2 !important;
+  border-color: #357abd;
+}
+
+.byte-square.byte-control {
+  background-color: #f5a623 !important;
+  border-color: #d48806;
+}
+
+.byte-square.byte-extended {
+  background-color: #7e3ff2 !important;
+  border-color: #6320c4;
+}
+
+.byte-square.byte-ff {
+  background-color: #d0021b !important;
+  border-color: #a00116;
+}
+
+.byte-square.highlighted,
+.ascii-char.highlighted {
+  background-color: #3b82f6 !important; /* Blue for light mode */
+  color: white !important;
+  font-weight: 500;
+}
+
+.byte-square.hovered,
+.ascii-char.hovered {
+  background-color: rgba(59, 130, 246, 0.3) !important; /* Semi-transparent blue */
+  outline: 1px solid #3b82f6;
+  outline-offset: -1px;
+}
+
+.byte-square.selected,
+.ascii-char.selected {
+  outline: 2px solid #3b82f6 !important;
+  outline-offset: -2px;
+  background-color: rgba(59, 130, 246, 0.2) !important;
+}
+
+.ascii-column {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  color: var(--hex-ascii);
+  margin-left: 16px;
+}
+
+.ascii-char {
+  cursor: pointer;
+  padding: 1px 2px;
+  border-radius: 2px;
+  transition: background-color 0.15s ease;
+  color: var(--text-primary);
+}
+
+/* Dark mode specific overrides */
+:root[class='dark-mode'] .visual-view {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .byte-square {
+  border-color: var(--border-color);
+  background-color: var(--bg-primary);
+}
+
+:root[class='dark-mode'] .byte-square.ascii-byte {
+  background-color: var(--link-color);
+}
+
+/* Dark mode hex view color scheme */
+:root[class='dark-mode'] .byte-square.byte-null {
+  background-color: #2a2a2a !important;
+  border-color: #555;
+}
+
+:root[class='dark-mode'] .byte-square.byte-printable {
+  background-color: #3b82f6 !important;
+  border-color: #2563eb;
+}
+
+:root[class='dark-mode'] .byte-square.byte-control {
+  background-color: #ffb86c !important;
+  border-color: #f59e0b;
+}
+
+:root[class='dark-mode'] .byte-square.byte-extended {
+  background-color: #bd93f9 !important;
+  border-color: #a78bfa;
+}
+
+:root[class='dark-mode'] .byte-square.byte-ff {
+  background-color: #ff79c6 !important;
+  border-color: #ec4899;
+}
+
+/* Dark mode button styling */
+:root[class='dark-mode'] .color-scheme-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+:root[class='dark-mode'] .color-scheme-button:hover {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+}
+
+:root[class='dark-mode'] .color-scheme-button.hex-colors {
+  background-color: #3b82f6;
+  color: white;
+  border-color: #2563eb;
+}
+
+:root[class='dark-mode'] .color-scheme-button.hex-colors:hover {
+  background-color: #2563eb;
+}
+
+:root[class='dark-mode'] .ascii-group {
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .ascii-group span {
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .offset {
+  color: var(--text-secondary);
+}
+
+/* Fix highlight visibility in dark mode - matching HexView orange colors */
+:root[class='dark-mode'] .byte-square.highlighted,
+:root[class='dark-mode'] .ascii-char.highlighted {
+  background-color: #fb923c !important; /* Orange background matching HexView */
+  color: white !important;
+  font-weight: 500;
+  border-color: #fb923c !important;
+}
+
+:root[class='dark-mode'] .byte-square.hovered,
+:root[class='dark-mode'] .ascii-char.hovered {
+  background-color: rgba(251, 146, 60, 0.3) !important; /* Semi-transparent orange for hover */
+  color: white !important;
+  outline: 1px solid #fb923c;
+  outline-offset: -1px;
+}
+
+:root[class='dark-mode'] .byte-square.selected,
+:root[class='dark-mode'] .ascii-char.selected {
+  outline: 2px solid #fb923c !important;
+  outline-offset: -2px;
+  background-color: rgba(251, 146, 60, 0.5) !important;
+}
+
+:root[class='dark-mode'] .byte-square.locked {
+  outline: 2px solid #fb923c !important;
+  outline-offset: -2px;
+  background-color: #fb923c !important;
+  color: white !important;
+}
+
+/* Ensure tooltip is visible in dark mode */
+:root[class='dark-mode'] .byte-tooltip {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+::selection {
+  background: transparent;
+}
+
+.byte-square.locked {
+  outline: 2px solid var(--link-color);
+  outline-offset: -2px;
+  background-color: var(--link-color);
+}
+
+/* Add these styles */
+.controls-section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.base-offset-indicator {
+  display: flex;
+  align-items: center;
+  padding: 4px 8px;
+  background-color: var(--link-color);
+  color: white;
+  border-radius: 4px;
+  font-size: 0.875rem;
+  margin-bottom: 8px;
+  justify-content: space-between;
+}
+
+.jump-button {
+  background-color: transparent;
+  border: 1px solid white;
+  color: white;
+  padding: 2px 8px;
+  border-radius: 3px;
+  cursor: pointer;
+  font-size: 0.75rem;
+  transition: all 0.2s;
+}
+
+.jump-button:hover {
+  background-color: white;
+  color: var(--link-color);
+}
+
+.jump-dialog {
+  display: flex;
+  gap: 8px;
+  padding: 8px;
+  background-color: var(--bg-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  margin-bottom: 8px;
+}
+
+.jump-dialog input {
+  flex: 1;
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+.jump-dialog button {
+  padding: 4px 8px;
+  border: 1px solid var(--border-color);
+  border-radius: 3px;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  cursor: pointer;
+}
+
+.jump-dialog button:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
