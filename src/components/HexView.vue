@@ -321,7 +321,13 @@ export default {
       default: () => []
     }
   },
-  emits: ['update-bookmark', 'remove-bookmark', 'update-annotation', 'remove-annotation', 'byte-selection'],
+  emits: [
+    'update-bookmark',
+    'remove-bookmark',
+    'update-annotation',
+    'remove-annotation',
+    'byte-selection'
+  ],
 
   setup(props, { emit }) {
     const settingsStore = useSettingsStore()

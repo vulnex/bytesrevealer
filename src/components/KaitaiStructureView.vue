@@ -99,7 +99,13 @@ export default {
 
   setup(props, { emit }) {
     // Use toRefs for better reactivity
-    const { structures, formatName: _formatName, loading: _loading, error: _error, currentOffset } = toRefs(props)
+    const {
+      structures,
+      formatName: _formatName,
+      loading: _loading,
+      error: _error,
+      currentOffset
+    } = toRefs(props)
 
     const expandedNodes = ref(new Set())
     const allExpanded = ref(false)

@@ -99,7 +99,13 @@ class UsecvislibExporter {
     }
   }
 
-  generateAttackGraphConfig({ fileSignatures, detectedFileType, fileName, hashes: _hashes, entropy }) {
+  generateAttackGraphConfig({
+    fileSignatures,
+    detectedFileType,
+    fileName,
+    hashes: _hashes,
+    entropy
+  }) {
     const sig = fileSignatures && fileSignatures.length > 0 ? fileSignatures[0] : null
     const sigName = sig ? sig.name : ''
 

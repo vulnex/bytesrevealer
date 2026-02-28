@@ -55,8 +55,13 @@ describe('useByteInspector', () => {
 
   describe('handleKeyDown', () => {
     it('pressing "l" locks inspector to current hoveredByte', () => {
-      const { hoveredByte: _hoveredByte, inspectorLocked, lockedByte, onByteHover, handleKeyDown } =
-        useByteInspector()
+      const {
+        hoveredByte: _hoveredByte,
+        inspectorLocked,
+        lockedByte,
+        onByteHover,
+        handleKeyDown
+      } = useByteInspector()
       onByteHover(0x05, 0x00)
       handleKeyDown({ key: 'l' })
       expect(inspectorLocked.value).toBe(true)

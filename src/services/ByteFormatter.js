@@ -579,7 +579,12 @@ class ByteFormatter {
   }
 
   formatAsmNASM(bytes, options) {
-    const { variableName = 'data', splitLines: _splitLines2 = true, lineWidth = 16, uppercase = true } = options
+    const {
+      variableName = 'data',
+      splitLines: _splitLines2 = true,
+      lineWidth = 16,
+      uppercase = true
+    } = options
     const lines = [`${variableName}:`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
@@ -596,7 +601,12 @@ class ByteFormatter {
   }
 
   formatAsmMASM(bytes, options) {
-    const { variableName = 'data', splitLines: _splitLines3 = true, lineWidth = 16, uppercase = true } = options
+    const {
+      variableName = 'data',
+      splitLines: _splitLines3 = true,
+      lineWidth = 16,
+      uppercase = true
+    } = options
     const lines = [`${variableName} DB`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
@@ -613,7 +623,12 @@ class ByteFormatter {
   }
 
   formatAsmGAS(bytes, options) {
-    const { variableName = 'data', splitLines: _splitLines4 = true, lineWidth = 16, uppercase = true } = options
+    const {
+      variableName = 'data',
+      splitLines: _splitLines4 = true,
+      lineWidth = 16,
+      uppercase = true
+    } = options
     const lines = [`${variableName}:`]
 
     for (let i = 0; i < bytes.length; i += lineWidth) {
@@ -661,7 +676,12 @@ class ByteFormatter {
   }
 
   formatCLangInit(bytes, options) {
-    const { variableName = 'data', splitLines: _splitLines5 = true, lineWidth = 16, uppercase = true } = options
+    const {
+      variableName = 'data',
+      splitLines: _splitLines5 = true,
+      lineWidth = 16,
+      uppercase = true
+    } = options
     const lines = []
 
     lines.push(`#define ${variableName.toUpperCase()}_SIZE ${bytes.length}`)

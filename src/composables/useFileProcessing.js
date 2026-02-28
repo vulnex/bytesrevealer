@@ -8,10 +8,7 @@ import {
   FILE_LIMITS
 } from '../utils/fileHandler'
 import { isFileType } from '../utils/fileSignatures'
-import {
-  detectSpecificFileType,
-  detectNestedFiles
-} from '../utils/advancedFileDetection'
+import { detectSpecificFileType, detectNestedFiles } from '../utils/advancedFileDetection'
 import { useFormatStore } from '../stores/format'
 import { useYaraStore } from '../stores/yara'
 import { createLogger } from '../utils/logger'

@@ -86,7 +86,14 @@ export default {
       default: () => []
     }
   },
-  emits: ['update:searchType', 'update:searchPattern', 'search', 'clear', 'cancel', 'navigateToMatch'],
+  emits: [
+    'update:searchType',
+    'update:searchPattern',
+    'search',
+    'clear',
+    'cancel',
+    'navigateToMatch'
+  ],
   data() {
     return {
       currentMatchIndex: 0
