@@ -406,50 +406,24 @@
 </template>
 
 <script>
-import CryptoJS from 'crypto-js'
+import { ref } from 'vue'
 import FileAnalysis from './components/FileAnalysis.vue'
 import VisualView from './components/VisualView.vue'
 import HexView from './components/HexView.vue'
 import SearchBar from './components/SearchBar.vue'
 import LoadingOverlay from './components/LoadingOverlay.vue'
-import AnalysisOptions from './components/AnalysisOptions.vue'
-import ProgressTracking from './components/ProgressTracking.vue'
 import StringAnalysisView from './components/StringAnalysisView.vue'
-import ColorPalette from './components/ColorPalette.vue'
 import ExportOptions from './components/ExportOptions.vue'
 import SettingsPanel from './components/SettingsPanel.vue'
 import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
 import HelpDialog from './components/HelpDialog.vue'
 import SessionControls from './components/SessionControls.vue'
 import YaraPanel from './components/YaraPanel.vue'
-import { useSessionStore } from './stores/session'
-import { useYaraStore } from './stores/yara'
-import {
-  processFileInChunks,
-  analyzeFileInChunks,
-  validateFileSize,
-  formatFileSize,
-  calculateFileHashes,
-  detectFileType,
-  FILE_LIMITS
-} from './utils/fileHandler'
-import { FILE_SIGNATURES, detectFileTypes, isFileType } from './utils/fileSignatures'
-import { 
-  findPEHeaderOffset,
-  analyzePEStructure,
-  detectSpecificFileType,
-  detectNestedFiles 
-} from './utils/advancedFileDetection'
-import { useSettingsStore } from './stores/settings'
-import { useFormatStore } from './stores/format'
-import { createLogger } from './utils/logger'
-import fileChunkManager from './utils/FileChunkManager'
-import { calculateOptimizedEntropy } from './utils/entropyOptimized'
-
-const logger = createLogger('App')
-
-// Initialize search worker
-let searchWorker = null
+import { useAppPreferences } from './composables/useAppPreferences'
+import { useAnnotations } from './composables/useAnnotations'
+import { useFileProcessing } from './composables/useFileProcessing'
+import { useSearch } from './composables/useSearch'
+import { useSessionRestore } from './composables/useSessionRestore'
 
 export default {
   name: 'App',
@@ -459,10 +433,7 @@ export default {
     HexView,
     SearchBar,
     LoadingOverlay,
-    AnalysisOptions,
-    ProgressTracking,
     StringAnalysisView,
-    ColorPalette,
     ExportOptions,
     SettingsPanel,
     FormatLoadingIndicator,
@@ -471,1579 +442,155 @@ export default {
     YaraPanel
   },
 
-  data() {
+  setup() {
+    // Template refs
+    const fileInput = ref(null)
+    const stringAnalysisView = ref(null)
+
+    // 1. Standalone composables
+    const preferences = useAppPreferences()
+    const annotationsComposable = useAnnotations()
+
+    // 2. File processing (standalone)
+    const fp = useFileProcessing()
+
+    // 3. Search (depends on fileBytes)
+    const searchComposable = useSearch(fp.fileBytes)
+
+    // 4. Session restore (depends on all refs)
+    const session = useSessionRestore({
+      fileName: fp.fileName,
+      fileBytes: fp.fileBytes,
+      entropy: fp.entropy,
+      hashes: fp.hashes,
+      fileSignatures: fp.fileSignatures,
+      detectedFileType: fp.detectedFileType,
+      searchPattern: searchComposable.searchPattern,
+      searchType: searchComposable.searchType,
+      highlightedBytes: searchComposable.highlightedBytes,
+      coloredBytes: annotationsComposable.coloredBytes,
+      notes: annotationsComposable.notes,
+      bookmarks: annotationsComposable.bookmarks,
+      annotations: annotationsComposable.annotations,
+      tags: annotationsComposable.tags,
+      features: preferences.features,
+      activeTab: preferences.activeTab,
+      activeGraphTab: preferences.activeGraphTab
+    })
+
+    // Cross-composable wrappers
+
+    function handleFileUpload(event) {
+      fp.handleFileUpload(event, {
+        features: preferences.features,
+        hasSessionData: session.hasSessionData,
+        pendingSessionFile: session.pendingSessionFile,
+        coloredBytes: annotationsComposable.coloredBytes,
+        activeTab: preferences.activeTab,
+        onSessionClear: session.clearSessionState
+      })
+    }
+
+    function resetFile() {
+      // Clear session state
+      session.clearSessionState()
+      annotationsComposable.resetAnnotations()
+      searchComposable.cleanup()
+      searchComposable.resetSearch()
+      fp.resetFile(fileInput, {
+        resetSearch: searchComposable.resetSearch,
+        resetAnnotations: annotationsComposable.resetAnnotations,
+        resetFeatures: preferences.resetFeatures
+      })
+      preferences.activeTab.value = 'info'
+    }
+
+    function navigateToMatch(match) {
+      searchComposable.navigateToMatch(match, preferences.activeTab)
+    }
+
+    function navigateToYaraMatch(payload) {
+      searchComposable.navigateToYaraMatch(payload, preferences.activeTab)
+    }
+
+    function handleError(message) {
+      fp.error.value = message
+    }
+
+    function handleSessionLoaded(sessionData) {
+      fp.error.value = null
+      session.handleSessionLoaded(sessionData)
+    }
+
     return {
-      currentYear: new Date().getFullYear(),
-      fileBytes: new Uint8Array(),
-      fileName: null,
-      activeTab: 'info',
-      searchPattern: '',
-      searchType: 'hex',
-      highlightedBytes: [],
-      searchProgress: 0,
-      isSearching: false,
-      searchResults: [],
-      showHelpDialog: false,
-      entropy: 0,
-      fileSignatures: [],
-      hashes: {
-        md5: '',
-        sha1: '',
-        sha256: ''
-      },
-      detectedFileType: null,
-      activeGraphTab: 'entropy',
-      loading: {
-        file: false,
-        analysis: false,
-        search: false
-      },
-      error: null,
-      progress: 0,
-      features: {
-        fileAnalysis: true,
-        visualView: true,
-        hexView: true,
-        stringAnalysis: true,
-        yaraScanning: true
-      },
-      coloredBytes: [],
-      currentColor: null,
-      isSelecting: false,
-      FILE_LIMITS,
-      chunkManager: null,
-      notes: '',
-      bookmarks: [],
-      annotations: [],
-      tags: [],
-      // Session restore state
-      hasSessionData: false,
-      pendingSessionFile: null  // File info from session waiting to be uploaded
-    }
-  },
-
-  computed: {
-    // Gather current app state for session saving
-    currentAppState() {
-      const formatStore = useFormatStore()
-      const settingsStore = useSettingsStore()
-
-      return {
-        fileName: this.fileName,
-        fileBytes: this.fileBytes,
-        activeTab: this.activeTab,
-        activeGraphTab: this.activeGraphTab,
-        features: this.features,
-        searchPattern: this.searchPattern,
-        searchType: this.searchType,
-        highlightedBytes: this.highlightedBytes,
-        coloredBytes: this.coloredBytes,
-        entropy: this.entropy,
-        hashes: this.hashes,
-        fileSignatures: this.fileSignatures,
-        detectedFileType: this.detectedFileType,
-        baseOffset: settingsStore.baseOffset,
-        formatStore: {
-          selectedFormatId: formatStore.selectedFormatId,
-          isAutoDetected: formatStore.isAutoDetected,
-          confidence: formatStore.confidence,
-          kaitaiStructures: formatStore.kaitaiStructures
-        },
-        notes: this.notes,
-        bookmarks: this.bookmarks,
-        annotations: this.annotations,
-        tags: this.tags,
-        yaraState: useYaraStore().serializableState
-      }
-    }
-  },
-
-  methods: {
-    async handleFileUpload(event) {
-  const file = event.target.files[0];
-  if (!file) return;
-
-  try {
-    this.loading.file = true;
-    this.error = null;
-    this.resetProgress();
-
-    // Check if we're loading the same file from a session
-    const isSessionFileReload = this.hasSessionData &&
-      this.pendingSessionFile?.name === file.name;
-
-    // Only reset colored bytes if this is NOT a session file reload
-    if (!isSessionFileReload) {
-      this.coloredBytes = [];
-    }
-
-    this.fileName = file.name;
-
-    // Validate file size BEFORE loading into memory
-    try {
-      const showWarning = validateFileSize(file);
-      if (showWarning) {
-        const proceed = await this.showSizeWarning(file.size);
-        if (!proceed) {
-          this.loading.file = false;
-          this.error = 'File loading cancelled';
-          return;
-        }
-      }
-    } catch (error) {
-      this.loading.file = false;
-      this.error = error.message;
-      return;
-    }
-
-    // Clear session pending state (we now have real file data)
-    this.hasSessionData = false;
-    this.pendingSessionFile = null;
-
-    // Reset format store for new file
-    const formatStore = useFormatStore()
-    formatStore.resetForFile()
-
-    // Clear any previous chunk data
-    if (this.chunkManager) {
-      await fileChunkManager.clear()
-      this.chunkManager = null
-    }
-
-    // Basic file loading first
-    logger.info(`Loading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`);
-
-    // For very large files, show a warning
-    if (file.size > 100 * 1024 * 1024) { // > 100MB
-      this.error = `Loading large file (${(file.size / 1024 / 1024).toFixed(0)}MB). This may take a moment...`;
-    }
-
-    // Give UI time to update before blocking operation
-    await new Promise(resolve => setTimeout(resolve, 10));
-
-    // Use chunk manager for large files (>50MB)
-    if (file.size > 50 * 1024 * 1024) {
-      logger.info('Using chunk manager for large file');
-
-      // Use V1 FileChunkManager which is stable
-      this.fileBytes = await fileChunkManager.initialize(file);
-
-      // Check if it's a chunked array
-      if (this.fileBytes.isChunked) {
-        logger.info('File loaded with chunking enabled');
-        // Store chunk manager reference for components
-        this.chunkManager = fileChunkManager;
-      }
-    } else {
-      // Standard loading for smaller files
-      const buffer = await file.arrayBuffer();
-      this.fileBytes = new Uint8Array(buffer);
-      this.chunkManager = null;
-    }
-
-    logger.info(`File loaded: ${this.fileBytes.length} bytes`);
-    
-    // Clear the loading message
-    if (file.size > 100 * 1024 * 1024) {
-      this.error = null;
-    }
-    
-    // Check file size for analysis mode
-    const isLargeFile = file.size > FILE_LIMITS.ANALYSIS_SIZE_LIMIT;
-
-    // Detect file type (works for both large and small files)
-    try {
-      // Try to detect from the file object first
-      this.detectedFileType = await detectFileType(file);
-
-      // If detected as ZIP and filename ends with .app.zip, update description
-      if (this.detectedFileType && this.detectedFileType.ext === 'zip' &&
-          file.name.toLowerCase().endsWith('.app.zip')) {
-        this.detectedFileType.description = 'macOS Application Bundle (ZIP)';
-      }
-    } catch (err) {
-      logger.warn('File type detection from File object failed, trying from loaded bytes:', err);
-
-      // If that fails and we have bytes, try detecting from the loaded bytes
-      if (this.fileBytes && this.fileBytes.length > 0) {
-        try {
-          // For progressive files, get first chunk
-          const firstBytes = this.fileBytes.isProgressive
-            ? await this.fileBytes.slice(0, Math.min(1024 * 1024, this.fileBytes.length))
-            : this.fileBytes;
-
-          this.detectedFileType = await detectFileType(firstBytes);
-        } catch (err2) {
-          logger.error('File type detection from bytes also failed:', err2);
-          this.detectedFileType = {
-            detected: false,
-            ext: 'unknown',
-            mime: 'application/octet-stream',
-            description: 'Unable to detect file type',
-            confidence: 'none'
-          };
-        }
-      }
-    }
-
-    if (isLargeFile) {
-      // For large files, keep all features enabled (optimized for performance)
-      // Don't change the features state - keep user's selection
-      // this.features are already set by user via checkboxes
-
-      // Show info to user about optimized mode
-      this.error = `File size exceeds 50MB. Using optimized analysis mode.`;
-    }
-
-    // Set active tab based on features
-    if (this.features.fileAnalysis) {
-      this.activeTab = 'file'; // Auto-switch to File View after successful upload
-    } else {
-      this.activeTab = 'visual';
-    }
-
-    // Perform file analysis if selected
-    if (this.features.fileAnalysis) {
-      this.loading.analysis = true;
-      try {
-        // Always detect file signatures (fast, works for any size)
-        await this.detectFileSignatures();
-        this.progress = 20;
-
-        if (isLargeFile) {
-          // Limited analysis for large files
-          // Skip full hashes for performance, but calculate entropy on a sample
-          this.hashes = {
-            md5: 'N/A (file > 50MB)',
-            sha1: 'N/A (file > 50MB)',
-            sha256: 'N/A (file > 50MB)'
-          };
-
-          // Use optimized entropy calculation for large files
-          const entropyResult = calculateOptimizedEntropy(this.fileBytes, {
-            blockSize: 256,
-            maxBlocks: 1000,
-            sampleRate: 0.1 // Sample 10% of blocks for very large files
-          })
-          this.entropy = entropyResult.globalEntropy
-          logger.info(`Calculated entropy using optimized sampling: ${this.entropy.toFixed(4)}`)
-          logger.info(`Processed ${this.formatFileSize(entropyResult.processedBytes)} of ${this.formatFileSize(entropyResult.totalBytes)}`)
-
-          this.progress = 100;
-        } else {
-          // Full analysis for smaller files
-          // Calculate hashes
-          const hashes = await calculateFileHashes(
-            file,
-            (progress) => {
-              this.progress = 20 + progress * 0.4;
-            }
-          );
-          this.hashes = hashes;
-
-          // Detect file type
-          this.detectedFileType = await detectFileType(file);
-
-          // Calculate entropy
-          const results = await analyzeFileInChunks(
-            file, 
-            { fileAnalysis: true },
-            (progress) => {
-              this.progress = 60 + progress * 0.4;
-            }
-          );
-          this.entropy = results.entropy;
-          
-          this.progress = 100;
-        }
-
-        // Set active tab to file analysis if all succeeded
-        this.activeTab = 'file';
-
-      } catch (error) {
-        logger.error('Analysis error:', error);
-        this.error = `Analysis error: ${error.message}`;
-        this.entropy = 0;
-        this.fileSignatures = [];
-        this.hashes = {
-          md5: '',
-          sha1: '',
-          sha256: ''
-        };
-        
-        // If analysis fails, set to visual view
-        this.activeTab = 'visual';
-      } finally {
-        this.loading.analysis = false;
-      }
-    } else if (!this.features.fileAnalysis) {
-      // If file analysis is not selected, default to visual view
-      this.activeTab = 'visual';
-    }
-
-  } catch (error) {
-    logger.error('File processing error:', error);
-    this.error = error.message;
-  } finally {
-    this.loading.file = false;
-    this.loading.analysis = false;
-    this.resetProgress();
-  }
-},
-
-    resetProgress() {
-      this.progress = 0;
-    },
-
-    showSizeWarning(fileSize) {
-      return new Promise((resolve) => {
-        const size = formatFileSize(fileSize);
-        const message = `The file is ${size}. Processing large files may cause performance issues. Continue?`;
-        resolve(window.confirm(message));
-      });
-    },
-
-    async detectFileSignatures() {
-      if (!this.fileBytes || !this.fileBytes.length) {
-        logger.warn('No file bytes available for signature detection');
-        return;
-      }
-
-      try {
-        // Get basic and enhanced file type information
-        const enhancedTypes = await detectSpecificFileType(this.fileBytes);
-        
-        // Detect nested files
-        const nestedFiles = await detectNestedFiles(this.fileBytes);
-        
-        // Combine the results
-        this.fileSignatures = enhancedTypes.map(type => ({
-          ...type,
-          nestedFiles: nestedFiles.filter(nested => 
-            nested.offset >= type.offset && 
-            nested.offset < (type.offset + (type.size || this.fileBytes.length))
-          )
-        }));
-        
-        if (this.fileSignatures.length > 0) {
-          logger.debug('Detected signatures:', this.fileSignatures);
-        } else {
-          logger.debug('No known file signatures detected');
-        }
-      } catch (error) {
-        logger.error('Error detecting file signatures:', error);
-        this.error = `Failed to detect file signatures: ${error.message}`;
-        this.fileSignatures = []; // Reset signatures on error
-      }
-    },
-
-    isSpecificFileType(format) {
-      return isFileType(this.fileBytes, format);
-    },
-
-    handleByteSelection({ start, end, color }) {
-      if (color === '#ffffff') {
-        // Remove colors from selected range
-        this.coloredBytes = this.coloredBytes.filter(range => 
-          !(range.start >= start && range.end <= end)
-        );
-      } else {
-        // Add new colored range
-        this.coloredBytes.push({
-          start,
-          end,
-          color
-        });
-      }
-    },
-
-    // Bookmark & Annotation CRUD methods
-    addBookmark(offset) {
-      this.bookmarks.push({
-        id: `bm_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-        offset,
-        label: `Bookmark @ 0x${offset.toString(16).toUpperCase()}`,
-        color: '#4fc3f7',
-        created: new Date().toISOString()
-      })
-    },
-
-    updateBookmark(updated) {
-      const idx = this.bookmarks.findIndex(b => b.id === updated.id)
-      if (idx !== -1) this.bookmarks.splice(idx, 1, updated)
-    },
-
-    removeBookmark(id) {
-      this.bookmarks = this.bookmarks.filter(b => b.id !== id)
-    },
-
-    addAnnotation({ startOffset, endOffset }) {
-      this.annotations.push({
-        id: `an_${Date.now()}_${Math.random().toString(36).substr(2, 6)}`,
-        startOffset,
-        endOffset,
-        label: `Annotation @ 0x${startOffset.toString(16).toUpperCase()}-0x${endOffset.toString(16).toUpperCase()}`,
-        note: '',
-        color: '#81c784',
-        created: new Date().toISOString()
-      })
-    },
-
-    updateAnnotation(updated) {
-      const idx = this.annotations.findIndex(a => a.id === updated.id)
-      if (idx !== -1) this.annotations.splice(idx, 1, updated)
-    },
-
-    removeAnnotation(id) {
-      this.annotations = this.annotations.filter(a => a.id !== id)
-    },
-
-    clearSearch() {
-      this.searchPattern = '';
-      this.highlightedBytes = [];
-      this.searchResults = [];
-      this.searchProgress = 0;
-      this.cancelSearch();
-    },
-
-    async search() {
-      if (!this.searchPattern) return;
-      if (this.isSearching) return;
-
-      try {
-        this.loading.search = true;
-        this.isSearching = true;
-        this.highlightedBytes = [];
-        this.searchResults = [];
-        this.searchProgress = 0;
-
-        // Initialize worker if needed
-        if (!searchWorker) {
-          searchWorker = new Worker(
-            new URL('./workers/SearchWorker.js', import.meta.url),
-            { type: 'module' }
-          );
-        }
-
-        // Set up worker message handler
-        const searchPromise = new Promise((resolve, reject) => {
-          searchWorker.onmessage = (event) => {
-            const { type, ...data } = event.data;
-
-            switch (type) {
-              case 'searchStarted':
-                logger.debug('Search started, total bytes:', data.totalBytes);
-                break;
-
-              case 'progress':
-                this.searchProgress = data.progress;
-                break;
-
-              case 'searchComplete':
-                this.highlightedBytes = data.highlightedBytes;
-                this.searchResults = data.results;
-                this.searchProgress = 100;
-                logger.info(`Search complete: ${data.matchCount} matches found`);
-                resolve();
-                break;
-
-              case 'searchCancelled':
-                logger.info('Search cancelled');
-                resolve();
-                break;
-
-              case 'error':
-                reject(new Error(data.error));
-                break;
-            }
-          };
-
-          searchWorker.onerror = (error) => {
-            reject(error);
-          };
-        });
-
-        // Send search request to worker
-        searchWorker.postMessage({
-          type: 'search',
-          data: {
-            fileData: this.fileBytes,
-            searchType: this.searchType,
-            pattern: this.searchPattern,
-            options: {
-              caseInsensitive: false,
-              regexFlags: 'g'
-            }
-          }
-        });
-
-        await searchPromise;
-
-      } catch (error) {
-        this.error = 'Search error: ' + error.message;
-        logger.error('Search error:', error);
-      } finally {
-        this.loading.search = false;
-        this.isSearching = false;
-        this.searchProgress = 0;
-      }
-    },
-
-    cancelSearch() {
-      if (searchWorker && this.isSearching) {
-        searchWorker.postMessage({ type: 'cancel' });
-        this.isSearching = false;
-        this.searchProgress = 0;
-      }
-    },
-
-    navigateToMatch(match) {
-      if (!match || typeof match.offset !== 'number') return;
-
-      // Switch to hex view to show the match
-      if (this.activeTab !== 'hex') {
-        this.activeTab = 'hex';
-      }
-
-      // DON'T clear highlightedBytes - keep all matches highlighted
-      // The highlightedBytes should already contain all match positions from the search
-
-      // Emit event for hex view to scroll to this specific match
-      this.$nextTick(() => {
-        const hexViewEvent = new CustomEvent('scrollToOffset', {
-          detail: {
-            offset: match.offset,
-            length: match.length
-          }
-        });
-        window.dispatchEvent(hexViewEvent);
-      });
-    },
-
-    navigateToYaraMatch({ offset, length }) {
-      if (typeof offset !== 'number') return
-
-      // Switch to hex view
-      if (this.activeTab !== 'hex') {
-        this.activeTab = 'hex'
-      }
-
-      // Scroll to offset in hex view
-      this.$nextTick(() => {
-        const hexViewEvent = new CustomEvent('scrollToOffset', {
-          detail: { offset, length }
-        })
-        window.dispatchEvent(hexViewEvent)
-      })
-    },
-
-
-    // Save analysis preferences to localStorage
-    saveAnalysisPreferences() {
-      try {
-        localStorage.setItem('analysisOptions', JSON.stringify(this.features));
-      } catch (error) {
-        logger.error('Error saving analysis preferences:', error);
-      }
-    },
-
-    // Load saved analysis preferences
-    loadAnalysisPreferences() {
-      try {
-        const saved = localStorage.getItem('analysisOptions');
-        if (saved) {
-          const savedFeatures = JSON.parse(saved);
-          // Merge saved features with defaults, ensuring all are defined
-          this.features = {
-            fileAnalysis: savedFeatures.fileAnalysis !== false,
-            visualView: savedFeatures.visualView !== false,
-            hexView: savedFeatures.hexView !== false,
-            stringAnalysis: savedFeatures.stringAnalysis !== false,
-            yaraScanning: savedFeatures.yaraScanning !== false
-          };
-        }
-      } catch (error) {
-        logger.error('Error loading analysis preferences:', error);
-      }
-    },
-
-    handleError(message) {
-      this.error = message;
-    },
-    
-    handleSettingsUpdate(newSettings) {
-      const settingsStore = useSettingsStore()
-
-      // Update base offset
-      if (typeof newSettings.baseOffset === 'number') {
-        settingsStore.setBaseOffset(newSettings.baseOffset)
-      }
-
-      // Handle other settings...
-    },
-
-    // Session management handlers
-    handleSessionLoaded(session) {
-      logger.info('Loading session:', session.name)
-
-      // Mark that we have session data (for showing cached analysis)
-      this.hasSessionData = true
-      this.pendingSessionFile = session.file || null
-
-      // Store file name from session for display purposes
-      if (session.file?.name) {
-        this.fileName = session.file.name
-      }
-
-      // Clear any previous error - we'll show the banner instead
-      this.error = null
-
-      // Restore application state from session
-      if (session.state) {
-        // Auto-switch to File View to show cached data (if file analysis is enabled)
-        this.activeTab = this.features.fileAnalysis ? 'file' : 'info'
-        this.activeGraphTab = session.state.activeGraphTab || 'entropy'
-        this.features = { ...this.features, ...session.state.features }
-        this.searchPattern = session.state.searchPattern || ''
-        this.searchType = session.state.searchType || 'hex'
-        this.highlightedBytes = session.state.highlightedBytes || []
-        this.coloredBytes = session.state.coloredBytes || []
-
-        // Restore base offset
-        if (typeof session.state.baseOffset === 'number') {
-          const settingsStore = useSettingsStore()
-          settingsStore.setBaseOffset(session.state.baseOffset)
-        }
-      }
-
-      // Restore analysis results (for display, until file is re-uploaded)
-      if (session.analysis) {
-        this.entropy = session.analysis.entropy || 0
-        this.hashes = session.analysis.hashes || { md5: '', sha1: '', sha256: '' }
-        this.fileSignatures = session.analysis.fileSignatures || []
-        this.detectedFileType = session.analysis.detectedFileType || null
-      }
-
-      // Restore format state
-      if (session.format) {
-        const formatStore = useFormatStore()
-        if (session.format.selectedFormatId) {
-          formatStore.selectedFormatId = session.format.selectedFormatId
-          formatStore.isAutoDetected = session.format.isAutoDetected || false
-          formatStore.confidence = session.format.confidence || 0
-        }
-        if (session.format.kaitaiStructures) {
-          formatStore.setStructures(session.format.kaitaiStructures)
-        }
-      }
-
-      // Restore annotations
-      if (session.annotations) {
-        this.notes = session.annotations.notes || ''
-        this.bookmarks = session.annotations.bookmarks || []
-        this.annotations = session.annotations.annotations || []
-        this.tags = session.annotations.tags || []
-      }
-
-      // Restore YARA state
-      if (session.yara) {
-        useYaraStore().restoreFromSession(session.yara)
-      }
-
-      // Mark session store as dirty = false since we just loaded
-      const sessionStore = useSessionStore()
-      sessionStore.isDirty = false
-
-      logger.info('Session loaded successfully:', session.name)
-    },
-
-    handleSessionSaved(session) {
-      logger.info('Session saved:', session.name)
-      // Could show a toast notification here
-    },
-    
-    applySettings(settings) {
-      // Apply settings to the application
-      if (settings.hexUppercase) {
-        // Update hex display format
-      }
-      
-      if (settings.bytesPerRow) {
-        // Update bytes per row in hex view
-      }
-      
-      // Update other settings as needed
-    },
-
-    formatFileSize(bytes) {
-      const units = ['B', 'KB', 'MB', 'GB']
-      let size = bytes
-      let unitIndex = 0
-
-      while (size >= 1024 && unitIndex < units.length - 1) {
-        size /= 1024
-        unitIndex++
-      }
-
-      return `${size.toFixed(1)} ${units[unitIndex]}`
-    },
-
-    calculateEntropy(bytes) {
-      if (!bytes || bytes.length === 0) return 0
-
-      // Count byte frequencies
-      const frequencies = new Array(256).fill(0)
-      for (const byte of bytes) {
-        frequencies[byte]++
-      }
-
-      // Calculate Shannon entropy
-      let entropy = 0
-      const len = bytes.length
-
-      for (let i = 0; i < 256; i++) {
-        if (frequencies[i] > 0) {
-          const probability = frequencies[i] / len
-          entropy -= probability * Math.log2(probability)
-        }
-      }
-
-      return entropy
-    },
-
-    initializeTheme() {
-      // Check if theme is already saved in localStorage
-      const savedTheme = localStorage.getItem('theme')
-
-      if (!savedTheme) {
-        // No saved theme, set dark mode as default
-        const defaultTheme = 'dark'
-        document.documentElement.classList.add('dark-mode')
-        localStorage.setItem('theme', defaultTheme)
-        logger.info('Initialized with dark mode as default')
-      } else {
-        // Apply saved theme
-        document.documentElement.classList.add(`${savedTheme}-mode`)
-        logger.info(`Applied saved theme: ${savedTheme}`)
-      }
-    },
-
-    resetFile() {
-      // Clear all file-related data
-      this.fileBytes = new Uint8Array()
-      this.fileName = null
-      this.entropy = 0
-      this.fileSignatures = []
-      this.hashes = {
-        md5: '',
-        sha1: '',
-        sha256: ''
-      }
-
-      // Clear session restore state
-      this.hasSessionData = false
-      this.pendingSessionFile = null
-      this.notes = ''
-      this.bookmarks = []
-      this.annotations = []
-      this.tags = []
-
-      // Clean up search worker
-      if (searchWorker) {
-        searchWorker.terminate();
-        searchWorker = null;
-      }
-
-      this.highlightedBytes = []
-      this.coloredBytes = []
-      this.searchPattern = ''
-      this.error = null
-      this.progress = 0
-      this.activeTab = 'info'
-
-      // Clear chunk manager if exists
-      if (this.chunkManager) {
-        fileChunkManager.clear()
-        this.chunkManager = null
-      }
-
-      // Reset file input
-      if (this.$refs.fileInput) {
-        this.$refs.fileInput.value = ''
-      }
-
-      // Reset loading states
-      this.loading.file = false
-      this.loading.analysis = false
-      this.loading.search = false
-
-      // Enable all analysis features
-      this.features.fileAnalysis = true
-      this.features.visualView = true
-      this.features.hexView = true
-      this.features.stringAnalysis = true
-      this.features.yaraScanning = true
-
-      // Reset YARA store
-      useYaraStore().reset()
-
-      // Reset format store
-      const formatStore = useFormatStore()
-      formatStore.resetForFile()
-
-      logger.info('File and analysis data cleared, all features enabled')
-    }
-  },
-
-  // Load saved preferences when component is mounted
-  mounted() {
-    // Set defaults first
-    this.features = {
-      fileAnalysis: true,
-      visualView: true,
-      hexView: true,
-      stringAnalysis: true,
-      yaraScanning: true
-    };
-
-    // Then load any saved preferences (which will override defaults if present)
-    this.loadAnalysisPreferences();
-    this.initializeTheme();
-  },
-
-  // Clean up resources on unmount
-  beforeUnmount() {
-    if (searchWorker) {
-      searchWorker.terminate();
-      searchWorker = null;
-    }
-  },
-
-  // Save preferences when they change
-  watch: {
-    features: {
-      handler(newOptions) {
-        this.saveAnalysisPreferences();
-      },
-      deep: true
-    },
-
-    // Mark session as dirty when user annotations change
-    coloredBytes: {
-      handler() {
-        const sessionStore = useSessionStore()
-        if (sessionStore.hasCurrentSession) {
-          sessionStore.markDirty()
-        }
-      },
-      deep: true
-    },
-
-    notes() {
-      const sessionStore = useSessionStore()
-      if (sessionStore.hasCurrentSession) {
-        sessionStore.markDirty()
-      }
-    },
-
-    bookmarks: {
-      handler() {
-        const sessionStore = useSessionStore()
-        if (sessionStore.hasCurrentSession) {
-          sessionStore.markDirty()
-        }
-      },
-      deep: true
-    },
-
-    annotations: {
-      handler() {
-        const sessionStore = useSessionStore()
-        if (sessionStore.hasCurrentSession) {
-          sessionStore.markDirty()
-        }
-      },
-      deep: true
-    },
-
-    searchPattern() {
-      const sessionStore = useSessionStore()
-      if (sessionStore.hasCurrentSession) {
-        sessionStore.markDirty()
-      }
+      // Template refs
+      fileInput,
+      stringAnalysisView,
+
+      // Preferences
+      features: preferences.features,
+      activeTab: preferences.activeTab,
+      activeGraphTab: preferences.activeGraphTab,
+      showHelpDialog: preferences.showHelpDialog,
+      currentYear: preferences.currentYear,
+      handleSettingsUpdate: preferences.handleSettingsUpdate,
+
+      // Annotations
+      bookmarks: annotationsComposable.bookmarks,
+      annotations: annotationsComposable.annotations,
+      coloredBytes: annotationsComposable.coloredBytes,
+      notes: annotationsComposable.notes,
+      tags: annotationsComposable.tags,
+      addBookmark: annotationsComposable.addBookmark,
+      updateBookmark: annotationsComposable.updateBookmark,
+      removeBookmark: annotationsComposable.removeBookmark,
+      addAnnotation: annotationsComposable.addAnnotation,
+      updateAnnotation: annotationsComposable.updateAnnotation,
+      removeAnnotation: annotationsComposable.removeAnnotation,
+      handleByteSelection: annotationsComposable.handleByteSelection,
+
+      // File processing
+      fileBytes: fp.fileBytes,
+      fileName: fp.fileName,
+      entropy: fp.entropy,
+      fileSignatures: fp.fileSignatures,
+      hashes: fp.hashes,
+      detectedFileType: fp.detectedFileType,
+      loading: fp.loading,
+      progress: fp.progress,
+      error: fp.error,
+      chunkManager: fp.chunkManager,
+      formatFileSize: fp.formatFileSize,
+
+      // Search
+      searchPattern: searchComposable.searchPattern,
+      searchType: searchComposable.searchType,
+      highlightedBytes: searchComposable.highlightedBytes,
+      searchProgress: searchComposable.searchProgress,
+      isSearching: searchComposable.isSearching,
+      searchResults: searchComposable.searchResults,
+      search: searchComposable.search,
+      clearSearch: searchComposable.clearSearch,
+      cancelSearch: searchComposable.cancelSearch,
+
+      // Session
+      hasSessionData: session.hasSessionData,
+      pendingSessionFile: session.pendingSessionFile,
+      currentAppState: session.currentAppState,
+
+      // Cross-composable wrappers
+      handleFileUpload,
+      resetFile,
+      navigateToMatch,
+      navigateToYaraMatch,
+      handleError,
+      handleSessionLoaded,
+      handleSessionSaved: session.handleSessionSaved
     }
   }
 }
 </script>
 
 <style>
-/* ... existing styles ... */
-
-/* Performance indicator for large files */
-.performance-indicator {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 8px 16px;
-  margin: 8px 0;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border-radius: 8px;
-  font-size: 14px;
-  font-weight: 500;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-}
-
-/* Session restore banner */
-.session-restore-banner {
-  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
-  color: white;
-  padding: 16px 20px;
-  border-radius: 8px;
-  margin-bottom: 16px;
-  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.session-restore-banner .banner-content {
-  display: flex;
-  align-items: flex-start;
-  gap: 12px;
-}
-
-.session-restore-banner .banner-icon {
-  font-size: 24px;
-  flex-shrink: 0;
-}
-
-.session-restore-banner .banner-text strong {
-  display: block;
-  font-size: 16px;
-  margin-bottom: 4px;
-}
-
-.session-restore-banner .banner-text p {
-  font-size: 14px;
-  opacity: 0.9;
-  margin: 0;
-}
-
-.session-restore-banner .banner-file-info {
-  display: flex;
-  gap: 16px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 13px;
-  font-family: monospace;
-  opacity: 0.85;
-}
-
-.session-restore-banner .hash-preview {
-  opacity: 0.7;
-}
-
-/* Dark mode session banner */
-:root[class='dark-mode'] .session-restore-banner {
-  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
-}
-
-/* Help button styles */
-.help-section {
-  display: inline-flex;
-  align-items: center;
-  margin-left: 10px;
-  padding-left: 15px;
-  border-left: 1px solid var(--border-color);
-  height: 32px;
-}
-
-.help-btn {
-  width: 32px;
-  height: 32px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 16px;
-  font-weight: bold;
-  transition: all 0.2s;
-}
-
-.help-btn:hover {
-  background-color: var(--link-color);
-  color: white;
-  border-color: var(--link-color);
-}
-
-:root[class='dark-mode'] .help-btn {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
-:root[class='dark-mode'] .help-btn:hover {
-  background-color: var(--link-color);
-  color: white;
-  border-color: var(--link-color);
-}
-
-.indicator-icon {
-  font-size: 18px;
-  animation: pulse 2s infinite;
-}
-
-@keyframes pulse {
-  0%, 100% {
-    opacity: 1;
-  }
-  50% {
-    opacity: 0.7;
-  }
-}
-
-/* Title and header styles */
-.title {
-  color: #2c3e50;
-  text-align: center;
-  margin-bottom: 10px;
-}
-
-.subtitle {
-  text-align: center;
-  color: #4a5568;
-  margin-bottom: 5px;
-}
-
-.copyright {
-  text-align: center;
-  color: #4a5568;
-  margin-bottom: 20px;
-}
-
-.copyright a {
-  color: #3b82f6;
-  text-decoration: none;
-}
-
-.copyright a:hover {
-  text-decoration: underline;
-}
-
-/* Dark mode overrides */
-.dark-mode .title {
-  color: #f7fafc;
-}
-
-.dark-mode .subtitle {
-  color: #cbd5e0;
-}
-
-.dark-mode .copyright {
-  color: #cbd5e0;
-}
-
-.dark-mode .copyright a {
-  color: #60a5fa;
-}
-
-/* Custom file input styles */
-.custom-file-input {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-}
-
-.file-label {
-  display: inline-flex;
-  align-items: center;
-  cursor: pointer;
-}
-
-.hidden-file-input {
-  display: none;
-}
-
-.file-button {
-  padding: 8px 16px;
-  background-color: #3b82f6;
-  color: white;
-  border-radius: 6px;
-  font-size: 14px;
-  font-weight: 500;
-  transition: background-color 0.2s;
-  white-space: nowrap;
-  display: inline-block;
-}
-
-.file-button:hover {
-  background-color: #2563eb;
-}
-
-.file-name {
-  color: var(--text-primary);
-  font-size: 14px;
-  white-space: nowrap;
-}
-
-.reset-btn {
-  width: 32px;
-  height: 32px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-  cursor: pointer;
-  font-size: 14px;
-  transition: all 0.2s;
-  margin-left: 8px;
-}
-
-.reset-btn:hover {
-  background-color: #ef4444;
-  color: white;
-  border-color: #ef4444;
-}
-
-:root[class='dark-mode'] .reset-btn:hover {
-  background-color: #dc2626;
-  border-color: #dc2626;
-}
-
-/* Dark mode for custom file input */
-.dark-mode .file-button {
-  background-color: #60a5fa;
-  color: #1e293b;
-}
-
-.dark-mode .file-button:hover {
-  background-color: #93c5fd;
-}
-
-.dark-mode .file-name {
-  color: var(--text-primary);
-}
-
-/* Theme Variables */
-:root {
-  --bg-primary: #ffffff;
-  --bg-secondary: #f8f9fa;
-  --text-primary: #1a1a1a;
-  --text-secondary: #4a5568;
-  --border-color: #e2e8f0;
-  --link-color: #3b82f6;
-  --tab-active-color: #48bb78; /* Green color for active tabs */
-  --error-bg: #fee2e2;
-  --error-text: #dc2626;
-  --checkbox-bg: #ffffff;
-  --input-bg: #ffffff;
-  --input-text: #1a1a1a;
-  --hover-bg: #f3f4f6;
-  --text-muted: #9ca3af;
-}
-
-:root[class='dark-mode'] {
-  --bg-primary: #1a202c;
-  --bg-secondary: #2d3748;
-  --text-primary: #f7fafc;
-  --text-secondary: #cbd5e0;
-  --border-color: #4a5568;
-  --link-color: #60a5fa;
-  --tab-active-color: #68d391; /* Green color for active tabs in dark mode */
-  --error-bg: #7f1d1d;
-  --error-text: #fecaca;
-  --checkbox-bg: #374151;
-  --input-bg: #374151;
-  --input-text: #f7fafc;
-  --hex-text: #f7fafc;
-  --hex-offset: #cbd5e0;
-  --hover-bg: #374151;
-  --text-muted: #6b7280;
-  --hex-ascii: #60a5fa;
-  --graph-text: #f7fafc;
-  --graph-line: #60a5fa;
-  --graph-bg: #2d3748;
-}
-
-/* Apply theme to main elements */
-body {
-  background-color: var(--bg-primary);
-  color: var(--text-primary);
-}
-
-.container {
-  background-color: var(--bg-primary);
-}
-
-.view-container {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-.tab {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  background: transparent;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.tab:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.tab.active {
-  background: var(--bg-primary);
-  color: var(--tab-active-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.container {
-  max-width: 95%; /* Use percentage for responsive width */
-  margin: 0 auto;
-  padding: 20px;
-}
-
-h1 {
-  font-size: 24px;
-  font-weight: bold;
-  margin-bottom: 20px;
-  text-align: center;
-}
-
-.file-input {
-  margin-bottom: 20px;
-}
-
-.error-message {
-  background-color: var(--error-bg);
-  color: var(--error-text);
-}
-
-.cancel-button {
-  margin-left: 10px;
-  padding: 5px 10px;
-  background-color: #ff4444;
-  color: white;
-  border: none;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.cancel-button:hover {
-  background-color: #cc0000;
-}
-
-.tabs {
-  display: flex;
-  gap: 1px;
-  background-color: var(--bg-secondary);
-  padding: 4px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-}
-
-.tab {
-  padding: 8px 16px;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  font-weight: 500;
-  background: transparent;
-  color: var(--text-secondary);
-  transition: all 0.2s ease;
-}
-
-.tab:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-.tab.active {
-  background: var(--bg-primary);
-  color: var(--tab-active-color);
-  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
-}
-
-.tab:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-.view-container {
-  position: relative;
-  background: white;
-  border: 1px solid #ddd;
-  border-radius: 8px;
-  padding: 20px;
-  min-height: 400px;
-  overflow: hidden;
-}
-
-.view-container > div {
-  height: 100%;
-  width: 100%;
-}
-
-/* Analysis Options Styles */
-.analysis-options {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-  border-radius: 8px;
-  padding: 16px;
-  margin-bottom: 20px;
-}
-
-.analysis-options span {
-  color: var(--text-primary);
-}
-
-.form-checkbox {
-  background-color: var(--checkbox-bg);
-  border-color: var(--border-color);
-  width: 16px;
-  height: 16px;
-  border-radius: 4px;
-  cursor: pointer;
-}
-
-.form-checkbox:checked {
-  background-color: #4a90e2;
-  border-color: #4a90e2;
-}
-
-.form-checkbox:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
-}
-
-::selection {
-  background: transparent;
-}
-
-.container {
-  -webkit-user-select: none;
-  -moz-user-select: none;
-  -ms-user-select: none;
-  user-select: none;
-}
-
-/* Virtual Scrolling Container - Add to HexView.vue and VisualView.vue */
-.virtual-scroll-container {
-  height: 100%;
-  overflow-y: auto;
-  position: relative;
-}
-
-.virtual-scroll-content {
-  position: absolute;
-  width: 100%;
-}
-
-/* Update VisualView squares group */
-.squares-group {
-  display: grid;
-  grid-template-columns: repeat(32, 12px);
-  gap: 1px;
-  margin-right: 16px;
-}
-
-/* Add dark mode specific styles */
-.analysis-options {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-}
-
-.analysis-options span {
-  color: var(--text-primary);
-}
-
-.form-checkbox {
-  background-color: var(--checkbox-bg);
-  border-color: var(--border-color);
-}
-
-.file-input {
-  color: var(--text-primary) !important;
-}
-
-.file-input input[type="file"] {
-  color: var(--text-primary);
-}
-
-.file-input input[type="file"]::file-selector-button {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
-.error-message {
-  background-color: var(--error-bg);
-  color: var(--error-text);
-}
-
-.tabs {
-  background-color: var(--bg-secondary);
-}
-
-.tab {
-  color: var(--text-secondary);
-}
-
-.tab.active {
-  background-color: var(--bg-primary);
-  color: var(--link-color);
-}
-
-.view-container {
-  background-color: var(--bg-secondary);
-  border-color: var(--border-color);
-  color: var(--text-primary);
-}
-
-/* Info tab specific styles */
-.view-container .bg-gray-100 {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-/* Links */
-a {
-  color: var(--link-color);
-}
-
-/* Search bar */
-input[type="text"],
-input[type="search"] {
-  background-color: var(--input-bg);
-  color: var(--input-text);
-  border-color: var(--border-color);
-}
-
-/* Progress bar */
-.bg-gray-200 {
-  background-color: var(--bg-secondary);
-}
-
-/* Add at the top of your style section */
-* {
-  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
-}
-
-/* Add specific dark mode styles for tabs */
-:root[class='dark-mode'] .tab {
-  color: var(--text-secondary);
-}
-
-:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-:root[class='dark-mode'] .tab.active {
-  background-color: var(--bg-primary);
-  color: var(--tab-active-color);
-}
-
-/* Add specific styles for File View */
-:root[class='dark-mode'] .file-analysis {
-  color: var(--text-primary);
-}
-
-:root[class='dark-mode'] .entropy-graph {
-  background-color: var(--graph-bg);
-  color: var(--graph-text);
-}
-
-:root[class='dark-mode'] .entropy-graph path {
-  stroke: var(--graph-line);
-}
-
-:root[class='dark-mode'] .graph-tabs button {
-  color: var(--text-primary);
-  background-color: var(--bg-secondary);
-}
-
-:root[class='dark-mode'] .graph-tabs button.active {
-  background-color: var(--link-color);
-  color: white;
-}
-
-/* Add specific styles for Hex View */
-.hex-view {
-  width: 100% !important;
-}
-:root[class='dark-mode'] .hex-view {
-  color: var(--hex-text);
-}
-
-:root[class='dark-mode'] .hex-offset {
-  color: var(--hex-offset);
-}
-
-:root[class='dark-mode'] .hex-ascii {
-  color: var(--hex-ascii);
-}
-
-:root[class='dark-mode'] .hex-byte {
-  color: var(--hex-text);
-}
-
-/* Update the tab styles to ensure visibility */
-:root[class='dark-mode'] .tabs {
-  background-color: var(--bg-secondary);
-}
-
-:root[class='dark-mode'] .tab {
-  color: var(--text-secondary);
-}
-
-:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
-  background: rgba(255, 255, 255, 0.1);
-  color: var(--text-primary);
-}
-
-:root[class='dark-mode'] .tab.active {
-  background-color: var(--bg-primary);
-  color: var(--tab-active-color);
-}
-
-/* Add styles for the byte frequency graph */
-:root[class='dark-mode'] .byte-frequency {
-  background-color: var(--graph-bg);
-  color: var(--graph-text);
-}
-
-:root[class='dark-mode'] .byte-frequency .bar {
-  background-color: var(--link-color);
-}
-
-/* Add styles for any tooltips or overlays */
-:root[class='dark-mode'] .tooltip {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-  border-color: var(--border-color);
-}
-
-/* Ensure text visibility in all views */
-:root[class='dark-mode'] .view-container {
-  background-color: var(--bg-secondary);
-  color: var(--text-primary);
-}
-
-:root[class='dark-mode'] .view-container > div {
-  color: var(--text-primary);
-}
-
+@import './styles/app.css';
 </style>

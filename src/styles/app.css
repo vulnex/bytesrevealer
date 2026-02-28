@@ -1,0 +1,668 @@
+/* ... existing styles ... */
+
+/* Performance indicator for large files */
+.performance-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+/* Session restore banner */
+.session-restore-banner {
+  background: linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%);
+  color: white;
+  padding: 16px 20px;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.session-restore-banner .banner-content {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.session-restore-banner .banner-icon {
+  font-size: 24px;
+  flex-shrink: 0;
+}
+
+.session-restore-banner .banner-text strong {
+  display: block;
+  font-size: 16px;
+  margin-bottom: 4px;
+}
+
+.session-restore-banner .banner-text p {
+  font-size: 14px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.session-restore-banner .banner-file-info {
+  display: flex;
+  gap: 16px;
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.2);
+  font-size: 13px;
+  font-family: monospace;
+  opacity: 0.85;
+}
+
+.session-restore-banner .hash-preview {
+  opacity: 0.7;
+}
+
+/* Dark mode session banner */
+:root[class='dark-mode'] .session-restore-banner {
+  background: linear-gradient(135deg, #1e40af 0%, #1e3a8a 100%);
+}
+
+/* Help button styles */
+.help-section {
+  display: inline-flex;
+  align-items: center;
+  margin-left: 10px;
+  padding-left: 15px;
+  border-left: 1px solid var(--border-color);
+  height: 32px;
+}
+
+.help-btn {
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 16px;
+  font-weight: bold;
+  transition: all 0.2s;
+}
+
+.help-btn:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+:root[class='dark-mode'] .help-btn {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+:root[class='dark-mode'] .help-btn:hover {
+  background-color: var(--link-color);
+  color: white;
+  border-color: var(--link-color);
+}
+
+.indicator-icon {
+  font-size: 18px;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.7;
+  }
+}
+
+/* Title and header styles */
+.title {
+  color: #2c3e50;
+  text-align: center;
+  margin-bottom: 10px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #4a5568;
+  margin-bottom: 5px;
+}
+
+.copyright {
+  text-align: center;
+  color: #4a5568;
+  margin-bottom: 20px;
+}
+
+.copyright a {
+  color: #3b82f6;
+  text-decoration: none;
+}
+
+.copyright a:hover {
+  text-decoration: underline;
+}
+
+/* Dark mode overrides */
+.dark-mode .title {
+  color: #f7fafc;
+}
+
+.dark-mode .subtitle {
+  color: #cbd5e0;
+}
+
+.dark-mode .copyright {
+  color: #cbd5e0;
+}
+
+.dark-mode .copyright a {
+  color: #60a5fa;
+}
+
+/* Custom file input styles */
+.custom-file-input {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  cursor: pointer;
+}
+
+.hidden-file-input {
+  display: none;
+}
+
+.file-button {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+  display: inline-block;
+}
+
+.file-button:hover {
+  background-color: #2563eb;
+}
+
+.file-name {
+  color: var(--text-primary);
+  font-size: 14px;
+  white-space: nowrap;
+}
+
+.reset-btn {
+  width: 32px;
+  height: 32px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  margin-left: 8px;
+}
+
+.reset-btn:hover {
+  background-color: #ef4444;
+  color: white;
+  border-color: #ef4444;
+}
+
+:root[class='dark-mode'] .reset-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+/* Dark mode for custom file input */
+.dark-mode .file-button {
+  background-color: #60a5fa;
+  color: #1e293b;
+}
+
+.dark-mode .file-button:hover {
+  background-color: #93c5fd;
+}
+
+.dark-mode .file-name {
+  color: var(--text-primary);
+}
+
+/* Theme Variables */
+:root {
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8f9fa;
+  --text-primary: #1a1a1a;
+  --text-secondary: #4a5568;
+  --border-color: #e2e8f0;
+  --link-color: #3b82f6;
+  --tab-active-color: #48bb78; /* Green color for active tabs */
+  --error-bg: #fee2e2;
+  --error-text: #dc2626;
+  --checkbox-bg: #ffffff;
+  --input-bg: #ffffff;
+  --input-text: #1a1a1a;
+  --hover-bg: #f3f4f6;
+  --text-muted: #9ca3af;
+}
+
+:root[class='dark-mode'] {
+  --bg-primary: #1a202c;
+  --bg-secondary: #2d3748;
+  --text-primary: #f7fafc;
+  --text-secondary: #cbd5e0;
+  --border-color: #4a5568;
+  --link-color: #60a5fa;
+  --tab-active-color: #68d391; /* Green color for active tabs in dark mode */
+  --error-bg: #7f1d1d;
+  --error-text: #fecaca;
+  --checkbox-bg: #374151;
+  --input-bg: #374151;
+  --input-text: #f7fafc;
+  --hex-text: #f7fafc;
+  --hex-offset: #cbd5e0;
+  --hover-bg: #374151;
+  --text-muted: #6b7280;
+  --hex-ascii: #60a5fa;
+  --graph-text: #f7fafc;
+  --graph-line: #60a5fa;
+  --graph-bg: #2d3748;
+}
+
+/* Apply theme to main elements */
+body {
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
+}
+
+.container {
+  background-color: var(--bg-primary);
+}
+
+.view-container {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+.tab {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--tab-active-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.container {
+  max-width: 95%; /* Use percentage for responsive width */
+  margin: 0 auto;
+  padding: 20px;
+}
+
+h1 {
+  font-size: 24px;
+  font-weight: bold;
+  margin-bottom: 20px;
+  text-align: center;
+}
+
+.file-input {
+  margin-bottom: 20px;
+}
+
+.error-message {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+}
+
+.cancel-button {
+  margin-left: 10px;
+  padding: 5px 10px;
+  background-color: #ff4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.cancel-button:hover {
+  background-color: #cc0000;
+}
+
+.tabs {
+  display: flex;
+  gap: 1px;
+  background-color: var(--bg-secondary);
+  padding: 4px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.tab {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 500;
+  background: transparent;
+  color: var(--text-secondary);
+  transition: all 0.2s ease;
+}
+
+.tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+.tab.active {
+  background: var(--bg-primary);
+  color: var(--tab-active-color);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+}
+
+.tab:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.view-container {
+  position: relative;
+  background: white;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  padding: 20px;
+  min-height: 400px;
+  overflow: hidden;
+}
+
+.view-container > div {
+  height: 100%;
+  width: 100%;
+}
+
+/* Analysis Options Styles */
+.analysis-options {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  border-radius: 8px;
+  padding: 16px;
+  margin-bottom: 20px;
+}
+
+.analysis-options span {
+  color: var(--text-primary);
+}
+
+.form-checkbox {
+  background-color: var(--checkbox-bg);
+  border-color: var(--border-color);
+  width: 16px;
+  height: 16px;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.form-checkbox:checked {
+  background-color: #4a90e2;
+  border-color: #4a90e2;
+}
+
+.form-checkbox:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+::selection {
+  background: transparent;
+}
+
+.container {
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  user-select: none;
+}
+
+/* Virtual Scrolling Container - Add to HexView.vue and VisualView.vue */
+.virtual-scroll-container {
+  height: 100%;
+  overflow-y: auto;
+  position: relative;
+}
+
+.virtual-scroll-content {
+  position: absolute;
+  width: 100%;
+}
+
+/* Update VisualView squares group */
+.squares-group {
+  display: grid;
+  grid-template-columns: repeat(32, 12px);
+  gap: 1px;
+  margin-right: 16px;
+}
+
+/* Add dark mode specific styles */
+.analysis-options {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+}
+
+.analysis-options span {
+  color: var(--text-primary);
+}
+
+.form-checkbox {
+  background-color: var(--checkbox-bg);
+  border-color: var(--border-color);
+}
+
+.file-input {
+  color: var(--text-primary) !important;
+}
+
+.file-input input[type="file"] {
+  color: var(--text-primary);
+}
+
+.file-input input[type="file"]::file-selector-button {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+.error-message {
+  background-color: var(--error-bg);
+  color: var(--error-text);
+}
+
+.tabs {
+  background-color: var(--bg-secondary);
+}
+
+.tab {
+  color: var(--text-secondary);
+}
+
+.tab.active {
+  background-color: var(--bg-primary);
+  color: var(--link-color);
+}
+
+.view-container {
+  background-color: var(--bg-secondary);
+  border-color: var(--border-color);
+  color: var(--text-primary);
+}
+
+/* Info tab specific styles */
+.view-container .bg-gray-100 {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+/* Links */
+a {
+  color: var(--link-color);
+}
+
+/* Search bar */
+input[type="text"],
+input[type="search"] {
+  background-color: var(--input-bg);
+  color: var(--input-text);
+  border-color: var(--border-color);
+}
+
+/* Progress bar */
+.bg-gray-200 {
+  background-color: var(--bg-secondary);
+}
+
+/* Add at the top of your style section */
+* {
+  transition: background-color 0.3s ease, color 0.3s ease, border-color 0.3s ease;
+}
+
+/* Add specific dark mode styles for tabs */
+:root[class='dark-mode'] .tab {
+  color: var(--text-secondary);
+}
+
+:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .tab.active {
+  background-color: var(--bg-primary);
+  color: var(--tab-active-color);
+}
+
+/* Add specific styles for File View */
+:root[class='dark-mode'] .file-analysis {
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .entropy-graph {
+  background-color: var(--graph-bg);
+  color: var(--graph-text);
+}
+
+:root[class='dark-mode'] .entropy-graph path {
+  stroke: var(--graph-line);
+}
+
+:root[class='dark-mode'] .graph-tabs button {
+  color: var(--text-primary);
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .graph-tabs button.active {
+  background-color: var(--link-color);
+  color: white;
+}
+
+/* Add specific styles for Hex View */
+.hex-view {
+  width: 100% !important;
+}
+:root[class='dark-mode'] .hex-view {
+  color: var(--hex-text);
+}
+
+:root[class='dark-mode'] .hex-offset {
+  color: var(--hex-offset);
+}
+
+:root[class='dark-mode'] .hex-ascii {
+  color: var(--hex-ascii);
+}
+
+:root[class='dark-mode'] .hex-byte {
+  color: var(--hex-text);
+}
+
+/* Update the tab styles to ensure visibility */
+:root[class='dark-mode'] .tabs {
+  background-color: var(--bg-secondary);
+}
+
+:root[class='dark-mode'] .tab {
+  color: var(--text-secondary);
+}
+
+:root[class='dark-mode'] .tab:hover:not(.active):not(:disabled) {
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .tab.active {
+  background-color: var(--bg-primary);
+  color: var(--tab-active-color);
+}
+
+/* Add styles for the byte frequency graph */
+:root[class='dark-mode'] .byte-frequency {
+  background-color: var(--graph-bg);
+  color: var(--graph-text);
+}
+
+:root[class='dark-mode'] .byte-frequency .bar {
+  background-color: var(--link-color);
+}
+
+/* Add styles for any tooltips or overlays */
+:root[class='dark-mode'] .tooltip {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+  border-color: var(--border-color);
+}
+
+/* Ensure text visibility in all views */
+:root[class='dark-mode'] .view-container {
+  background-color: var(--bg-secondary);
+  color: var(--text-primary);
+}
+
+:root[class='dark-mode'] .view-container > div {
+  color: var(--text-primary);
+}
