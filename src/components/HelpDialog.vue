@@ -1,5 +1,5 @@
 /** * VULNEX -Bytes Revealer- * * File: HelpDialog.vue * Author: Simon Roses Femerling * Created:
-2025-09-29 * Last Modified: 2025-09-29 * Version: 0.3 * License: Apache-2.0 * Copyright (c) 2025
+2025-09-29 * Last Modified: 2026-03-30 * Version: 0.4 * License: Apache-2.0 * Copyright (c) 2025
 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
@@ -36,6 +36,28 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <h3>Changelog</h3>
           <div class="changelog-entries">
             <div class="changelog-entry">
+              <h4>Version 0.4 (March 2026)</h4>
+              <ul>
+                <li>YARA rule scanning with built-in rule sets and custom rule support</li>
+                <li>Bookmarks and annotations for marking and annotating byte offsets/ranges</li>
+                <li>Session management — save, restore, import/export analysis sessions</li>
+                <li>USecVisLib integration for attack graph and binary visualization export</li>
+                <li>Deep PE, ELF, and Mach-O binary analysis with security feature detection</li>
+                <li>
+                  Comprehensive accessibility across 21 components (ARIA, focus trapping, keyboard
+                  nav)
+                </li>
+                <li>Responsive layout for tablet and mobile devices</li>
+                <li>ESLint 9, Prettier, pre-commit hooks, and GitHub Actions CI</li>
+                <li>Upgraded Vue 3.5, Pinia 3, Vite 7</li>
+                <li>Gzip/Brotli pre-compression and bundle analyzer</li>
+                <li>Component decomposition into 14 composables</li>
+                <li>Test suite expanded from 221 to 1688 tests</li>
+                <li>Fixed 17 security vulnerabilities and 153 lint warnings</li>
+              </ul>
+            </div>
+
+            <div class="changelog-entry">
               <h4>Version 0.3 (September 2025)</h4>
               <ul>
                 <li>Added Kaitai Struct format support for advanced binary parsing</li>
@@ -43,11 +65,11 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                 <li>Implemented progressive loading for files up to 1.5GB</li>
                 <li>Added chunk-based file processing for improved performance</li>
                 <li>New export functionality with multiple format support</li>
-                <li>Enhanced Visual View and Hex Viiew with color scheme toggle</li>
+                <li>Enhanced Visual View and Hex View with color scheme toggle</li>
                 <li>Added context menu for hex operations</li>
                 <li>Improved dark mode support and set by default</li>
                 <li>Added format search and loading indicators</li>
-                <li>Cleaaner UI and better error handling</li>
+                <li>Cleaner UI and better error handling</li>
                 <li>JSON export functionality updated</li>
                 <li>New help dialog and about page</li>
                 <li>Many bug fixes and improvements</li>
@@ -111,6 +133,12 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
               <dt><strong>String Analysis</strong></dt>
               <dd>Extracts and analyzes ASCII/UTF-8 strings from the file</dd>
+
+              <dt><strong>YARA</strong></dt>
+              <dd>Scan files with YARA rules for pattern matching and malware detection</dd>
+
+              <dt><strong>Sessions</strong></dt>
+              <dd>Save, restore, import, and export analysis sessions</dd>
 
               <dt><strong>Export</strong></dt>
               <dd>Export analysis results and data in various formats</dd>
@@ -201,30 +229,26 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <div v-if="activeTab === 'license'" class="tab-content">
           <h3>License</h3>
           <div class="license-content">
-            <h4>MIT License</h4>
-            <p>Copyright (c) 2025 VULNEX</p>
+            <h4>Apache License, Version 2.0</h4>
+            <p>Copyright (c) 2025 VULNEX. All rights reserved.</p>
 
             <p>
-              Permission is hereby granted, free of charge, to any person obtaining a copy of this
-              software and associated documentation files (the "Software"), to deal in the Software
-              without restriction, including without limitation the rights to use, copy, modify,
-              merge, publish, distribute, sublicense, and/or sell copies of the Software, and to
-              permit persons to whom the Software is furnished to do so, subject to the following
-              conditions:
+              Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
+              software except in compliance with the License. You may obtain a copy of the License
+              at:
             </p>
 
             <p>
-              The above copyright notice and this permission notice shall be included in all copies
-              or substantial portions of the Software.
+              <a href="http://www.apache.org/licenses/LICENSE-2.0" target="_blank"
+                >http://www.apache.org/licenses/LICENSE-2.0</a
+              >
             </p>
 
             <p>
-              THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED,
-              INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A
-              PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT
-              HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF
-              CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
-              OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+              Unless required by applicable law or agreed to in writing, software distributed under
+              the License is distributed on an "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF
+              ANY KIND, either express or implied. See the License for the specific language
+              governing permissions and limitations under the License.
             </p>
           </div>
         </div>
@@ -284,6 +308,18 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                   >https://github.com/sindresorhus/file-type</a
                 >
                 <p class="credit-license">License: MIT</p>
+              </div>
+
+              <div class="credit-item">
+                <h5>libyara-wasm</h5>
+                <p>
+                  WebAssembly build of the YARA pattern matching engine. Used for browser-based YARA
+                  rule scanning.
+                </p>
+                <a href="https://github.com/nickreyntjens/libyara-wasm" target="_blank"
+                  >https://github.com/nickreyntjens/libyara-wasm</a
+                >
+                <p class="credit-license">License: BSD-3-Clause</p>
               </div>
             </div>
 
@@ -365,12 +401,6 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
               <h4>Development Tools</h4>
 
               <div class="credit-item">
-                <h5>Tailwind CSS</h5>
-                <p>A utility-first CSS framework</p>
-                <a href="https://tailwindcss.com/" target="_blank">https://tailwindcss.com/</a>
-              </div>
-
-              <div class="credit-item">
                 <h5>Terser</h5>
                 <p>JavaScript parser and mangler/compressor toolkit</p>
                 <a href="https://terser.org/" target="_blank">https://terser.org/</a>
@@ -396,7 +426,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <h3>About Bytes Revealer</h3>
 
           <div class="about-section">
-            <p class="about-version">Version 0.3</p>
+            <p class="about-version">Version 0.4</p>
             <p class="about-tagline">Uncover the Secrets of Binary Files</p>
 
             <div class="about-description">
@@ -419,7 +449,11 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                 <li>Support for files up to 1.5GB</li>
                 <li>Multiple analysis views and export options</li>
                 <li>Advanced search and pattern matching</li>
-                <li>Kaitai Struct format support</li>
+                <li>Kaitai Struct format support for 100+ binary formats</li>
+                <li>YARA rule scanning with built-in and custom rules</li>
+                <li>Bookmarks and annotations</li>
+                <li>Session management — save, restore, and share sessions</li>
+                <li>Deep PE, ELF, and Mach-O binary analysis</li>
                 <li>Real-time data inspection</li>
               </ul>
             </div>
@@ -440,7 +474,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
             </div>
 
             <div class="about-footer">
-              <p>© 2025 VULNEX. All rights reserved.</p>
+              <p>© 2025-2026 VULNEX. All rights reserved.</p>
               <p>Created by Simon Roses Femerling</p>
             </div>
           </div>

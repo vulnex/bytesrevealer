@@ -66,12 +66,42 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 - String pattern recognition
 - Export capabilities with full string data
 
+### YARA Rule Scanning
+- Browser-based YARA pattern matching via libyara-wasm
+- Built-in rule sets: Common Malware, Crypto Indicators, Packers & Protectors, Suspicious Strings
+- Custom rule editor with `.yar` file import
+- Match navigation to hex offsets
+- Highlight matches overlay in Hex View
+- Feature toggle and session persistence
+
+### Bookmarks & Annotations
+- Add bookmarks at specific byte offsets
+- Annotate byte ranges with labels and notes
+- 8-color palette for visual categorization
+- Filter, sort, and navigate bookmarks/annotations
+- Visual indicators in Hex View and Visual View
+- Full session persistence
+
+### Session Management
+- Save and restore analysis sessions with IndexedDB
+- Export sessions to `.brsession` files for sharing/backup
+- Import sessions from `.brsession` files
+- Session metadata tracking (name, file info, timestamps)
+- Unsaved changes indicator with dirty state tracking
+- Auto-detection of file changes when restoring
+
 ### Kaitai Struct Integration
 - Support for 100+ binary file formats
 - Automatic format detection
 - Structured binary parsing
 - Format search and loading
 - Category-based format organization
+
+### Binary Analysis
+- Deep PE (Windows) analysis: sections, imports, exports, security features (ASLR, DEP, CFG)
+- Deep ELF (Linux) analysis: segments, dependencies, security features (PIE, RELRO, stack)
+- Mach-O (macOS) analysis: load commands, universal binary support
+- USecVisLib attack graph export for PE/ELF/Mach-O executables
 
 ### Export Options
 - Enhanced JSON export with timestamps
@@ -123,23 +153,36 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 ## Technical Details
 
 ### Built With
-- Vue.js 3
-- Tailwind CSS
+- Vue.js 3.5 (Composition API + Composables)
+- Pinia 3 (State Management)
+- Vite 7 (Build Tool)
 - Web Workers for performance
-- Modern JavaScript APIs
+- IndexedDB for session persistence
+- libyara-wasm for YARA scanning
+- Kaitai Struct for binary format parsing
+
+### Code Quality
+- ESLint 9 with vue/recommended and vitest plugins
+- Prettier with pre-commit hooks (husky + lint-staged)
+- GitHub Actions CI (lint, format, test, build)
+- 1688 tests across 37 test files (Vitest + happy-dom)
+- Comprehensive accessibility (ARIA roles, focus trapping, keyboard nav)
+- Responsive design for tablet and mobile
 
 ### Performance Features
-- Chunked file processing
-- Web Worker implementation
-- Memory optimization
+- Chunked file processing (256KB chunks)
+- Web Worker implementation (search, strings, YARA)
+- Memory optimization with LRU eviction
 - Cancelable operations
 - Progress tracking
+- Gzip/Brotli pre-compression
+- Code splitting (lazy-loaded WASM, format categories)
 
 ## Getting Started
 
 ### Prerequisites
 ```bash
-# Node.js 14+ is required
+# Node.js 20+ is required
 node -v
 ```
 
@@ -238,7 +281,7 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ## Changelog
 
-### Version 0.4 — Code Quality, A11y & Responsive (February 2026)
+### Version 0.4 — Code Quality, A11y & Responsive (March 2026)
 - ESLint 9, Prettier, pre-commit hook (husky + lint-staged), GitHub Actions CI
 - Comprehensive accessibility across 21 components (ARIA roles, focus trapping, keyboard nav)
 - Responsive layout for tablet and mobile across 17 files
@@ -281,13 +324,11 @@ This project is licensed under the Apache License, Version 2.0 - see the [LICENS
 
 ## Future Enhancements
 
+- Disassembly support via Capstone.js
 - Additional file format support
 - More visualization options
 - Pattern recognition improvements
 - Advanced string analysis features
-- Enhanced export/import capabilities
 - Collaboration features
-- WebAssembly integration for performance
 - More keyboard shortcuts
-- Bookmarks and annotations
 - Diff/compare functionality

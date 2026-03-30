@@ -6,7 +6,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.4] - 2026-02-28 (Code Quality, A11y, Responsive & Dependency Upgrades)
+## [0.4] - 2026-03-30 (Code Quality, A11y, Responsive & Dependency Upgrades)
 
 ### Added
 - **ESLint & Prettier** — ESLint 9 flat config with vue/recommended, vitest plugin, eslint-config-prettier; Prettier with project conventions (no semi, single quotes, 100 char width, LF)
@@ -67,7 +67,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
-## [0.4] - 2026-02-28 (Component Decomposition & Test Expansion)
+## [0.4] - 2026-03-30 (Component Decomposition & Test Expansion)
 
 ### Changed
 - **App.vue Decomposition** — Extracted ~400 lines from the 995-line root component into 5 composables + external CSS:
