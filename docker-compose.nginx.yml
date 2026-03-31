@@ -34,18 +34,12 @@ services:
         max-size: "10m"
         max-file: "3"
         labels: "service=bytesrevealer"
-    # Optional: Add volume for nginx logs
-    volumes:
-      - /var/log/bytesrevealer:/var/log/nginx:rw
     networks:
       - bytesrevealer-network
     # Security options
     security_opt:
       - no-new-privileges:true
-    read_only: true
     tmpfs:
-      - /var/run
-      - /var/cache/nginx
       - /tmp
 
 networks:

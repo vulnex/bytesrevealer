@@ -36,6 +36,8 @@ class FileChunkManager {
     this.totalSize = 0
     this.totalChunks = 0
     this.isLargeFile = false
+    this.cacheHits = 0
+    this.cacheMisses = 0
 
     this.initIndexedDB()
   }
@@ -227,9 +229,12 @@ class FileChunkManager {
 
     // Check memory cache first
     if (this.chunks.has(index)) {
+      this.cacheHits++
       logger.debug(`Chunk ${index} retrieved from memory`)
       return this.chunks.get(index)
     }
+
+    this.cacheMisses++
 
     // Check IndexedDB
     if (this.db && this.isLargeFile) {
@@ -378,6 +383,8 @@ class FileChunkManager {
     this.totalSize = 0
     this.totalChunks = 0
     this.isLargeFile = false
+    this.cacheHits = 0
+    this.cacheMisses = 0
   }
 
   /**
@@ -401,8 +408,9 @@ class FileChunkManager {
   }
 
   calculateCacheHitRate() {
-    // TODO: Implement cache hit rate tracking
-    return 0
+    const total = this.cacheHits + this.cacheMisses
+    if (total === 0) return 0
+    return this.cacheHits / total
   }
 
   formatSize(bytes) {

@@ -6,6 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/).
 
 ---
 
+## [0.4] - 2026-03-30 (Documentation & Version Consistency)
+
+### Fixed
+- **HelpDialog.vue** — Version 0.3→0.4 in header, changelog heading, and About tab
+- **HelpDialog.vue** — License MIT→Apache-2.0 with correct license text and link
+- **HelpDialog.vue** — Typos: "Hex Viiew"→"Hex View", "Cleaaner"→"Cleaner"
+- **HelpDialog.vue** — Removed Tailwind CSS from credits (not used), added libyara-wasm
+- **File headers** — Bumped version 0.3→0.4 across 28 source files (components, kaitai, services, workers)
+- **README** — Added missing v0.4 features (YARA, bookmarks, sessions, binary analysis, USecVisLib), updated tech stack (Vue 3.5, Pinia 3, Vite 7), added code quality section, fixed Node.js prerequisite (14+→20+), removed completed items from Future Enhancements
+
+### Changed
+- **HelpDialog.vue** — Added v0.4 changelog entry with all major features, added YARA and Sessions to User Manual views, updated About key features list, updated copyright to 2025-2026
+- **DEVELOPMENT_STATUS.md** — Full rewrite from stale v0.3 (Sept 2025) to current v0.4 state
+
+---
+
 ## [0.4] - 2026-03-30 (Code Quality, A11y, Responsive & Dependency Upgrades)
 
 ### Added
