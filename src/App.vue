@@ -86,6 +86,16 @@
             />
             <span class="file-button"> Choose File </span>
           </label>
+          <button
+            class="paste-data-btn"
+            type="button"
+            :disabled="loading.file || loading.analysis"
+            title="Paste hex, escaped bytes, base64, or hexdump output"
+            aria-label="Open paste data dialog"
+            @click="showPasteDialog = true"
+          >
+            Paste Data
+          </button>
           <span class="file-name">
             {{ fileName || 'No file selected' }}
           </span>
@@ -547,6 +557,14 @@
 
   <!-- Help Dialog -->
   <HelpDialog v-if="showHelpDialog" @close="showHelpDialog = false" />
+
+  <!-- Paste Data Dialog -->
+  <PasteDataDialog
+    :visible="showPasteDialog"
+    :disabled="loading.file || loading.analysis"
+    @close="showPasteDialog = false"
+    @submit="handlePastedBytes"
+  />
 </template>
 
 <script>
@@ -563,6 +581,7 @@ import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
 import HelpDialog from './components/HelpDialog.vue'
 import SessionControls from './components/SessionControls.vue'
 import YaraPanel from './components/YaraPanel.vue'
+import PasteDataDialog from './components/PasteDataDialog.vue'
 import { useAppPreferences } from './composables/useAppPreferences'
 import { useAnnotations } from './composables/useAnnotations'
 import { useFileProcessing } from './composables/useFileProcessing'
@@ -583,13 +602,17 @@ export default {
     FormatLoadingIndicator,
     HelpDialog,
     SessionControls,
-    YaraPanel
+    YaraPanel,
+    PasteDataDialog
   },
 
   setup() {
     // Template refs
     const fileInput = ref(null)
     const stringAnalysisView = ref(null)
+
+    // Paste Data dialog
+    const showPasteDialog = ref(false)
 
     // 1. Standalone composables
     const preferences = useAppPreferences()
@@ -633,6 +656,12 @@ export default {
         activeTab: preferences.activeTab,
         onSessionClear: session.clearSessionState
       })
+    }
+
+    function handlePastedBytes(bytes, name) {
+      showPasteDialog.value = false
+      const syntheticFile = new File([bytes], name, { type: 'application/octet-stream' })
+      handleFileUpload({ target: { files: [syntheticFile] } })
     }
 
     function resetFile() {
@@ -724,6 +753,8 @@ export default {
 
       // Cross-composable wrappers
       handleFileUpload,
+      handlePastedBytes,
+      showPasteDialog,
       resetFile,
       navigateToMatch,
       navigateToYaraMatch,

@@ -205,6 +205,37 @@
   background-color: #2563eb;
 }
 
+.paste-data-btn {
+  padding: 8px 16px;
+  background-color: #3b82f6;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  white-space: nowrap;
+}
+
+.paste-data-btn:hover:not(:disabled) {
+  background-color: #2563eb;
+}
+
+.paste-data-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.dark-mode .paste-data-btn {
+  background-color: #60a5fa;
+  color: #1e293b;
+}
+
+.dark-mode .paste-data-btn:hover:not(:disabled) {
+  background-color: #93c5fd;
+}
+
 .file-name {
   color: var(--text-primary);
   font-size: 14px;
@@ -827,9 +858,12 @@ input[type='search'] {
     align-items: flex-start;
   }
 
-  .file-button {
+  .file-button,
+  .paste-data-btn {
     padding: 8px 14px;
     font-size: 13px;
+    width: 100%;
+    text-align: center;
   }
 
   .file-name {

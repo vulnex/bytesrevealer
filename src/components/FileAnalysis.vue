@@ -28,7 +28,9 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           </div>
           <div class="type-item">
             <label>Extension:</label>
-            <span class="type-ext">.{{ detectedFileType.ext }}</span>
+            <span class="type-ext">{{
+              detectedFileType.ext === 'unknown' ? 'Unknown' : `.${detectedFileType.ext}`
+            }}</span>
           </div>
           <div class="type-item">
             <label>MIME Type:</label>
