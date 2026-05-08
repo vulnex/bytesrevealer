@@ -325,6 +325,10 @@ export default {
     annotations: {
       type: Array,
       default: () => []
+    },
+    embeddedExecutables: {
+      type: Array,
+      default: () => []
     }
   },
   emits: [

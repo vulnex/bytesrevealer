@@ -60,4 +60,26 @@ describe('SettingsStore', () => {
       expect(store.currentOffset).toBe(256)
     })
   })
+
+  describe('enableEmbeddedExecutableScan', () => {
+    it('defaults to true', () => {
+      expect(store.enableEmbeddedExecutableScan).toBe(true)
+    })
+
+    it('setEnableEmbeddedExecutableScan updates the flag', () => {
+      store.setEnableEmbeddedExecutableScan(false)
+      expect(store.enableEmbeddedExecutableScan).toBe(false)
+      store.setEnableEmbeddedExecutableScan(true)
+      expect(store.enableEmbeddedExecutableScan).toBe(true)
+    })
+
+    it('coerces truthy/falsy values to booleans', () => {
+      store.setEnableEmbeddedExecutableScan(0)
+      expect(store.enableEmbeddedExecutableScan).toBe(false)
+      store.setEnableEmbeddedExecutableScan('yes')
+      expect(store.enableEmbeddedExecutableScan).toBe(true)
+      store.setEnableEmbeddedExecutableScan(null)
+      expect(store.enableEmbeddedExecutableScan).toBe(false)
+    })
+  })
 })

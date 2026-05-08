@@ -335,6 +335,10 @@
           :detected-file-type="detectedFileType"
           :has-session-data="hasSessionData"
           :session-file-size="pendingSessionFile?.size || 0"
+          :embedded-executables="embeddedExecutables"
+          :embedded-scan="embeddedScan"
+          @cancel-embedded-scan="cancelEmbeddedScan"
+          @jump-to-embedded="jumpToEmbeddedOffset"
         />
       </template>
 
@@ -364,6 +368,7 @@
             :chunk-manager="chunkManager"
             :bookmarks="bookmarks"
             :annotations="annotations"
+            :embedded-executables="embeddedExecutables"
             @byte-selection="handleByteSelection"
             @add-bookmark="addBookmark"
             @add-annotation="addAnnotation"
@@ -568,7 +573,7 @@
 </template>
 
 <script>
-import { ref } from 'vue'
+import { ref, nextTick } from 'vue'
 import FileAnalysis from './components/FileAnalysis.vue'
 import VisualView from './components/VisualView.vue'
 import HexView from './components/HexView.vue'
@@ -686,6 +691,16 @@ export default {
       searchComposable.navigateToYaraMatch(payload, preferences.activeTab)
     }
 
+    function jumpToEmbeddedOffset(offset) {
+      if (typeof offset !== 'number') return
+      if (preferences.activeTab.value !== 'hex') {
+        preferences.activeTab.value = 'hex'
+      }
+      nextTick(() => {
+        window.dispatchEvent(new CustomEvent('scrollToOffset', { detail: { offset, length: 4 } }))
+      })
+    }
+
     function handleError(message) {
       fp.error.value = message
     }
@@ -733,6 +748,10 @@ export default {
       progress: fp.progress,
       error: fp.error,
       chunkManager: fp.chunkManager,
+      embeddedExecutables: fp.embeddedExecutables,
+      embeddedScan: fp.embeddedScan,
+      cancelEmbeddedScan: fp.cancelEmbeddedScan,
+      jumpToEmbeddedOffset,
       formatFileSize: fp.formatFileSize,
 
       // Search

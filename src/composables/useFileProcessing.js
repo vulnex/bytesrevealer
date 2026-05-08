@@ -1,4 +1,4 @@
-import { ref, reactive } from 'vue'
+import { ref, reactive, watch } from 'vue'
 import {
   analyzeFileInChunks,
   validateFileSize,
@@ -11,6 +11,7 @@ import { isFileType } from '../utils/fileSignatures'
 import { detectSpecificFileType, detectNestedFiles } from '../utils/advancedFileDetection'
 import { useFormatStore } from '../stores/format'
 import { useYaraStore } from '../stores/yara'
+import { useSettingsStore } from '../stores/settings'
 import { createLogger } from '../utils/logger'
 import fileChunkManager from '../utils/FileChunkManager'
 import { calculateOptimizedEntropy } from '../utils/entropyOptimized'
@@ -39,6 +40,31 @@ export function useFileProcessing() {
   const progress = ref(0)
   const error = ref(null)
   const chunkManager = ref(null)
+  const embeddedExecutables = ref([])
+  const embeddedScan = reactive({
+    inProgress: false,
+    scanned: 0,
+    total: 0,
+    cancelled: false,
+    truncated: false,
+    hasRun: false
+  })
+
+  // Worker handle and a per-scan token so stale messages from a terminated
+  // worker can't mutate state for a subsequent scan.
+  let embeddedScanWorker = null
+  let embeddedScanToken = 0
+
+  // Cancel any in-flight scan if the user disables the feature mid-scan.
+  const settingsStore = useSettingsStore()
+  watch(
+    () => settingsStore.enableEmbeddedExecutableScan,
+    (enabled) => {
+      if (!enabled && embeddedScan.inProgress) {
+        cancelEmbeddedScan()
+      }
+    }
+  )
 
   function resetProgress() {
     progress.value = 0
@@ -88,6 +114,128 @@ export function useFileProcessing() {
 
   function isSpecificFileType(format) {
     return isFileType(fileBytes.value, format)
+  }
+
+  function teardownEmbeddedScanWorker() {
+    if (embeddedScanWorker) {
+      embeddedScanWorker.onmessage = null
+      embeddedScanWorker.onerror = null
+      embeddedScanWorker.terminate()
+      embeddedScanWorker = null
+    }
+  }
+
+  function resetEmbeddedScanState() {
+    embeddedExecutables.value = []
+    embeddedScan.inProgress = false
+    embeddedScan.scanned = 0
+    embeddedScan.total = 0
+    embeddedScan.cancelled = false
+    embeddedScan.truncated = false
+    embeddedScan.hasRun = false
+  }
+
+  function cancelEmbeddedScan() {
+    if (!embeddedScan.inProgress) return
+    if (embeddedScanWorker) embeddedScanWorker.postMessage({ type: 'cancel' })
+    embeddedScan.cancelled = true
+  }
+
+  async function runEmbeddedExecutableScan() {
+    teardownEmbeddedScanWorker()
+    embeddedScanToken++
+    const token = embeddedScanToken
+
+    embeddedExecutables.value = []
+    embeddedScan.scanned = 0
+    embeddedScan.total = fileBytes.value.length
+    embeddedScan.cancelled = false
+    embeddedScan.truncated = false
+    embeddedScan.hasRun = false
+
+    const settingsStore = useSettingsStore()
+    if (!settingsStore.enableEmbeddedExecutableScan) {
+      embeddedScan.inProgress = false
+      embeddedScan.hasRun = false
+      return
+    }
+
+    if (!fileBytes.value || fileBytes.value.length < 64) {
+      embeddedScan.inProgress = false
+      embeddedScan.hasRun = true
+      return
+    }
+
+    embeddedScan.inProgress = true
+
+    let worker
+    try {
+      worker = new Worker(new URL('../workers/EmbeddedScanWorker.js', import.meta.url), {
+        type: 'module'
+      })
+    } catch (err) {
+      logger.error('Failed to spawn embedded-scan worker:', err)
+      embeddedScan.inProgress = false
+      embeddedScan.hasRun = true
+      return
+    }
+    embeddedScanWorker = worker
+
+    worker.onmessage = (event) => {
+      if (token !== embeddedScanToken) return
+      const msg = event.data
+      switch (msg.type) {
+        case 'finding': {
+          const { type: _type, ...finding } = msg
+          embeddedExecutables.value.push(finding)
+          break
+        }
+        case 'progress':
+          embeddedScan.scanned = msg.scanned
+          if (typeof msg.total === 'number') embeddedScan.total = msg.total
+          break
+        case 'done':
+          embeddedScan.cancelled = !!msg.cancelled
+          embeddedScan.truncated = !!msg.truncated
+          embeddedScan.inProgress = false
+          embeddedScan.hasRun = true
+          teardownEmbeddedScanWorker()
+          break
+        case 'error':
+          logger.error('Embedded-scan worker error:', msg.message)
+          embeddedScan.inProgress = false
+          embeddedScan.hasRun = true
+          teardownEmbeddedScanWorker()
+          break
+      }
+    }
+    worker.onerror = (event) => {
+      if (token !== embeddedScanToken) return
+      logger.error('Embedded-scan worker crash:', event.message || event)
+      embeddedScan.inProgress = false
+      embeddedScan.hasRun = true
+      teardownEmbeddedScanWorker()
+    }
+
+    worker.postMessage({ type: 'scan', totalSize: fileBytes.value.length })
+
+    const CHUNK = 10 * 1024 * 1024
+    const total = fileBytes.value.length
+    for (let start = 0; start < total; start += CHUNK) {
+      if (token !== embeddedScanToken) return
+      if (embeddedScan.cancelled) break
+      const end = Math.min(start + CHUNK, total)
+      // .slice() returns a fresh ArrayBuffer we can transfer without losing fileBytes.
+      const slice = fileBytes.value.slice(start, end)
+      worker.postMessage({ type: 'chunk', start, bytes: slice, isFinal: end === total }, [
+        slice.buffer
+      ])
+      // Yield to the event loop occasionally so the UI stays responsive while
+      // the main thread copies chunks.
+      if (((start / CHUNK) | 0) % 4 === 3) {
+        await new Promise((resolve) => setTimeout(resolve, 0))
+      }
+    }
   }
 
   async function detectFileSignaturesFromBytes() {
@@ -171,6 +319,10 @@ export function useFileProcessing() {
         chunkManager.value = null
       }
 
+      // Cancel any in-flight embedded-executable scan from a previous file.
+      teardownEmbeddedScanWorker()
+      resetEmbeddedScanState()
+
       logger.info(`Loading file: ${file.name} (${(file.size / 1024 / 1024).toFixed(2)}MB)`)
 
       if (file.size > 100 * 1024 * 1024) {
@@ -253,6 +405,11 @@ export function useFileProcessing() {
         try {
           await detectFileSignaturesFromBytes()
           progress.value = 20
+          // Kick off embedded-executable scan in a worker; do not await — it
+          // populates embeddedExecutables reactively as findings stream in.
+          runEmbeddedExecutableScan().catch((err) =>
+            logger.error('runEmbeddedExecutableScan failed:', err)
+          )
 
           if (isLargeFile) {
             hashes.value = {
@@ -330,6 +487,10 @@ export function useFileProcessing() {
       chunkManager.value = null
     }
 
+    // Cancel and clear embedded-executable scan
+    teardownEmbeddedScanWorker()
+    resetEmbeddedScanState()
+
     // Reset file input
     if (fileInputRef.value) {
       fileInputRef.value.value = ''
@@ -366,9 +527,12 @@ export function useFileProcessing() {
     progress,
     error,
     chunkManager,
+    embeddedExecutables,
+    embeddedScan,
     FILE_LIMITS,
     handleFileUpload,
     detectFileSignatures: detectFileSignaturesFromBytes,
+    cancelEmbeddedScan,
     resetFile,
     showSizeWarning,
     resetProgress,

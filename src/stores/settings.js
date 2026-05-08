@@ -15,7 +15,8 @@ import { defineStore } from 'pinia'
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
-    baseOffset: 0
+    baseOffset: 0,
+    enableEmbeddedExecutableScan: true
     // other settings...
   }),
   actions: {
@@ -24,6 +25,9 @@ export const useSettingsStore = defineStore('settings', {
     },
     updateBaseOffset(offset) {
       this.baseOffset = offset
+    },
+    setEnableEmbeddedExecutableScan(enabled) {
+      this.enableEmbeddedExecutableScan = !!enabled
     }
   },
   getters: {

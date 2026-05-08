@@ -1,5 +1,27 @@
 import { ref, computed } from 'vue'
 
+const EMBEDDED_FORMAT_COLORS = {
+  PE: 'rgb(66, 153, 225)',
+  ELF: 'rgb(72, 187, 120)',
+  'Mach-O': 'rgb(160, 105, 245)',
+  'Mach-O Fat': 'rgb(160, 105, 245)'
+}
+
+const EMBEDDED_MAGIC_LENGTH = {
+  PE: 2,
+  ELF: 4,
+  'Mach-O': 4,
+  'Mach-O Fat': 4
+}
+
+function embeddedFormatColor(format) {
+  return EMBEDDED_FORMAT_COLORS[format] || 'rgb(160, 160, 160)'
+}
+
+function magicByteLength(format) {
+  return EMBEDDED_MAGIC_LENGTH[format] || 1
+}
+
 /**
  * Composable for byte formatting, classification, styling, and display toggles.
  */
@@ -23,6 +45,21 @@ export function useHexDisplay(
     const map = new Map()
     for (const b of props.bookmarks) {
       map.set(b.offset, b)
+    }
+    return map
+  })
+
+  // O(1) embedded-executable marker lookup. Maps each magic-byte offset to a color.
+  const embeddedMarkerMap = computed(() => {
+    const map = new Map()
+    const list = props.embeddedExecutables
+    if (!list || list.length === 0) return map
+    for (const f of list) {
+      const len = magicByteLength(f.format)
+      const color = embeddedFormatColor(f.format)
+      for (let i = 0; i < len; i++) {
+        map.set(f.offset + i, color)
+      }
     }
     return map
   })
@@ -109,6 +146,11 @@ export function useHexDisplay(
       styles.borderTop = `2px solid ${bookmark.color}`
     }
 
+    const embeddedColor = embeddedMarkerMap.value.get(actualOffset)
+    if (embeddedColor) {
+      styles.borderLeft = `3px solid ${embeddedColor}`
+    }
+
     return styles
   }
 
@@ -129,6 +171,7 @@ export function useHexDisplay(
     useColors,
     highlightSet,
     bookmarkMap,
+    embeddedMarkerMap,
     formatOffset,
     formatByte,
     getByteClass,

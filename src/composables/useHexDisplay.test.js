@@ -380,4 +380,85 @@ describe('useHexDisplay', () => {
       expect(styles.backgroundColor).toBe('#ff000040')
     })
   })
+
+  describe('embedded executable markers', () => {
+    it('marks the 2 magic bytes of a PE finding with a left border', () => {
+      const embeddedExecutables = [{ format: 'PE', offset: 1000 }]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      expect(getByteStyles(1000).borderLeft).toMatch(/3px solid rgb\(66, 153, 225\)/)
+      expect(getByteStyles(1001).borderLeft).toMatch(/3px solid rgb\(66, 153, 225\)/)
+      expect(getByteStyles(1002).borderLeft).toBeUndefined()
+    })
+
+    it('marks the 4 magic bytes of an ELF finding', () => {
+      const embeddedExecutables = [{ format: 'ELF', offset: 50 }]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      for (let i = 0; i < 4; i++) {
+        expect(getByteStyles(50 + i).borderLeft).toMatch(/rgb\(72, 187, 120\)/)
+      }
+      expect(getByteStyles(54).borderLeft).toBeUndefined()
+    })
+
+    it('marks the 4 magic bytes of a Mach-O finding', () => {
+      const embeddedExecutables = [{ format: 'Mach-O', offset: 200 }]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      expect(getByteStyles(200).borderLeft).toMatch(/rgb\(160, 105, 245\)/)
+      expect(getByteStyles(203).borderLeft).toMatch(/rgb\(160, 105, 245\)/)
+      expect(getByteStyles(204).borderLeft).toBeUndefined()
+    })
+
+    it('marks Mach-O Fat magic bytes with the same color as Mach-O', () => {
+      const embeddedExecutables = [{ format: 'Mach-O Fat', offset: 0x1000 }]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      expect(getByteStyles(0x1000).borderLeft).toMatch(/rgb\(160, 105, 245\)/)
+    })
+
+    it('does not affect bytes outside the magic-byte range', () => {
+      const embeddedExecutables = [{ format: 'ELF', offset: 100 }]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      expect(getByteStyles(99).borderLeft).toBeUndefined()
+      expect(getByteStyles(104).borderLeft).toBeUndefined()
+    })
+
+    it('coexists with bookmark and annotation styles on the same byte', () => {
+      const annotations = [{ startOffset: 100, endOffset: 100, color: '#ff0000' }]
+      const bookmarks = [{ offset: 100, color: '#00ff00' }]
+      const embeddedExecutables = [{ format: 'PE', offset: 100 }]
+      const { getByteStyles } = useHexDisplay(
+        makeProps({ annotations, bookmarks, embeddedExecutables }),
+        makeDeps()
+      )
+      const styles = getByteStyles(100)
+      expect(styles.backgroundColor).toBe('#ff000040')
+      expect(styles.borderTop).toMatch(/#00ff00/)
+      expect(styles.borderBottom).toMatch(/#ff0000/)
+      expect(styles.borderLeft).toMatch(/rgb\(66, 153, 225\)/)
+    })
+
+    it('handles multiple findings independently', () => {
+      const embeddedExecutables = [
+        { format: 'PE', offset: 100 },
+        { format: 'ELF', offset: 500 }
+      ]
+      const { getByteStyles } = useHexDisplay(makeProps({ embeddedExecutables }), makeDeps())
+      expect(getByteStyles(100).borderLeft).toMatch(/rgb\(66, 153, 225\)/)
+      expect(getByteStyles(500).borderLeft).toMatch(/rgb\(72, 187, 120\)/)
+      expect(getByteStyles(503).borderLeft).toMatch(/rgb\(72, 187, 120\)/)
+    })
+
+    it('respects baseOffset', () => {
+      const embeddedExecutables = [{ format: 'PE', offset: 50 }]
+      const { getByteStyles } = useHexDisplay(
+        makeProps({ embeddedExecutables }),
+        makeDeps({ baseOffset: ref(1000) })
+      )
+      // displayOffset 1050 - baseOffset 1000 = actualOffset 50
+      expect(getByteStyles(1050).borderLeft).toMatch(/rgb\(66, 153, 225\)/)
+    })
+
+    it('returns empty when there are no findings', () => {
+      const { embeddedMarkerMap } = useHexDisplay(makeProps(), makeDeps())
+      expect(embeddedMarkerMap.value.size).toBe(0)
+    })
+  })
 })

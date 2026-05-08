@@ -129,6 +129,30 @@ describe('useFileProcessing', () => {
       expect(result.progress.value).toBe(0)
       app.unmount()
     })
+
+    it('embeddedExecutables is empty', async () => {
+      const [result, app] = await loadComposable()
+      expect(result.embeddedExecutables.value).toEqual([])
+      app.unmount()
+    })
+
+    it('embeddedScan is idle', async () => {
+      const [result, app] = await loadComposable()
+      expect(result.embeddedScan.inProgress).toBe(false)
+      expect(result.embeddedScan.scanned).toBe(0)
+      expect(result.embeddedScan.total).toBe(0)
+      expect(result.embeddedScan.cancelled).toBe(false)
+      expect(result.embeddedScan.truncated).toBe(false)
+      expect(result.embeddedScan.hasRun).toBe(false)
+      app.unmount()
+    })
+
+    it('cancelEmbeddedScan is a no-op when no scan is running', async () => {
+      const [result, app] = await loadComposable()
+      expect(() => result.cancelEmbeddedScan()).not.toThrow()
+      expect(result.embeddedScan.cancelled).toBe(false)
+      app.unmount()
+    })
   })
 
   describe('formatFileSize', () => {

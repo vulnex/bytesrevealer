@@ -125,6 +125,13 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
       <FileSignatures :signatures="fileSignatures" class="mb-4" />
 
+      <EmbeddedExecutables
+        :findings="embeddedExecutables"
+        :scan="embeddedScan"
+        @cancel="$emit('cancel-embedded-scan')"
+        @jump-to-offset="(offset) => $emit('jump-to-embedded', offset)"
+      />
+
       <BinaryAnalysis :file-signatures="fileSignatures" />
 
       <HashSection :hashes="hashes" />
@@ -135,6 +142,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 <script>
 import EntropyGraph from './EntropyGraph.vue'
 import FileSignatures from './FileSignatures.vue'
+import EmbeddedExecutables from './EmbeddedExecutables.vue'
 import BinaryAnalysis from './BinaryAnalysis.vue'
 import HashSection from './HashSection.vue'
 import { createLogger } from '../utils/logger'
@@ -146,6 +154,7 @@ export default {
   components: {
     EntropyGraph,
     FileSignatures,
+    EmbeddedExecutables,
     BinaryAnalysis,
     HashSection
   },
@@ -182,9 +191,24 @@ export default {
     sessionFileSize: {
       type: Number,
       default: 0
+    },
+    embeddedExecutables: {
+      type: Array,
+      default: () => []
+    },
+    embeddedScan: {
+      type: Object,
+      default: () => ({
+        inProgress: false,
+        scanned: 0,
+        total: 0,
+        cancelled: false,
+        truncated: false,
+        hasRun: false
+      })
     }
   },
-  emits: ['update:activeGraphTab'],
+  emits: ['update:activeGraphTab', 'cancel-embedded-scan', 'jump-to-embedded'],
   data() {
     return {
       isAnalyzing: false,

@@ -54,6 +54,26 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
       </div>
     </div>
 
+    <!-- Analysis Settings -->
+    <div class="setting-section mb-6">
+      <h4 class="text-lg font-medium mb-3">Analysis</h4>
+      <div class="space-y-3">
+        <label class="flex items-center space-x-2">
+          <input
+            v-model="settings.enableEmbeddedExecutableScan"
+            type="checkbox"
+            class="form-checkbox"
+            @change="updateEmbeddedExecutableScan"
+          />
+          <span>Scan for embedded PE / ELF / Mach-O executables</span>
+        </label>
+        <span class="hint text-sm text-gray-500"
+          >Runs a background worker after every file load to find executables hidden at arbitrary
+          offsets.</span
+        >
+      </div>
+    </div>
+
     <!-- Debug Settings -->
     <div class="setting-section mb-6">
       <h4 class="text-lg font-medium mb-3">Developer Options</h4>
@@ -140,7 +160,8 @@ export default {
         hexUppercase: false,
         bytesPerRow: '16',
         baseOffset: settingsStore.baseOffset,
-        debugMode: localStorage.getItem('debugMode') === 'true'
+        debugMode: localStorage.getItem('debugMode') === 'true',
+        enableEmbeddedExecutableScan: settingsStore.enableEmbeddedExecutableScan
       },
       offsetError: ''
     }
@@ -165,6 +186,11 @@ export default {
       if (metaThemeColor) {
         metaThemeColor.setAttribute('content', theme === 'dark' ? '#1a202c' : '#ffffff')
       }
+    },
+    updateEmbeddedExecutableScan() {
+      const settingsStore = useSettingsStore()
+      settingsStore.setEnableEmbeddedExecutableScan(this.settings.enableEmbeddedExecutableScan)
+      this.$emit('settings-updated', this.settings)
     },
     toggleDebugMode() {
       // Save debug mode preference to localStorage
@@ -216,6 +242,10 @@ export default {
           const parsedSettings = JSON.parse(saved)
           this.settings = { ...this.settings, ...parsedSettings }
         }
+
+        // Pinia store is the source of truth for store-backed settings.
+        const settingsStore = useSettingsStore()
+        this.settings.enableEmbeddedExecutableScan = settingsStore.enableEmbeddedExecutableScan
 
         // Apply the theme
         this.applyTheme(this.settings.theme)
