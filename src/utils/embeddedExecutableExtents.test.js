@@ -13,6 +13,9 @@ import {
 /**
  * Build a minimal PE buffer with N sections.
  * Each section i has PointerToRawData = headerEnd + i*sectionSize, SizeOfRawData = sectionSize.
+ *
+ * Optional cert table: if `certTable` is { va, size }, write it into the
+ * Security data directory (index 4) with NumberOfRvaAndSizes = 16.
  */
 function buildPE({
   numberOfSections = 1,
@@ -20,7 +23,8 @@ function buildPE({
   eLfanew = 0x80,
   optionalHeaderSize = 240,
   is64bit = true,
-  trailingPad = 0
+  trailingPad = 0,
+  certTable = null
 } = {}) {
   const sectionTableStart = eLfanew + 24 + optionalHeaderSize
   const sectionTableEnd = sectionTableStart + numberOfSections * 40
@@ -63,6 +67,32 @@ function buildPE({
     buf[entry + 22] = (pointerToRawData >> 16) & 0xff
     buf[entry + 23] = (pointerToRawData >> 24) & 0xff
   }
+
+  if (certTable) {
+    // NumberOfRvaAndSizes at optHeader + 92 (PE32) or +108 (PE32+)
+    const numRvaOffset = is64bit ? 108 : 92
+    // Data directories start at optHeader + 96 (PE32) or +112 (PE32+)
+    const ddOffset = is64bit ? 112 : 96
+    const optAbs = eLfanew + 24
+    // Write NumberOfRvaAndSizes = 16
+    buf[optAbs + numRvaOffset] = 16
+    buf[optAbs + numRvaOffset + 1] = 0
+    buf[optAbs + numRvaOffset + 2] = 0
+    buf[optAbs + numRvaOffset + 3] = 0
+    // Security entry (index 4): VA at +4*8, Size at +4*8+4
+    const secEntry = optAbs + ddOffset + 4 * 8
+    const va = certTable.va
+    const sz = certTable.size
+    buf[secEntry + 0] = va & 0xff
+    buf[secEntry + 1] = (va >> 8) & 0xff
+    buf[secEntry + 2] = (va >> 16) & 0xff
+    buf[secEntry + 3] = (va >> 24) & 0xff
+    buf[secEntry + 4] = sz & 0xff
+    buf[secEntry + 5] = (sz >> 8) & 0xff
+    buf[secEntry + 6] = (sz >> 16) & 0xff
+    buf[secEntry + 7] = (sz >> 24) & 0xff
+  }
+
   return { buf, expectedSize: lastSectionEnd }
 }
 
@@ -123,6 +153,48 @@ describe('computePEFileSize', () => {
     const wrapped = new Uint8Array(buf.length + 0x1000)
     wrapped.set(buf, 0x1000)
     const r = computePEFileSize(wrapped, 0x1000)
+    expect(r.extractable).toBe(true)
+    expect(r.fileSize).toBe(expectedSize)
+  })
+
+  it('extends fileSize to cover the Authenticode certificate table', () => {
+    // Sections end at ~0x2A0; place a 0x800-byte cert table at 0x3000.
+    const { buf, expectedSize } = buildPE({
+      numberOfSections: 1,
+      sectionRawSize: 0x100,
+      certTable: { va: 0x3000, size: 0x800 }
+    })
+    // Allocate room for the certificate so the cert read happens within bounds.
+    const padded = new Uint8Array(0x3800)
+    padded.set(buf, 0)
+    const r = computePEFileSize(padded, 0)
+    expect(r.extractable).toBe(true)
+    expect(r.fileSize).toBe(0x3800)
+    expect(r.fileSize).toBeGreaterThan(expectedSize)
+  })
+
+  it('ignores a zero-VA certificate table entry', () => {
+    const { buf, expectedSize } = buildPE({
+      numberOfSections: 1,
+      certTable: { va: 0, size: 0 }
+    })
+    const r = computePEFileSize(buf, 0)
+    expect(r.extractable).toBe(true)
+    // Should match the section-walk result exactly, not extend past it.
+    expect(r.fileSize).toBe(expectedSize)
+  })
+
+  it('ignores cert table when NumberOfRvaAndSizes < 5', () => {
+    const { buf, expectedSize } = buildPE({
+      numberOfSections: 1,
+      certTable: { va: 0x3000, size: 0x100 }
+    })
+    // Patch NumberOfRvaAndSizes down to 4 — security entry is no longer valid.
+    const optAbs = 0x80 + 24
+    buf[optAbs + 108] = 4
+    const padded = new Uint8Array(0x3200)
+    padded.set(buf, 0)
+    const r = computePEFileSize(padded, 0)
     expect(r.extractable).toBe(true)
     expect(r.fileSize).toBe(expectedSize)
   })

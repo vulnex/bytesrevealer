@@ -750,7 +750,7 @@ export default {
       embeddedExtractionStates[offsetKey] = { bytesRead: 0, totalBytes: fileSize }
 
       try {
-        const { blob, filename } = await extractEmbedded({
+        const { blob, filename, validationWarning } = await extractEmbedded({
           fileBytes: fp.fileBytes.value,
           finding,
           onProgress: (bytesRead, totalBytes) => {
@@ -763,6 +763,10 @@ export default {
           signal: controller.signal
         })
         triggerDownload(blob, filename)
+        if (validationWarning) {
+          // Non-blocking: download still proceeded so the user can inspect.
+          fp.error.value = `Warning: ${validationWarning}. Downloaded as ${filename} — verify before use.`
+        }
       } catch (err) {
         if (err.name !== 'AbortError') {
           fp.error.value = `Extraction failed: ${err.message || err}`

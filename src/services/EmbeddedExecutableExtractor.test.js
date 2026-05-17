@@ -232,6 +232,47 @@ describe('extractEmbedded', () => {
     ).rejects.toThrow()
   })
 
+  it('returns no validationWarning when extracted header is valid', async () => {
+    // Build a minimal valid ELF64 LE x86-64 header inside the source.
+    const source = new Uint8Array(0x1000)
+    const elf = new Uint8Array(64)
+    elf[0] = 0x7f
+    elf[1] = 0x45
+    elf[2] = 0x4c
+    elf[3] = 0x46
+    elf[4] = 2 // 64-bit
+    elf[5] = 1 // little-endian
+    elf[6] = 1 // EI_VERSION
+    elf[0x12] = 0x3e // e_machine = x86-64 (LE)
+    elf[0x13] = 0x00
+    source.set(elf, 0x100)
+    const finding = {
+      format: 'ELF',
+      offset: 0x100,
+      fileSize: 0x40,
+      extractable: true,
+      details: { machine: 0x3e }
+    }
+    const { validationWarning } = await extractEmbedded({ fileBytes: source, finding })
+    expect(validationWarning).toBeUndefined()
+  })
+
+  it('attaches validationWarning when extracted header is corrupt', async () => {
+    // PE format claimed, but bytes are all zero — validatePE will reject.
+    const source = makeSource(0x1000)
+    const finding = {
+      format: 'PE',
+      offset: 0x100,
+      fileSize: 0x200,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    // makeSource fills with i & 0xff so byte at 0x100 is 0 (not 'M'). validatePE will fail.
+    const { blob, validationWarning } = await extractEmbedded({ fileBytes: source, finding })
+    expect(blob.size).toBe(0x200)
+    expect(validationWarning).toMatch(/re-validation of extracted PE/)
+  })
+
   it('supports a chunked-file wrapper with async slice()', async () => {
     const data = new Uint8Array(0x2000)
     for (let i = 0; i < data.length; i++) data[i] = i & 0xff

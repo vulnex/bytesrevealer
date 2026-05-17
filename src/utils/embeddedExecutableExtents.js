@@ -43,13 +43,27 @@ const SHT_NOBITS = 8
 const LC_SEGMENT = 0x01
 const LC_SEGMENT_64 = 0x19
 
+// PE Optional Header data-directory layout. The directories array starts at
+// different offsets depending on PE32 vs PE32+, and the count is recorded in
+// NumberOfRvaAndSizes. The Certificate Table (index 4) is the only entry whose
+// VirtualAddress is a *file* offset, not an RVA — special-cased by the spec
+// so signatures can be stripped at sign time without rewriting headers.
+const PE_DD_OFFSET_PE32 = 96
+const PE_DD_OFFSET_PE32PLUS = 112
+const PE_NUMRVA_OFFSET_PE32 = 92
+const PE_NUMRVA_OFFSET_PE32PLUS = 108
+const PE_DD_ENTRY_SIZE = 8
+const PE_DD_INDEX_SECURITY = 4
+
 function notExtractable(reason) {
   return { fileSize: null, extractable: false, extractError: reason }
 }
 
 /**
  * Compute the on-disk size of an embedded PE.
- * Walks the section table: max(PointerToRawData + SizeOfRawData).
+ * Walks the section table: max(PointerToRawData + SizeOfRawData), and also
+ * includes the Certificate Table (Security data directory) extent so signed
+ * binaries keep their Authenticode signature on extraction.
  *
  * @param {Uint8Array} bytes - Host buffer
  * @param {number} offset - Absolute start of the DOS/PE header inside `bytes`
@@ -70,7 +84,8 @@ export function computePEFileSize(bytes, offset = 0) {
     return notExtractable(`PE section count ${numberOfSections} exceeds cap ${PE_MAX_SECTIONS}`)
   }
 
-  const sectionTableAbs = peHeaderAbs + 24 + sizeOfOptionalHeader
+  const optHeaderAbs = peHeaderAbs + 24
+  const sectionTableAbs = optHeaderAbs + sizeOfOptionalHeader
   const sectionTableEnd = sectionTableAbs + numberOfSections * PE_SECTION_ENTRY_SIZE
 
   if (sectionTableEnd > bytes.length) {
@@ -87,6 +102,32 @@ export function computePEFileSize(bytes, offset = 0) {
     if (sizeOfRawData === 0) continue // BSS-like section, no file backing
     const end = pointerToRawData + sizeOfRawData
     if (end > maxEnd) maxEnd = end
+  }
+
+  // Authenticode signature lives in the Security data directory (index 4),
+  // and its VirtualAddress is a file offset (not RVA). Include it so signed
+  // binaries don't lose their signature on extraction.
+  const optMagic = readU16LE(bytes, optHeaderAbs)
+  const is64bit = optMagic === 0x20b
+  const numRvaOffset = is64bit ? PE_NUMRVA_OFFSET_PE32PLUS : PE_NUMRVA_OFFSET_PE32
+  const ddOffset = is64bit ? PE_DD_OFFSET_PE32PLUS : PE_DD_OFFSET_PE32
+  const securityEntryAbs = optHeaderAbs + ddOffset + PE_DD_INDEX_SECURITY * PE_DD_ENTRY_SIZE
+
+  if (
+    optHeaderAbs + numRvaOffset + 4 <= bytes.length &&
+    securityEntryAbs + PE_DD_ENTRY_SIZE <= bytes.length &&
+    // The directory entry must actually fit inside the declared Optional Header.
+    ddOffset + (PE_DD_INDEX_SECURITY + 1) * PE_DD_ENTRY_SIZE <= sizeOfOptionalHeader
+  ) {
+    const numberOfRvaAndSizes = readU32LE(bytes, optHeaderAbs + numRvaOffset)
+    if (numberOfRvaAndSizes > PE_DD_INDEX_SECURITY) {
+      const certVA = readU32LE(bytes, securityEntryAbs)
+      const certSize = readU32LE(bytes, securityEntryAbs + 4)
+      if (certVA > 0 && certSize > 0) {
+        const certEnd = certVA + certSize
+        if (certEnd > maxEnd) maxEnd = certEnd
+      }
+    }
   }
 
   if (maxEnd <= 0) return notExtractable('PE computed size is zero')

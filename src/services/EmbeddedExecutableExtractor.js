@@ -23,6 +23,12 @@ import {
   MACHO_CPU_NAMES,
   sanitizeArchToken
 } from '../utils/architectureNames.js'
+import {
+  validatePE,
+  validateELF,
+  validateMachO,
+  validateMachOFat
+} from '../utils/embeddedExecutableScanner.js'
 
 export const EXTRACTION_SLICE_SIZE = 1024 * 1024
 
@@ -114,6 +120,39 @@ function mimeFor(format) {
 }
 
 /**
+ * Re-validate the extracted bytes by running the appropriate validator over
+ * the first slice (which always contains the header). Catches off-by-ones in
+ * the extents resolvers or genuine truncation of the host buffer.
+ *
+ * Validates against `firstSlice` rather than the assembled Blob so we don't
+ * round-trip the entire payload through ArrayBuffer (would double peak
+ * memory for large extracts).
+ */
+function revalidateHeader(format, firstSlice) {
+  if (!firstSlice || firstSlice.length < 4) {
+    return 'extracted bytes too short to re-validate header'
+  }
+  let result
+  switch (format) {
+    case 'PE':
+      result = validatePE(firstSlice, 0)
+      break
+    case 'ELF':
+      result = validateELF(firstSlice, 0)
+      break
+    case 'Mach-O':
+      result = validateMachO(firstSlice, 0)
+      break
+    case 'Mach-O Fat':
+      result = validateMachOFat(firstSlice, 0)
+      break
+    default:
+      return null // Unknown format — no validator to run.
+  }
+  return result.valid ? null : `re-validation of extracted ${format} header failed`
+}
+
+/**
  * Extract an embedded executable into a Blob.
  *
  * @param {object} params
@@ -168,6 +207,15 @@ export async function extractEmbedded({ fileBytes, finding, onProgress, signal }
 
   if (signal?.aborted) throw abortError()
 
+  // Re-validate against the first slice (always contains the header). A
+  // failure here means our extents resolver and the host bytes disagree;
+  // we still hand the blob back so the user can inspect it, but flag it.
+  const validationWarning = parts.length > 0 ? revalidateHeader(finding.format, parts[0]) : null
+
   const blob = new Blob(parts, { type: mimeFor(finding.format) })
-  return { blob, filename: suggestFilename(finding) }
+  return {
+    blob,
+    filename: suggestFilename(finding),
+    validationWarning: validationWarning || undefined
+  }
 }
