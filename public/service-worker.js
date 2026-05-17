@@ -4,14 +4,17 @@
  * File: service-worker.js
  * Author: Simon Roses Femerling
  * Created: 2025-09-27
- * Last Modified: 2025-09-27
- * Version: 0.3
+ * Last Modified: 2026-05-18
+ * Version: 0.5
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  * https://www.vulnex.com
  */
 
-const CACHE_NAME = 'bytesrevealer-v1';
+// Bumped per release so the activate handler's old-cache cleanup actually
+// fires. Forgetting to bump this leaves users stuck on a stale build because
+// the cache-first fetch handler will keep serving prior-version assets.
+const CACHE_NAME = 'bytesrevealer-v0.5';
 const RUNTIME_CACHE = 'bytesrevealer-runtime';
 
 // Core assets to cache on install
