@@ -21,11 +21,17 @@ import {
 } from '../utils/embeddedExecutableScanner.js'
 
 /**
- * Bytes of context kept between chunks. Two purposes:
+ * Bytes of context kept between chunks. Three purposes:
  *   1. handle a magic that straddles a chunk boundary (needs MAX_MAGIC_LENGTH-1)
  *   2. provide validators with lookahead (PE e_lfanew, Mach-O sizeofcmds)
+ *   3. provide on-disk size resolvers (embeddedExecutableExtents) with enough
+ *      forward context to walk full section/program/load-command tables
+ *
+ * 64 KB covers PE max section table (96 × 40 + headers ≈ 4 KB), ELF tables up
+ * to ~1000 entries, and Mach-O load commands up to the scanner's 16 MB cap is
+ * still not enough for pathological cases — those fall back to extractable=false.
  */
-export const VALIDATION_LOOKAHEAD = 4096
+export const VALIDATION_LOOKAHEAD = 64 * 1024
 
 export function createScanState(totalSize, options = {}) {
   return {

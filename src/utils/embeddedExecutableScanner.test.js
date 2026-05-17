@@ -11,7 +11,13 @@ import {
 
 // ─── Fixture builders ─────────────────────────────────────────────────────
 
-function buildPE({ machine = 0x8664, is64bit = true, sizeOfImage = 0x1000, eLfanew = 0x80 } = {}) {
+function buildPE({
+  machine = 0x8664,
+  is64bit = true,
+  sizeOfImage = 0x1000,
+  eLfanew = 0x80,
+  characteristics = 0
+} = {}) {
   const total = eLfanew + 24 + 240 // PE header (24) + optional header (PE32+ is 240)
   const buf = new Uint8Array(total)
   buf[0] = 0x4d
@@ -33,6 +39,9 @@ function buildPE({ machine = 0x8664, is64bit = true, sizeOfImage = 0x1000, eLfan
   const optSize = is64bit ? 240 : 224
   buf[eLfanew + 20] = optSize & 0xff
   buf[eLfanew + 21] = (optSize >> 8) & 0xff
+  // Characteristics at +22 (LE u16)
+  buf[eLfanew + 22] = characteristics & 0xff
+  buf[eLfanew + 23] = (characteristics >> 8) & 0xff
   // Optional-header magic at peHeader+24 (LE u16)
   const optAbs = eLfanew + 24
   const optMagic = is64bit ? 0x20b : 0x10b
@@ -497,5 +506,64 @@ describe('scanBuffer', () => {
 
   it('default maxFindings constant is 1000', () => {
     expect(DEFAULT_MAX_FINDINGS).toBe(1000)
+  })
+})
+
+// ─── Finding extent fields (extraction support) ──────────────────────────
+
+describe('finding extent fields', () => {
+  it('PE findings include characteristics, fileSize, extractable', () => {
+    const buf = concat(new Uint8Array(100), buildPE({ characteristics: 0x2002 }))
+    const r = scanBuffer(buf)
+    expect(r.findings).toHaveLength(1)
+    const f = r.findings[0]
+    expect(f.format).toBe(FORMAT.PE)
+    expect(f.details.characteristics).toBe(0x2002)
+    // The minimal buildPE has no real section table, so extractable is false
+    // but the field must still be present and a boolean.
+    expect(typeof f.extractable).toBe('boolean')
+    expect('fileSize' in f).toBe(true)
+  })
+
+  it('ELF findings include fileSize and extractable', () => {
+    const buf = concat(new Uint8Array(100), buildELF())
+    const r = scanBuffer(buf)
+    const f = r.findings[0]
+    expect(f.format).toBe(FORMAT.ELF)
+    expect(typeof f.extractable).toBe('boolean')
+    expect('fileSize' in f).toBe(true)
+    // Minimal ELF with no phdrs/shdrs — extractable should be true with size = header size
+    expect(f.extractable).toBe(true)
+    expect(f.fileSize).toBe(64) // ELF64 header
+  })
+
+  it('Mach-O findings include fileSize and extractable', () => {
+    const buf = concat(new Uint8Array(100), buildMachO())
+    const r = scanBuffer(buf)
+    const f = r.findings[0]
+    expect(f.format).toBe(FORMAT.MACHO)
+    expect(typeof f.extractable).toBe('boolean')
+    expect('fileSize' in f).toBe(true)
+  })
+
+  it('Mach-O Fat findings include fileSize and extractable', () => {
+    const buf = concat(new Uint8Array(100), buildMachOFat({ nfatArch: 2 }))
+    const r = scanBuffer(buf)
+    const f = r.findings[0]
+    expect(f.format).toBe(FORMAT.MACHO_FAT)
+    expect(typeof f.extractable).toBe('boolean')
+    expect('fileSize' in f).toBe(true)
+  })
+
+  it('PE characteristics drive Windows-specific filename hints', () => {
+    // IMAGE_FILE_DLL = 0x2000
+    const dllBuf = concat(new Uint8Array(100), buildPE({ characteristics: 0x2000 }))
+    const dllFinding = scanBuffer(dllBuf).findings[0]
+    expect(dllFinding.details.characteristics & 0x2000).toBe(0x2000)
+
+    // IMAGE_FILE_SYSTEM = 0x1000
+    const sysBuf = concat(new Uint8Array(100), buildPE({ characteristics: 0x1000 }))
+    const sysFinding = scanBuffer(sysBuf).findings[0]
+    expect(sysFinding.details.characteristics & 0x1000).toBe(0x1000)
   })
 })

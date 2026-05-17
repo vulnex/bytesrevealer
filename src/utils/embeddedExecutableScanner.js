@@ -15,6 +15,13 @@
  */
 
 import { isMachOFatBinary } from './fileSignatures'
+import { readU16LE, readU16BE, readU32LE, readU32BE } from './binaryReaders'
+import {
+  computePEFileSize,
+  computeELFFileSize,
+  computeMachOFileSize,
+  computeMachOFatFileSize
+} from './embeddedExecutableExtents'
 
 export const FORMAT = {
   PE: 'PE',
@@ -97,34 +104,6 @@ function matchesAt(bytes, pattern, offset) {
   return true
 }
 
-function readU16LE(bytes, offset) {
-  return bytes[offset] | (bytes[offset + 1] << 8)
-}
-
-function readU32LE(bytes, offset) {
-  return (
-    (bytes[offset] |
-      (bytes[offset + 1] << 8) |
-      (bytes[offset + 2] << 16) |
-      (bytes[offset + 3] << 24)) >>>
-    0
-  )
-}
-
-function readU16BE(bytes, offset) {
-  return (bytes[offset] << 8) | bytes[offset + 1]
-}
-
-function readU32BE(bytes, offset) {
-  return (
-    ((bytes[offset] << 24) |
-      (bytes[offset + 1] << 16) |
-      (bytes[offset + 2] << 8) |
-      bytes[offset + 3]) >>>
-    0
-  )
-}
-
 /**
  * Validate a PE candidate at the given offset.
  * Returns { valid, machine, is64bit, sizeOfImage } or { valid: false }.
@@ -170,11 +149,14 @@ export function validatePE(bytes, offset = 0) {
     }
   }
 
+  // Characteristics (LE u16) at PE header + 22 — drives .exe/.dll/.sys filename.
+  const characteristics = readU16LE(bytes, peHeaderAbs + 22)
+
   // Floor for skip-after-hit: end of headers we just validated.
   const headerEnd = optHeaderAbs + sizeOfOptionalHeader - offset
   if (sizeOfImage < headerEnd) sizeOfImage = headerEnd
 
-  return { valid: true, machine, is64bit, sizeOfImage }
+  return { valid: true, machine, is64bit, sizeOfImage, characteristics }
 }
 
 /**
@@ -358,11 +340,15 @@ export function scanBuffer(bytes, options = {}) {
       if (!(skipFirstMatch && absoluteOffset === 0)) {
         const result = validateELF(bytes, i)
         if (result.valid) {
+          const extents = computeELFFileSize(bytes, i)
           findings.push({
             type: 'Embedded Executable',
             format: FORMAT.ELF,
             offset: absoluteOffset,
             size: result.totalSize,
+            fileSize: extents.fileSize,
+            extractable: extents.extractable,
+            extractError: extents.extractError,
             confidence: 'High',
             details: {
               is64bit: result.is64bit,
@@ -390,11 +376,15 @@ export function scanBuffer(bytes, options = {}) {
       if (isMachoMagic && !(skipFirstMatch && absoluteOffset === 0)) {
         const result = validateMachO(bytes, i)
         if (result.valid) {
+          const extents = computeMachOFileSize(bytes, i)
           findings.push({
             type: 'Embedded Executable',
             format: FORMAT.MACHO,
             offset: absoluteOffset,
             size: result.totalSize,
+            fileSize: extents.fileSize,
+            extractable: extents.extractable,
+            extractError: extents.extractError,
             confidence: 'High',
             details: {
               is64bit: result.is64bit,
@@ -418,10 +408,14 @@ export function scanBuffer(bytes, options = {}) {
       if (!(skipFirstMatch && absoluteOffset === 0)) {
         const result = validateMachOFat(bytes, i)
         if (result.valid) {
+          const extents = computeMachOFatFileSize(bytes, i)
           findings.push({
             type: 'Embedded Executable',
             format: FORMAT.MACHO_FAT,
             offset: absoluteOffset,
+            fileSize: extents.fileSize,
+            extractable: extents.extractable,
+            extractError: extents.extractError,
             confidence: 'High',
             details: {
               nfatArch: result.nfatArch
@@ -443,15 +437,20 @@ export function scanBuffer(bytes, options = {}) {
       if (!(skipFirstMatch && absoluteOffset === 0)) {
         const result = validatePE(bytes, i)
         if (result.valid) {
+          const extents = computePEFileSize(bytes, i)
           findings.push({
             type: 'Embedded Executable',
             format: FORMAT.PE,
             offset: absoluteOffset,
             size: result.sizeOfImage,
+            fileSize: extents.fileSize,
+            extractable: extents.extractable,
+            extractError: extents.extractError,
             confidence: 'High',
             details: {
               machine: result.machine,
-              is64bit: result.is64bit
+              is64bit: result.is64bit,
+              characteristics: result.characteristics
             }
           })
           if (findings.length >= maxFindings) {
