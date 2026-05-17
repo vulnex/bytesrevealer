@@ -595,12 +595,16 @@ import { useAnnotations } from './composables/useAnnotations'
 import { useFileProcessing } from './composables/useFileProcessing'
 import { useSearch } from './composables/useSearch'
 import { useSessionRestore } from './composables/useSessionRestore'
-import { extractEmbedded } from './services/EmbeddedExecutableExtractor'
+import { extractEmbedded, suggestFilename } from './services/EmbeddedExecutableExtractor'
 
-// Above this on-disk size, prompt the user before extracting. Extraction
-// materializes the embed in memory as a Blob, so very large embeds are worth
-// confirming.
+// Above this on-disk size, prompt the user before extracting *in Blob mode*.
+// Extraction materializes the embed in memory as a Blob, so very large embeds
+// are worth confirming. The File System Access streaming path skips this
+// gate because peak memory is one slice (~1 MB) regardless of fileSize.
 const EXTRACT_CONFIRM_THRESHOLD = 1024 * 1024 * 1024
+
+const SUPPORTS_FSA_SAVE =
+  typeof window !== 'undefined' && typeof window.showSaveFilePicker === 'function'
 
 export default {
   name: 'App',
@@ -737,7 +741,29 @@ export default {
       if (embeddedExtractionStates[offsetKey]) return
 
       const fileSize = finding.fileSize || 0
-      if (fileSize > EXTRACT_CONFIRM_THRESHOLD) {
+      const suggestedName = suggestFilename(finding)
+
+      // Try the File System Access save picker first. Streaming directly to
+      // disk avoids the Blob-build memory doubling for large embeds. Must
+      // happen synchronously enough that the user-activation token survives;
+      // showSaveFilePicker awaits, but the activation is not consumed.
+      let writer = null
+      if (SUPPORTS_FSA_SAVE) {
+        try {
+          const handle = await window.showSaveFilePicker({ suggestedName })
+          writer = await handle.createWritable()
+        } catch (err) {
+          // User cancelled the picker — treat as silent no-op.
+          if (err && err.name === 'AbortError') return
+          // Other failures (browser quirk, permission denied) — fall back to
+          // the Blob path; let the user retry if it matters.
+          writer = null
+        }
+      }
+
+      // Memory-pressure confirm only matters for the Blob path. The streaming
+      // path holds one slice (~1 MB) regardless of the embed's total size.
+      if (!writer && fileSize > EXTRACT_CONFIRM_THRESHOLD) {
         const sizeStr = fp.formatFileSize(fileSize)
         const ok = window.confirm(
           `This embedded file is ${sizeStr}. Extracting will use memory equal to its size. Continue?`
@@ -750,7 +776,7 @@ export default {
       embeddedExtractionStates[offsetKey] = { bytesRead: 0, totalBytes: fileSize }
 
       try {
-        const { blob, filename, validationWarning } = await extractEmbedded({
+        const result = await extractEmbedded({
           fileBytes: fp.fileBytes.value,
           finding,
           onProgress: (bytesRead, totalBytes) => {
@@ -760,12 +786,16 @@ export default {
               state.totalBytes = totalBytes
             }
           },
-          signal: controller.signal
+          signal: controller.signal,
+          writer
         })
-        triggerDownload(blob, filename)
-        if (validationWarning) {
-          // Non-blocking: download still proceeded so the user can inspect.
-          fp.error.value = `Warning: ${validationWarning}. Downloaded as ${filename} — verify before use.`
+        if (!result.streamed) {
+          // Blob fallback path — trigger a browser download.
+          triggerDownload(result.blob, result.filename)
+        }
+        if (result.validationWarning) {
+          const verb = result.streamed ? 'Saved' : 'Downloaded'
+          fp.error.value = `Warning: ${result.validationWarning}. ${verb} as ${result.filename} — verify before use.`
         }
       } catch (err) {
         if (err.name !== 'AbortError') {

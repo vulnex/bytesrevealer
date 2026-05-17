@@ -153,16 +153,34 @@ function revalidateHeader(format, firstSlice) {
 }
 
 /**
- * Extract an embedded executable into a Blob.
+ * Extract an embedded executable.
+ *
+ * Two output modes:
+ *
+ * - **Blob mode (default)**: accumulates slices into a `Uint8Array[]` and
+ *   builds a `Blob` at the end. Peak memory is roughly 2× `fileSize` during
+ *   the Blob construction step. Used on browsers without File System Access
+ *   API (Safari, Firefox).
+ *
+ * - **Streaming mode**: when `writer` is provided, slices are written
+ *   directly to the writer (typically a `FileSystemWritableFileStream` from
+ *   `window.showSaveFilePicker().createWritable()`). Peak memory is one
+ *   slice (~1 MB). No Blob is created. Used on Chromium-based browsers
+ *   that support the API.
+ *
+ * Both modes still keep the first slice in memory so the header can be
+ * re-validated.
  *
  * @param {object} params
  * @param {Uint8Array|object} params.fileBytes - Host file source
  * @param {object} params.finding - Scanner finding (offset, fileSize, format, details, extractable)
  * @param {(bytesRead:number, total:number) => void} [params.onProgress]
  * @param {AbortSignal} [params.signal]
- * @returns {Promise<{ blob: Blob, filename: string }>}
+ * @param {{ write: (bytes:Uint8Array) => Promise<void>, close: () => Promise<void>, abort?: (reason?:any) => Promise<void> }} [params.writer]
+ *   Optional sink for streaming mode.
+ * @returns {Promise<{ blob?: Blob, filename: string, validationWarning?: string, streamed: boolean }>}
  */
-export async function extractEmbedded({ fileBytes, finding, onProgress, signal }) {
+export async function extractEmbedded({ fileBytes, finding, onProgress, signal, writer }) {
   if (!finding) throw new Error('finding is required')
   if (finding.extractable === false) {
     throw new Error(finding.extractError || 'Finding is not extractable')
@@ -188,34 +206,80 @@ export async function extractEmbedded({ fileBytes, finding, onProgress, signal }
   const endAbs = Math.min(offset + fileSize, sourceLength)
   const totalToRead = Math.max(0, endAbs - offset)
 
-  const parts = []
+  const streaming = !!writer
+  const parts = streaming ? null : []
+  let headerSlice = null
   let bytesRead = 0
   let cursor = offset
 
-  while (cursor < endAbs) {
-    if (signal?.aborted) throw abortError()
-    const sliceEnd = Math.min(cursor + EXTRACTION_SLICE_SIZE, endAbs)
-    const slice = await readSlice(fileBytes, cursor, sliceEnd)
-    // Copy into a detached Uint8Array so we don't hold a view onto a chunk
-    // that the source may later evict or reuse.
-    const owned = slice instanceof Uint8Array ? slice.slice() : new Uint8Array(slice)
-    parts.push(owned)
-    bytesRead += owned.length
-    cursor = sliceEnd
-    if (onProgress) onProgress(bytesRead, totalToRead)
+  const handleAbort = async () => {
+    if (streaming && typeof writer.abort === 'function') {
+      try {
+        await writer.abort('extraction aborted')
+      } catch {
+        // Best-effort cleanup; rethrow the original abort below.
+      }
+    }
   }
 
-  if (signal?.aborted) throw abortError()
+  try {
+    while (cursor < endAbs) {
+      if (signal?.aborted) {
+        await handleAbort()
+        throw abortError()
+      }
+      const sliceEnd = Math.min(cursor + EXTRACTION_SLICE_SIZE, endAbs)
+      const slice = await readSlice(fileBytes, cursor, sliceEnd)
+      // Copy into a detached Uint8Array so we don't hold a view onto a chunk
+      // that the source may later evict or reuse.
+      const owned = slice instanceof Uint8Array ? slice.slice() : new Uint8Array(slice)
 
-  // Re-validate against the first slice (always contains the header). A
-  // failure here means our extents resolver and the host bytes disagree;
-  // we still hand the blob back so the user can inspect it, but flag it.
-  const validationWarning = parts.length > 0 ? revalidateHeader(finding.format, parts[0]) : null
+      if (streaming) {
+        await writer.write(owned)
+      } else {
+        parts.push(owned)
+      }
+      // Keep a reference to the first slice for header re-validation. In
+      // streaming mode this is the only buffered bytes; the rest are gone.
+      if (headerSlice === null) headerSlice = owned
 
-  const blob = new Blob(parts, { type: mimeFor(finding.format) })
-  return {
-    blob,
-    filename: suggestFilename(finding),
-    validationWarning: validationWarning || undefined
+      bytesRead += owned.length
+      cursor = sliceEnd
+      if (onProgress) onProgress(bytesRead, totalToRead)
+    }
+
+    if (signal?.aborted) {
+      await handleAbort()
+      throw abortError()
+    }
+
+    // Re-validate against the first slice (always contains the header). A
+    // failure here means our extents resolver and the host bytes disagree;
+    // surfaced as a non-blocking validationWarning.
+    const validationWarning = headerSlice ? revalidateHeader(finding.format, headerSlice) : null
+
+    if (streaming) {
+      await writer.close()
+      return {
+        filename: suggestFilename(finding),
+        validationWarning: validationWarning || undefined,
+        streamed: true
+      }
+    }
+
+    const blob = new Blob(parts, { type: mimeFor(finding.format) })
+    return {
+      blob,
+      filename: suggestFilename(finding),
+      validationWarning: validationWarning || undefined,
+      streamed: false
+    }
+  } catch (err) {
+    // If writer state allows, signal abort on any thrown error so the
+    // partially-written file is not left as a "successful" save.
+    if (streaming && err?.name !== 'AbortError') {
+      await handleAbort()
+    }
+    throw err
   }
 }

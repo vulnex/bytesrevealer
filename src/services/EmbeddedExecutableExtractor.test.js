@@ -273,6 +273,156 @@ describe('extractEmbedded', () => {
     expect(validationWarning).toMatch(/re-validation of extracted PE/)
   })
 
+  // ─── Streaming mode (File System Access API path) ──────────────────────
+
+  function makeMockWriter() {
+    const writes = []
+    let closed = false
+    let aborted = false
+    return {
+      writes,
+      get closed() {
+        return closed
+      },
+      get aborted() {
+        return aborted
+      },
+      async write(bytes) {
+        // Defensive: writer must receive Uint8Array, not ArrayBuffer/Blob
+        if (!(bytes instanceof Uint8Array)) {
+          throw new Error(`writer.write expected Uint8Array, got ${typeof bytes}`)
+        }
+        writes.push(bytes.slice())
+      },
+      async close() {
+        closed = true
+      },
+      async abort() {
+        aborted = true
+      }
+    }
+  }
+
+  it('streams to writer instead of building a Blob when writer is provided', async () => {
+    const source = makeSource(0x4000)
+    const finding = {
+      format: 'PE',
+      offset: 0x1000,
+      fileSize: 0x800,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    const writer = makeMockWriter()
+    const result = await extractEmbedded({ fileBytes: source, finding, writer })
+
+    expect(result.streamed).toBe(true)
+    expect(result.blob).toBeUndefined()
+    expect(result.filename).toBe('embedded_PE_x86-64_0x00001000.exe')
+    expect(writer.closed).toBe(true)
+
+    // Verify the writer received exactly the embed bytes
+    const total = writer.writes.reduce((sum, w) => sum + w.length, 0)
+    expect(total).toBe(0x800)
+    const merged = new Uint8Array(total)
+    let pos = 0
+    for (const w of writer.writes) {
+      merged.set(w, pos)
+      pos += w.length
+    }
+    for (let i = 0; i < merged.length; i++) {
+      expect(merged[i]).toBe((0x1000 + i) & 0xff)
+    }
+  })
+
+  it('splits the streaming write into 1 MB chunks', async () => {
+    const SIZE = EXTRACTION_SLICE_SIZE * 2 + 0x100
+    const source = makeSource(SIZE + 0x100)
+    const finding = {
+      format: 'PE',
+      offset: 0,
+      fileSize: SIZE,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    const writer = makeMockWriter()
+    await extractEmbedded({ fileBytes: source, finding, writer })
+    // 3 writes expected: 1 MB + 1 MB + 0x100
+    expect(writer.writes).toHaveLength(3)
+    expect(writer.writes[0].length).toBe(EXTRACTION_SLICE_SIZE)
+    expect(writer.writes[1].length).toBe(EXTRACTION_SLICE_SIZE)
+    expect(writer.writes[2].length).toBe(0x100)
+  })
+
+  it('calls writer.abort and propagates AbortError when signal aborts mid-stream', async () => {
+    const SIZE = EXTRACTION_SLICE_SIZE * 3
+    const source = makeSource(SIZE)
+    const finding = {
+      format: 'PE',
+      offset: 0,
+      fileSize: SIZE,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    const writer = makeMockWriter()
+    const controller = new AbortController()
+    const onProgress = vi.fn(() => {
+      if (onProgress.mock.calls.length === 1) controller.abort()
+    })
+    await expect(
+      extractEmbedded({
+        fileBytes: source,
+        finding,
+        writer,
+        onProgress,
+        signal: controller.signal
+      })
+    ).rejects.toMatchObject({ name: 'AbortError' })
+    expect(writer.aborted).toBe(true)
+    expect(writer.closed).toBe(false)
+  })
+
+  it('aborts writer when a write itself throws', async () => {
+    const source = makeSource(0x2000)
+    const finding = {
+      format: 'PE',
+      offset: 0,
+      fileSize: 0x800,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    const failingWriter = {
+      ...makeMockWriter(),
+      _aborted: false,
+      async write() {
+        throw new Error('disk full')
+      },
+      async abort() {
+        this._aborted = true
+      }
+    }
+    await expect(
+      extractEmbedded({ fileBytes: source, finding, writer: failingWriter })
+    ).rejects.toThrow('disk full')
+    expect(failingWriter._aborted).toBe(true)
+  })
+
+  it('still surfaces validationWarning in streaming mode', async () => {
+    const source = makeSource(0x1000)
+    const finding = {
+      format: 'PE',
+      offset: 0x100,
+      fileSize: 0x200,
+      extractable: true,
+      details: { machine: 0x8664, characteristics: 0 }
+    }
+    const writer = makeMockWriter()
+    // makeSource fills with i & 0xff, so byte at 0x100 is 0 — validatePE fails
+    const result = await extractEmbedded({ fileBytes: source, finding, writer })
+    expect(result.streamed).toBe(true)
+    expect(result.validationWarning).toMatch(/re-validation of extracted PE/)
+    expect(writer.closed).toBe(true)
+  })
+
   it('supports a chunked-file wrapper with async slice()', async () => {
     const data = new Uint8Array(0x2000)
     for (let i = 0; i < data.length; i++) data[i] = i & 0xff
