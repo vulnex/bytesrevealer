@@ -6,7 +6,7 @@ https://www.vulnex.com/
 
 # Bytes Revealer
 
-Version: 0.4
+Version: 0.5
 
 Bytes Revealer is a powerful reverse engineering and binary analysis tool designed for security researchers, forensic analysts, and developers. With features like hex view, visual representation, string extraction, entropy calculation, and file signature detection, it helps users uncover hidden data inside files. Whether you are analyzing malware, debugging binaries, or investigating unknown file formats, Bytes Revealer makes it easy to explore, search, and extract valuable information from any binary file.
 
@@ -23,6 +23,18 @@ Current Limitation: Files less than 50MB can perform all analysis, files bigger 
 - Hash calculations (MD5, SHA-1, SHA-256)
 - Entropy and Bytes Frequency analysis
 - Progressive loading for files up to 1.5GB
+
+### Paste Data Input
+- Analyze byte fragments without writing them to disk
+- Auto-detects hex, C/Python escape sequences (`\x41`, `\101`, `0x41`), base64, xxd/hexdump output, and plain text
+- Pasted bytes flow through the same analysis pipeline as uploaded files
+
+### Embedded Executable Detection
+- Full-file scan for PE, ELF, and Mach-O binaries hidden at arbitrary offsets
+- Structural validation per format to suppress false positives
+- Runs in a Web Worker; cancellable; gated by a settings toggle
+- Per-finding "Extract" button carves the embedded binary out as a standalone download
+- Filename suggestion derived from PE Characteristics (`.exe`/`.dll`/`.sys`) and detected architecture
 
 ### Multiple Views
 

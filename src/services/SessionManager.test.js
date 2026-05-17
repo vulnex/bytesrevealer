@@ -875,7 +875,7 @@ describe('SessionManager (async methods with mocked IDB)', () => {
       const data = JSON.parse(text)
       expect(data.exportVersion).toBe('1.0')
       expect(data.application).toBe('BytesRevealer')
-      expect(data.applicationVersion).toBe('0.4')
+      expect(data.applicationVersion).toBe('0.5')
       expect(data.exportDate).toBeTruthy()
       expect(data.session).toBeTruthy()
       expect(data.session.name).toBe('Wrapper Test')

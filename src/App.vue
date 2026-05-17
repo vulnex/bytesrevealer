@@ -1,10 +1,10 @@
 /** * VULNEX -Bytes Revealer- * * File: App.vue * Author: Simon Roses Femerling * Created:
-2025-02-12 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache-2.0 * Copyright (c)
+2025-02-12 * Last Modified: 2026-01-03 * Version: 0.5 * License: Apache-2.0 * Copyright (c)
 2025-2026 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="container">
-    <h1 class="title">VULNEX -Bytes Revealer (v0.4)-</h1>
+    <h1 class="title">VULNEX -Bytes Revealer (v0.5)-</h1>
     <p class="subtitle">- Uncover the Secrets of Binary Files -</p>
     <p class="copyright">
       2025-{{ currentYear }} &#169; <a href="https://www.vulnex.com" target="_blank">VULNEX</a>
@@ -412,7 +412,7 @@
         role="tabpanel"
         aria-labelledby="tab-info"
       >
-        <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.4</h2>
+        <h2 class="text-xl font-semibold">Welcome to Bytes Revealer v0.5</h2>
 
         <p class="mt-3">
           <strong>About:</strong> Bytes Revealer is a comprehensive binary analysis and reverse
@@ -516,7 +516,7 @@
         </p>
 
         <p class="mt-3 text-sm text-gray-600">
-          Version 0.4 | © 2025-{{ currentYear }} VULNEX |
+          Version 0.5 | © 2025-{{ currentYear }} VULNEX |
           <a
             href="https://github.com/vulnex/bytesrevealer"
             target="_blank"

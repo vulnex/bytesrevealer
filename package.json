@@ -1,6 +1,6 @@
 {
   "name": "bytesrevealer",
-  "version": "0.4",
+  "version": "0.5",
   "description": "A Vue.js reverse engineering visualization tool",
   "private": true,
   "type": "module",

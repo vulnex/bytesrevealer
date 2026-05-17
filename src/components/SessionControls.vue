@@ -1,5 +1,5 @@
 /** * VULNEX -Bytes Revealer- * * File: SessionControls.vue * Author: Simon Roses Femerling *
-Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.4 * License: Apache-2.0 * Copyright (c)
+Created: 2026-01-03 * Last Modified: 2026-01-03 * Version: 0.5 * License: Apache-2.0 * Copyright (c)
 2025 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>

@@ -5,7 +5,7 @@
  * Description: Optimized format loader with lazy loading
  * Created: 2025-09-21
  * Last Modified: 2025-09-27
- * Version: 0.4
+ * Version: 0.5
  * License: Apache-2.0
  * Copyright (c) 2025 VULNEX. All rights reserved.
  */

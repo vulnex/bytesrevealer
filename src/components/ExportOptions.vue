@@ -1,5 +1,5 @@
 /** * VULNEX -Bytes Revealer- * * File: ExportOptions.vue * Author: Simon Roses Femerling * Created:
-2025-04-27 * Last Modified: 2026-02-09 * Version: 0.4 * License: Apache-2.0 * Copyright (c) 2025
+2025-04-27 * Last Modified: 2026-02-09 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025
 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
@@ -292,7 +292,7 @@ export default {
           metadata: {
             timestamp: timestamp.toISOString(),
             tool: 'VULNEX Bytes Revealer',
-            version: '0.4'
+            version: '0.5'
           }
         }
 

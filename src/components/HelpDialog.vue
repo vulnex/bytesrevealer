@@ -1,5 +1,5 @@
 /** * VULNEX -Bytes Revealer- * * File: HelpDialog.vue * Author: Simon Roses Femerling * Created:
-2025-09-29 * Last Modified: 2026-03-30 * Version: 0.4 * License: Apache-2.0 * Copyright (c) 2025
+2025-09-29 * Last Modified: 2026-03-30 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025
 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
@@ -35,6 +35,31 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         <div v-if="activeTab === 'changelog'" class="tab-content">
           <h3>Changelog</h3>
           <div class="changelog-entries">
+            <div class="changelog-entry">
+              <h4>Version 0.5 (May 2026)</h4>
+              <ul>
+                <li>
+                  Paste Data input — analyze byte fragments directly from hex, C/Python escape
+                  sequences, base64, or hexdump output without writing them to disk first
+                </li>
+                <li>
+                  Full-file embedded executable scanner — detects PE/ELF/Mach-O binaries hidden at
+                  any offset inside any file, runs in a Web Worker, validated to suppress false
+                  positives
+                </li>
+                <li>
+                  Extract Embedded Executables — carve a detected PE/ELF/Mach-O out of its host file
+                  as a standalone download, with automatic .exe/.dll/.sys filename suggestion
+                  derived from PE Characteristics flags
+                </li>
+                <li>
+                  HexView markers highlight embedded-executable magic bytes alongside (but separate
+                  from) user annotations
+                </li>
+                <li>New settings toggle to disable the embedded-executable scanner globally</li>
+              </ul>
+            </div>
+
             <div class="changelog-entry">
               <h4>Version 0.4 (March 2026)</h4>
               <ul>
@@ -426,7 +451,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <h3>About Bytes Revealer</h3>
 
           <div class="about-section">
-            <p class="about-version">Version 0.4</p>
+            <p class="about-version">Version 0.5</p>
             <p class="about-tagline">Uncover the Secrets of Binary Files</p>
 
             <div class="about-description">
@@ -454,6 +479,8 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                 <li>Bookmarks and annotations</li>
                 <li>Session management — save, restore, and share sessions</li>
                 <li>Deep PE, ELF, and Mach-O binary analysis</li>
+                <li>Embedded executable detection and extraction (PE/ELF/Mach-O)</li>
+                <li>Paste byte data directly (hex, escape sequences, base64, hexdump)</li>
                 <li>Real-time data inspection</li>
               </ul>
             </div>
