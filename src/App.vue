@@ -337,8 +337,11 @@
           :session-file-size="pendingSessionFile?.size || 0"
           :embedded-executables="embeddedExecutables"
           :embedded-scan="embeddedScan"
+          :embedded-extraction-states="embeddedExtractionStates"
           @cancel-embedded-scan="cancelEmbeddedScan"
           @jump-to-embedded="jumpToEmbeddedOffset"
+          @extract-embedded="handleExtractEmbedded"
+          @cancel-extract-embedded="handleCancelExtractEmbedded"
         />
       </template>
 
@@ -573,7 +576,7 @@
 </template>
 
 <script>
-import { ref, nextTick } from 'vue'
+import { ref, reactive, nextTick } from 'vue'
 import FileAnalysis from './components/FileAnalysis.vue'
 import VisualView from './components/VisualView.vue'
 import HexView from './components/HexView.vue'
@@ -592,6 +595,12 @@ import { useAnnotations } from './composables/useAnnotations'
 import { useFileProcessing } from './composables/useFileProcessing'
 import { useSearch } from './composables/useSearch'
 import { useSessionRestore } from './composables/useSessionRestore'
+import { extractEmbedded } from './services/EmbeddedExecutableExtractor'
+
+// Above this on-disk size, prompt the user before extracting. Extraction
+// materializes the embed in memory as a Blob, so very large embeds are worth
+// confirming.
+const EXTRACT_CONFIRM_THRESHOLD = 1024 * 1024 * 1024
 
 export default {
   name: 'App',
@@ -701,6 +710,74 @@ export default {
       })
     }
 
+    // Reactive map: finding.offset → { bytesRead, totalBytes } while extraction
+    // is in flight. Bound to EmbeddedExecutables via :extraction-states so the
+    // table can render per-row spinners.
+    const embeddedExtractionStates = reactive({})
+    // Non-reactive: AbortController per active extraction, for cancel events.
+    const embeddedExtractionControllers = new Map()
+
+    function triggerDownload(blob, filename) {
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.style.display = 'none'
+      document.body.appendChild(a)
+      a.click()
+      document.body.removeChild(a)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+    }
+
+    async function handleExtractEmbedded(finding) {
+      if (!finding || finding.extractable === false) return
+
+      const offsetKey = finding.offset
+      // Guard re-entry: if an extraction is already in flight at this offset, no-op.
+      if (embeddedExtractionStates[offsetKey]) return
+
+      const fileSize = finding.fileSize || 0
+      if (fileSize > EXTRACT_CONFIRM_THRESHOLD) {
+        const sizeStr = fp.formatFileSize(fileSize)
+        const ok = window.confirm(
+          `This embedded file is ${sizeStr}. Extracting will use memory equal to its size. Continue?`
+        )
+        if (!ok) return
+      }
+
+      const controller = new AbortController()
+      embeddedExtractionControllers.set(offsetKey, controller)
+      embeddedExtractionStates[offsetKey] = { bytesRead: 0, totalBytes: fileSize }
+
+      try {
+        const { blob, filename } = await extractEmbedded({
+          fileBytes: fp.fileBytes.value,
+          finding,
+          onProgress: (bytesRead, totalBytes) => {
+            const state = embeddedExtractionStates[offsetKey]
+            if (state) {
+              state.bytesRead = bytesRead
+              state.totalBytes = totalBytes
+            }
+          },
+          signal: controller.signal
+        })
+        triggerDownload(blob, filename)
+      } catch (err) {
+        if (err.name !== 'AbortError') {
+          fp.error.value = `Extraction failed: ${err.message || err}`
+        }
+      } finally {
+        delete embeddedExtractionStates[offsetKey]
+        embeddedExtractionControllers.delete(offsetKey)
+      }
+    }
+
+    function handleCancelExtractEmbedded(offset) {
+      const controller = embeddedExtractionControllers.get(offset)
+      if (controller) controller.abort()
+    }
+
     function handleError(message) {
       fp.error.value = message
     }
@@ -750,8 +827,11 @@ export default {
       chunkManager: fp.chunkManager,
       embeddedExecutables: fp.embeddedExecutables,
       embeddedScan: fp.embeddedScan,
+      embeddedExtractionStates,
       cancelEmbeddedScan: fp.cancelEmbeddedScan,
       jumpToEmbeddedOffset,
+      handleExtractEmbedded,
+      handleCancelExtractEmbedded,
       formatFileSize: fp.formatFileSize,
 
       // Search

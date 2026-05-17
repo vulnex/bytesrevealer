@@ -128,8 +128,11 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
       <EmbeddedExecutables
         :findings="embeddedExecutables"
         :scan="embeddedScan"
+        :extraction-states="embeddedExtractionStates"
         @cancel="$emit('cancel-embedded-scan')"
         @jump-to-offset="(offset) => $emit('jump-to-embedded', offset)"
+        @extract="(finding) => $emit('extract-embedded', finding)"
+        @cancel-extract="(offset) => $emit('cancel-extract-embedded', offset)"
       />
 
       <BinaryAnalysis :file-signatures="fileSignatures" />
@@ -206,9 +209,19 @@ export default {
         truncated: false,
         hasRun: false
       })
+    },
+    embeddedExtractionStates: {
+      type: Object,
+      default: () => ({})
     }
   },
-  emits: ['update:activeGraphTab', 'cancel-embedded-scan', 'jump-to-embedded'],
+  emits: [
+    'update:activeGraphTab',
+    'cancel-embedded-scan',
+    'jump-to-embedded',
+    'extract-embedded',
+    'cancel-extract-embedded'
+  ],
   data() {
     return {
       isAnalyzing: false,

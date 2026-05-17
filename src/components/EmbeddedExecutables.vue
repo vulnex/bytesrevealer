@@ -40,6 +40,7 @@ Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VU
             <th scope="col">Offset</th>
             <th scope="col">Size</th>
             <th scope="col">Details</th>
+            <th scope="col">Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -58,10 +59,39 @@ Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VU
               </button>
             </td>
             <td>
-              <span v-if="f.size">{{ formatSize(f.size) }}</span>
+              <span v-if="f.fileSize">{{ formatSize(f.fileSize) }}</span>
+              <span v-else-if="f.size">{{ formatSize(f.size) }}</span>
               <span v-else class="muted">—</span>
             </td>
             <td class="details-cell">{{ formatDetails(f) }}</td>
+            <td class="actions-cell">
+              <template v-if="getExtractionProgress(f.offset)">
+                <span class="extract-progress" role="status" aria-live="polite">
+                  <span class="loading-spinner-small" aria-hidden="true"></span>
+                  <span class="extract-progress-text">{{ extractionProgressLabel(f.offset) }}</span>
+                  <button
+                    type="button"
+                    class="extract-cancel"
+                    :aria-label="`Cancel extraction at offset ${formatOffset(f.offset)}`"
+                    @click="$emit('cancel-extract', f.offset)"
+                  >
+                    ×
+                  </button>
+                </span>
+              </template>
+              <template v-else>
+                <button
+                  type="button"
+                  class="extract-button"
+                  :disabled="!f.extractable"
+                  :title="extractButtonTitle(f)"
+                  :aria-label="extractButtonAriaLabel(f)"
+                  @click="$emit('extract', f)"
+                >
+                  Extract
+                </button>
+              </template>
+            </td>
           </tr>
         </tbody>
       </table>
@@ -70,54 +100,7 @@ Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VU
 </template>
 
 <script>
-const PE_MACHINE_NAMES = {
-  0x014c: 'i386',
-  0x0200: 'IA64',
-  0x8664: 'x86-64',
-  0x01c0: 'ARM',
-  0x01c4: 'ARMv7',
-  0xaa64: 'ARM64',
-  0x01f0: 'PowerPC',
-  0x01f1: 'PowerPC FP',
-  0x0166: 'MIPS16',
-  0x0266: 'MIPS FPU',
-  0x0162: 'MIPS R3000',
-  0x0168: 'MIPS R10000',
-  0x0184: 'ALPHA',
-  0x0284: 'ALPHA64',
-  0x0ebc: 'EFI',
-  0x5032: 'RISC-V 32',
-  0x5064: 'RISC-V 64'
-}
-
-const ELF_MACHINE_NAMES = {
-  0x02: 'SPARC',
-  0x03: 'x86',
-  0x08: 'MIPS',
-  0x14: 'PowerPC',
-  0x15: 'PowerPC64',
-  0x16: 'S390',
-  0x28: 'ARM',
-  0x2a: 'SuperH',
-  0x32: 'IA-64',
-  0x3e: 'x86-64',
-  0x53: 'AVR',
-  0xb7: 'AArch64',
-  0xf3: 'RISC-V',
-  0xf7: 'BPF'
-}
-
-const MACHO_CPU_NAMES = {
-  0x00000001: 'VAX',
-  0x00000006: 'MC680x0',
-  0x00000007: 'x86',
-  0x01000007: 'x86-64',
-  0x0000000c: 'ARM',
-  0x0100000c: 'ARM64',
-  0x0200000c: 'ARM64_32',
-  0x00000012: 'PowerPC',
-  0x01000012: 'PowerPC64'
-}
+import { PE_MACHINE_NAMES, ELF_MACHINE_NAMES, MACHO_CPU_NAMES } from '../utils/architectureNames.js'
 
 export default {
   name: 'EmbeddedExecutables',
@@ -130,10 +113,16 @@ export default {
     scan: {
       type: Object,
       required: true
+    },
+    // Map keyed by finding offset → { bytesRead, totalBytes }. Presence of an
+    // entry indicates an extraction is currently in flight for that offset.
+    extractionStates: {
+      type: Object,
+      default: () => ({})
     }
   },
 
-  emits: ['cancel', 'jump-to-offset'],
+  emits: ['cancel', 'jump-to-offset', 'extract', 'cancel-extract'],
 
   computed: {
     shouldRender() {
@@ -194,6 +183,24 @@ export default {
         default:
           return ''
       }
+    },
+    getExtractionProgress(offset) {
+      return this.extractionStates[offset] || null
+    },
+    extractionProgressLabel(offset) {
+      const state = this.extractionStates[offset]
+      if (!state || !state.totalBytes) return 'Extracting…'
+      const pct = Math.min(100, Math.floor((state.bytesRead / state.totalBytes) * 100))
+      return `Extracting… ${pct}%`
+    },
+    extractButtonTitle(f) {
+      if (f.extractable) return `Extract this ${f.format} as a separate file`
+      return f.extractError || 'This executable cannot be extracted'
+    },
+    extractButtonAriaLabel(f) {
+      const offsetText = this.formatOffset(f.offset)
+      if (f.extractable) return `Extract ${f.format} at offset ${offsetText}`
+      return `Cannot extract ${f.format} at offset ${offsetText}: ${f.extractError || 'unknown reason'}`
     }
   }
 }
@@ -371,5 +378,82 @@ export default {
 
 .muted {
   color: var(--text-secondary);
+}
+
+.actions-cell {
+  white-space: nowrap;
+}
+
+.extract-button {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+}
+
+.extract-button:hover:not(:disabled) {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+  color: var(--link-color);
+}
+
+.extract-button:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+.extract-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.extract-progress {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--text-secondary);
+  font-size: 0.8rem;
+}
+
+.loading-spinner-small {
+  width: 12px;
+  height: 12px;
+  border: 2px solid var(--border-color);
+  border-top-color: var(--link-color);
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+.extract-progress-text {
+  font-variant-numeric: tabular-nums;
+}
+
+.extract-cancel {
+  background: transparent;
+  border: 1px solid var(--border-color);
+  color: var(--text-secondary);
+  width: 20px;
+  height: 20px;
+  line-height: 1;
+  padding: 0;
+  border-radius: 50%;
+  font-size: 0.9rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.extract-cancel:hover {
+  color: rgb(237, 137, 54);
+  border-color: rgb(237, 137, 54);
+}
+
+.extract-cancel:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
 }
 </style>
