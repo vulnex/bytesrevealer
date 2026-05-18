@@ -50,6 +50,7 @@ describe('useAppPreferences', () => {
       expect(result.features.hexView).toBe(true)
       expect(result.features.stringAnalysis).toBe(true)
       expect(result.features.yaraScanning).toBe(true)
+      expect(result.features.disassembly).toBe(true)
       app.unmount()
     })
 
@@ -87,7 +88,8 @@ describe('useAppPreferences', () => {
           visualView: false,
           hexView: true,
           stringAnalysis: false,
-          yaraScanning: true
+          yaraScanning: true,
+          disassembly: false
         })
       )
       const [result, app] = await loadComposable()
@@ -96,6 +98,7 @@ describe('useAppPreferences', () => {
       expect(result.features.hexView).toBe(true)
       expect(result.features.stringAnalysis).toBe(false)
       expect(result.features.yaraScanning).toBe(true)
+      expect(result.features.disassembly).toBe(false)
       app.unmount()
     })
 
@@ -185,12 +188,14 @@ describe('useAppPreferences', () => {
       result.features.hexView = false
       result.features.stringAnalysis = false
       result.features.yaraScanning = false
+      result.features.disassembly = false
       result.resetFeatures()
       expect(result.features.fileAnalysis).toBe(true)
       expect(result.features.visualView).toBe(true)
       expect(result.features.hexView).toBe(true)
       expect(result.features.stringAnalysis).toBe(true)
       expect(result.features.yaraScanning).toBe(true)
+      expect(result.features.disassembly).toBe(true)
       app.unmount()
     })
   })

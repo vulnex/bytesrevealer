@@ -13,7 +13,8 @@ export function useAppPreferences() {
     visualView: true,
     hexView: true,
     stringAnalysis: true,
-    yaraScanning: true
+    yaraScanning: true,
+    disassembly: true
   })
 
   const activeTab = ref('info')
@@ -39,6 +40,7 @@ export function useAppPreferences() {
         features.hexView = savedFeatures.hexView !== false
         features.stringAnalysis = savedFeatures.stringAnalysis !== false
         features.yaraScanning = savedFeatures.yaraScanning !== false
+        features.disassembly = savedFeatures.disassembly !== false
       }
     } catch (error) {
       logger.error('Error loading analysis preferences:', error)
@@ -73,6 +75,7 @@ export function useAppPreferences() {
     features.hexView = true
     features.stringAnalysis = true
     features.yaraScanning = true
+    features.disassembly = true
   }
 
   // Auto-save preferences when features change

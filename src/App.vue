@@ -68,6 +68,17 @@
           />
           <span>YARA Scanning</span>
         </label>
+
+        <label class="flex items-center space-x-2">
+          <input
+            v-model="features.disassembly"
+            type="checkbox"
+            :disabled="loading.file || loading.analysis"
+            class="form-checkbox"
+            checked
+          />
+          <span>Disassembly</span>
+        </label>
       </div>
     </div>
 
@@ -250,6 +261,20 @@
       </button>
 
       <button
+        v-if="!loading.file && fileBytes.length && features.disassembly"
+        id="tab-disasm"
+        class="tab"
+        role="tab"
+        :class="{ active: activeTab === 'disasm' }"
+        :aria-selected="activeTab === 'disasm'"
+        :tabindex="activeTab === 'disasm' ? 0 : -1"
+        :disabled="loading.analysis"
+        @click="activeTab = 'disasm'"
+      >
+        Disassembly
+      </button>
+
+      <button
         v-if="
           (fileBytes.length || hasSessionData) && (features.fileAnalysis || features.stringAnalysis)
         "
@@ -405,6 +430,17 @@
           v-show="activeTab === 'yara'"
           role="tabpanel"
           aria-labelledby="tab-yara"
+          :file-bytes="fileBytes"
+          @navigate-to-offset="navigateToYaraMatch"
+        />
+      </template>
+
+      <!-- Disassembly Panel -->
+      <template v-if="!loading.file && features.disassembly && fileBytes.length">
+        <DisassemblyView
+          v-show="activeTab === 'disasm'"
+          role="tabpanel"
+          aria-labelledby="tab-disasm"
           :file-bytes="fileBytes"
           @navigate-to-offset="navigateToYaraMatch"
         />
@@ -594,6 +630,7 @@ import FormatLoadingIndicator from './components/FormatLoadingIndicator.vue'
 import HelpDialog from './components/HelpDialog.vue'
 import SessionControls from './components/SessionControls.vue'
 import YaraPanel from './components/YaraPanel.vue'
+import DisassemblyView from './components/DisassemblyView.vue'
 import PasteDataDialog from './components/PasteDataDialog.vue'
 import { useAppPreferences } from './composables/useAppPreferences'
 import { useAnnotations } from './composables/useAnnotations'
@@ -626,6 +663,7 @@ export default {
     HelpDialog,
     SessionControls,
     YaraPanel,
+    DisassemblyView,
     PasteDataDialog
   },
 
