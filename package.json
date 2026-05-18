@@ -21,6 +21,7 @@
   },
   "dependencies": {
     "buffer": "6.0.3",
+    "capstone-wasm": "1.0.3",
     "crypto-js": "4.2.0",
     "file-type": "21.0.0",
     "iconv-lite": "0.7.0",
