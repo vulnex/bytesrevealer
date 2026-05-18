@@ -321,7 +321,9 @@
       <LoadingOverlay :show="loading.analysis" message="Analyzing file..." />
 
       <!-- File Analysis View -->
-      <template v-if="features.fileAnalysis && (fileBytes.length || hasSessionData)">
+      <template
+        v-if="features.fileAnalysis && (fileBytes.length || hasSessionData) && visitedTabs.file"
+      >
         <!-- Session restore banner -->
         <div
           v-if="hasSessionData && !fileBytes.length && activeTab === 'file'"
@@ -376,7 +378,9 @@
            feature components early floods the main-thread microtask queue with
            worker init messages, which slows every `await` in the analysis path
            (file-type detection, WebCrypto hashes) by seconds. -->
-      <template v-if="!loading.file && features.visualView && fileBytes.length">
+      <template
+        v-if="!loading.file && features.visualView && fileBytes.length && visitedTabs.visual"
+      >
         <div v-show="activeTab === 'visual'" role="tabpanel" aria-labelledby="tab-visual">
           <VisualView
             :file-bytes="fileBytes"
@@ -391,7 +395,7 @@
       </template>
 
       <!-- Hex View -->
-      <template v-if="!loading.file && features.hexView && fileBytes.length">
+      <template v-if="!loading.file && features.hexView && fileBytes.length && visitedTabs.hex">
         <div v-show="activeTab === 'hex'" role="tabpanel" aria-labelledby="tab-hex">
           <HexView
             :file-bytes="fileBytes"
@@ -414,7 +418,9 @@
       </template>
 
       <!-- String Analysis View -->
-      <template v-if="!loading.file && features.stringAnalysis && fileBytes.length">
+      <template
+        v-if="!loading.file && features.stringAnalysis && fileBytes.length && visitedTabs.strings"
+      >
         <StringAnalysisView
           v-show="activeTab === 'strings'"
           ref="stringAnalysisView"
@@ -425,7 +431,9 @@
       </template>
 
       <!-- YARA Panel -->
-      <template v-if="!loading.file && features.yaraScanning && fileBytes.length">
+      <template
+        v-if="!loading.file && features.yaraScanning && fileBytes.length && visitedTabs.yara"
+      >
         <YaraPanel
           v-show="activeTab === 'yara'"
           role="tabpanel"
@@ -436,7 +444,9 @@
       </template>
 
       <!-- Disassembly Panel -->
-      <template v-if="!loading.file && features.disassembly && fileBytes.length">
+      <template
+        v-if="!loading.file && features.disassembly && fileBytes.length && visitedTabs.disasm"
+      >
         <DisassemblyView
           v-show="activeTab === 'disasm'"
           role="tabpanel"
@@ -617,7 +627,7 @@
 </template>
 
 <script>
-import { ref, reactive, nextTick } from 'vue'
+import { ref, reactive, nextTick, watch } from 'vue'
 import FileAnalysis from './components/FileAnalysis.vue'
 import VisualView from './components/VisualView.vue'
 import HexView from './components/HexView.vue'
@@ -678,6 +688,18 @@ export default {
     // 1. Standalone composables
     const preferences = useAppPreferences()
     const annotationsComposable = useAnnotations()
+
+    // Track which tabs the user has visited so panels mount lazily on first
+    // click rather than all at once when fileBytes is set. Without this, every
+    // tab switch pays layout cost for every other panel's hidden DOM tree.
+    const visitedTabs = reactive({})
+    watch(
+      preferences.activeTab,
+      (tab) => {
+        visitedTabs[tab] = true
+      },
+      { immediate: true }
+    )
 
     // 2. File processing (standalone)
     const fp = useFileProcessing()
@@ -876,6 +898,7 @@ export default {
       showHelpDialog: preferences.showHelpDialog,
       currentYear: preferences.currentYear,
       handleSettingsUpdate: preferences.handleSettingsUpdate,
+      visitedTabs,
 
       // Annotations
       bookmarks: annotationsComposable.bookmarks,
