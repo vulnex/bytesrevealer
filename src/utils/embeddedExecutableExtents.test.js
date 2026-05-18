@@ -4,6 +4,7 @@ import {
   computeELFFileSize,
   computeMachOFileSize,
   computeMachOFatFileSize,
+  applyOverlayBounds,
   PE_MAX_SECTIONS,
   MACHO_MAX_NFAT_ARCH
 } from './embeddedExecutableExtents.js'
@@ -564,5 +565,132 @@ describe('computeMachOFatFileSize', () => {
     const r = computeMachOFatFileSize(buf, 0)
     expect(r.extractable).toBe(false)
     expect(r.extractError).toMatch(/extends beyond/)
+  })
+})
+
+// ─── applyOverlayBounds ───────────────────────────────────────────────────
+
+describe('applyOverlayBounds', () => {
+  const pe = (offset, fileSize, extra = {}) => ({
+    format: 'PE',
+    offset,
+    fileSize,
+    extractable: true,
+    ...extra
+  })
+  const elf = (offset, fileSize) => ({
+    format: 'ELF',
+    offset,
+    fileSize,
+    extractable: true
+  })
+  const macho = (offset, fileSize) => ({
+    format: 'Mach-O',
+    offset,
+    fileSize,
+    extractable: true
+  })
+
+  it('extends a lone PE finding to the host EOF', () => {
+    const findings = [pe(0, 1000)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(50_000)
+    expect(findings[0].overlayBytes).toBe(49_000)
+    expect(findings[0].strictFileSize).toBe(1000)
+  })
+
+  it('bounds the overlay at the next findings offset', () => {
+    const findings = [pe(0, 1000), pe(20_000, 500)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(20_000)
+    expect(findings[0].overlayBytes).toBe(19_000)
+    expect(findings[1].fileSize).toBe(50_000 - 20_000)
+    expect(findings[1].overlayBytes).toBe(50_000 - 20_000 - 500)
+  })
+
+  it('uses the next finding offset regardless of next format (ELF caps a PE)', () => {
+    const findings = [pe(0, 500), elf(10_000, 2000)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(10_000)
+    expect(findings[0].overlayBytes).toBe(9500)
+    // ELF is unchanged — only PE gets overlay treatment.
+    expect(findings[1].fileSize).toBe(2000)
+    expect(findings[1].overlayBytes).toBeUndefined()
+    expect(findings[1].strictFileSize).toBeUndefined()
+  })
+
+  it('does not shrink a PE whose strict size already exceeds the gap', () => {
+    // A signed PE where the cert table already extends fileSize past the next
+    // finding's offset (unusual but possible for overlapping/malformed inputs).
+    const findings = [pe(0, 30_000), pe(20_000, 500)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(30_000)
+    expect(findings[0].overlayBytes).toBe(0)
+    expect(findings[0].strictFileSize).toBe(30_000)
+  })
+
+  it('leaves PEs alone when no overlay exists (fileSize already touches the next finding)', () => {
+    const findings = [pe(0, 5000), pe(5000, 1000)]
+    applyOverlayBounds(findings, 6000)
+    expect(findings[0].fileSize).toBe(5000)
+    expect(findings[0].overlayBytes).toBe(0)
+    expect(findings[1].fileSize).toBe(1000)
+    expect(findings[1].overlayBytes).toBe(0)
+  })
+
+  it('does not modify ELF or Mach-O findings', () => {
+    const findings = [elf(0, 1000), macho(10_000, 500)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(1000)
+    expect(findings[1].fileSize).toBe(500)
+    expect(findings[0].overlayBytes).toBeUndefined()
+    expect(findings[1].overlayBytes).toBeUndefined()
+    expect(findings[0].strictFileSize).toBeUndefined()
+  })
+
+  it('skips PE findings that are not extractable', () => {
+    const findings = [
+      { format: 'PE', offset: 0, fileSize: null, extractable: false, extractError: 'broken' },
+      pe(20_000, 500)
+    ]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBeNull()
+    expect(findings[0].overlayBytes).toBeUndefined()
+  })
+
+  it('is idempotent (second call produces the same result)', () => {
+    const findings = [pe(0, 1000), pe(20_000, 500)]
+    applyOverlayBounds(findings, 50_000)
+    const snapshot = JSON.parse(JSON.stringify(findings))
+    applyOverlayBounds(findings, 50_000)
+    expect(findings).toEqual(snapshot)
+  })
+
+  it('recomputes when totalSize changes (e.g. re-run after more findings stream in)', () => {
+    const findings = [pe(0, 1000)]
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(50_000)
+    // Same array, new finding appended; rerun with a tighter upper bound.
+    findings.push(pe(10_000, 500))
+    applyOverlayBounds(findings, 50_000)
+    expect(findings[0].fileSize).toBe(10_000)
+    expect(findings[0].overlayBytes).toBe(9000)
+    expect(findings[0].strictFileSize).toBe(1000)
+  })
+
+  it('handles an empty findings array', () => {
+    expect(() => applyOverlayBounds([], 50_000)).not.toThrow()
+  })
+
+  it('handles invalid totalSize gracefully (no-op)', () => {
+    const findings = [pe(0, 1000)]
+    applyOverlayBounds(findings, -1)
+    expect(findings[0].fileSize).toBe(1000)
+    expect(findings[0].overlayBytes).toBeUndefined()
+  })
+
+  it('handles a non-array input gracefully', () => {
+    expect(() => applyOverlayBounds(null, 100)).not.toThrow()
+    expect(() => applyOverlayBounds(undefined, 100)).not.toThrow()
   })
 })

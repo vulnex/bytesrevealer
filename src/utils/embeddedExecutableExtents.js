@@ -339,6 +339,58 @@ export function computeMachOFileSize(bytes, offset = 0) {
 }
 
 /**
+ * Extend PE findings' `fileSize` to cover any appended overlay (installer
+ * payload, signed-not-by-cert-table appended data, etc.). The strict
+ * header-computed size becomes the floor; the new size extends up to the
+ * next finding's offset, or the host file's end if this is the last finding.
+ *
+ * Why this lives here, not in the scanner: the scanner emits findings one at
+ * a time as they're discovered, so it doesn't know an earlier PE's overlay
+ * bound until a later finding (or end-of-scan) materializes. This is a
+ * post-pass over the ordered findings array.
+ *
+ * Only PE findings are extended — ELF and Mach-O are well-bounded by header
+ * fields, so any trailing bytes there are more likely to be a separate file
+ * than overlay payload. Auto-include mirrors how `computePEFileSize` already
+ * silently includes the Authenticode Certificate Table.
+ *
+ * Idempotent: stores the strict size in `strictFileSize` on first call, then
+ * recomputes from that floor on subsequent calls so it can be re-run as new
+ * findings stream in.
+ *
+ * @param {Array<object>} findings - Findings in ascending offset order (mutated).
+ * @param {number} totalSize - Host file length in bytes.
+ */
+export function applyOverlayBounds(findings, totalSize) {
+  if (!Array.isArray(findings) || findings.length === 0) return
+  if (typeof totalSize !== 'number' || totalSize < 0) return
+
+  for (let i = 0; i < findings.length; i++) {
+    const f = findings[i]
+    if (!f || f.format !== 'PE' || !f.extractable) continue
+
+    const strict = typeof f.strictFileSize === 'number' ? f.strictFileSize : f.fileSize
+    if (typeof strict !== 'number' || strict <= 0) continue
+    if (typeof f.offset !== 'number' || f.offset < 0) continue
+
+    if (f.strictFileSize === undefined) f.strictFileSize = strict
+
+    const next = findings[i + 1]
+    const upperBound =
+      next && typeof next.offset === 'number' && next.offset > f.offset ? next.offset : totalSize
+    const candidate = upperBound - f.offset
+
+    if (candidate > strict) {
+      f.fileSize = candidate
+      f.overlayBytes = candidate - strict
+    } else {
+      f.fileSize = strict
+      f.overlayBytes = 0
+    }
+  }
+}
+
+/**
  * Compute the on-disk size of an embedded Mach-O Fat (32-bit) binary.
  * 64-bit fat (magic CAFEBABF) is out of scope for v1.
  */

@@ -62,6 +62,13 @@ Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VU
               <span v-if="f.fileSize">{{ formatSize(f.fileSize) }}</span>
               <span v-else-if="f.size">{{ formatSize(f.size) }}</span>
               <span v-else class="muted">—</span>
+              <span
+                v-if="f.overlayBytes > 0"
+                class="overlay-badge"
+                :title="overlayTooltip(f)"
+                aria-label="Includes overlay payload"
+                >+overlay</span
+              >
             </td>
             <td class="details-cell">{{ formatDetails(f) }}</td>
             <td class="actions-cell">
@@ -201,6 +208,11 @@ export default {
       const offsetText = this.formatOffset(f.offset)
       if (f.extractable) return `Extract ${f.format} at offset ${offsetText}`
       return `Cannot extract ${f.format} at offset ${offsetText}: ${f.extractError || 'unknown reason'}`
+    },
+    overlayTooltip(f) {
+      const strict =
+        typeof f.strictFileSize === 'number' ? f.strictFileSize : f.fileSize - f.overlayBytes
+      return `${this.formatSize(strict)} headers + sections, plus ${this.formatSize(f.overlayBytes)} of appended overlay payload (typical for installers like NSIS / Inno Setup / 7z SFX). Extraction includes the full bundle.`
     }
   }
 }
@@ -378,6 +390,19 @@ export default {
 
 .muted {
   color: var(--text-secondary);
+}
+
+.overlay-badge {
+  display: inline-block;
+  margin-left: 6px;
+  padding: 1px 6px;
+  border-radius: 3px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background-color: rgba(237, 137, 54, 0.18);
+  color: rgb(237, 137, 54);
+  cursor: help;
+  vertical-align: middle;
 }
 
 .actions-cell {

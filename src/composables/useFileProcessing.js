@@ -15,6 +15,7 @@ import { useSettingsStore } from '../stores/settings'
 import { createLogger } from '../utils/logger'
 import fileChunkManager from '../utils/FileChunkManager'
 import { calculateOptimizedEntropy } from '../utils/entropyOptimized'
+import { applyOverlayBounds } from '../utils/embeddedExecutableExtents'
 
 const logger = createLogger('FileProcessing')
 
@@ -195,6 +196,7 @@ export function useFileProcessing() {
           if (typeof msg.total === 'number') embeddedScan.total = msg.total
           break
         case 'done':
+          applyOverlayBounds(embeddedExecutables.value, fileBytes.value?.length ?? 0)
           embeddedScan.cancelled = !!msg.cancelled
           embeddedScan.truncated = !!msg.truncated
           embeddedScan.inProgress = false
