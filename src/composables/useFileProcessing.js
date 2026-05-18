@@ -1,6 +1,6 @@
 import { ref, reactive, watch } from 'vue'
 import {
-  analyzeFileInChunks,
+  analyzeBytes,
   validateFileSize,
   formatFileSize as formatFileSizeUtil,
   calculateFileHashes,
@@ -437,9 +437,12 @@ export function useFileProcessing() {
 
             detectedFileType.value = await detectFileType(file)
 
-            const results = await analyzeFileInChunks(file, { fileAnalysis: true }, (prog) => {
-              progress.value = 60 + prog * 0.4
-            })
+            // Compute byte-frequency + entropy synchronously from the bytes
+            // we already loaded above. The legacy `analyzeFileInChunks(file)`
+            // path re-read the file via FileReader in 128 KB chunks with a
+            // setTimeout(0) yield per chunk — 15-30 s of redundant overhead
+            // since `fileBytes.value` already holds the same bytes in memory.
+            const results = analyzeBytes(fileBytes.value, { fileAnalysis: true })
             entropy.value = results.entropy
 
             progress.value = 100

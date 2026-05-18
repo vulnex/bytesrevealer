@@ -57,6 +57,43 @@ export async function processFileInChunks(file, _options = {}, onProgress) {
   return bytes
 }
 
+/**
+ * Compute byte-frequency and Shannon entropy from an in-memory Uint8Array.
+ *
+ * Synchronous one-pass replacement for `analyzeFileInChunks` on the
+ * small-file (≤ 50 MB) path where the bytes are already in memory. The old
+ * chunked path re-read the file via FileReader in 128 KB slices with a
+ * `setTimeout(0)` yield between each — for a 7 MB file that's ~50 yields,
+ * which adds 15-30 s of pure overhead on top of the actual work. Avoiding
+ * the redundant I/O drops the same work to ~50 ms.
+ *
+ * Returns the same shape as `analyzeFileInChunks` for caller-compatibility.
+ */
+export function analyzeBytes(bytes, options = {}) {
+  const counts = new Uint32Array(256)
+  if (!options.fileAnalysis) {
+    return { entropy: 0, strings: [], counts }
+  }
+  if (!bytes || bytes.length === 0) {
+    return { entropy: 0, strings: [], counts }
+  }
+
+  for (let i = 0; i < bytes.length; i++) {
+    counts[bytes[i]]++
+  }
+
+  let entropy = 0
+  const total = bytes.length
+  for (let i = 0; i < 256; i++) {
+    if (counts[i] > 0) {
+      const p = counts[i] / total
+      entropy -= p * Math.log2(p)
+    }
+  }
+
+  return { entropy, strings: [], counts }
+}
+
 export async function analyzeFileInChunks(file, options = {}, onProgress) {
   if (!options.fileAnalysis) {
     return { entropy: 0, strings: [], counts: new Uint32Array(256) }

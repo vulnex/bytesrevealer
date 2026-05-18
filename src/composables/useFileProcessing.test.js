@@ -16,7 +16,9 @@ vi.mock('../utils/logger', () => ({
 
 vi.mock('../utils/fileHandler', () => ({
   processFileInChunks: vi.fn(),
-  analyzeFileInChunks: vi.fn().mockResolvedValue({ entropy: 5.5 }),
+  analyzeBytes: vi
+    .fn()
+    .mockReturnValue({ entropy: 5.5, strings: [], counts: new Uint32Array(256) }),
   validateFileSize: vi.fn().mockReturnValue(false),
   formatFileSize: vi.fn((size) => `${size} bytes`),
   calculateFileHashes: vi.fn().mockResolvedValue({ md5: 'abc', sha1: 'def', sha256: 'ghi' }),

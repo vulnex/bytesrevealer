@@ -4,6 +4,7 @@ import {
   validateFileSize,
   FILE_LIMITS,
   processFileInChunks,
+  analyzeBytes,
   analyzeFileInChunks,
   calculateFileHashes,
   detectFileType
@@ -192,6 +193,94 @@ describe('processFileInChunks()', () => {
     const file = createMockFile(data)
     const result = await processFileInChunks(file, { someOption: true })
     expect(Array.from(result)).toEqual([42])
+  })
+})
+
+// ---------------------------------------------------------------------------
+// analyzeBytes
+// ---------------------------------------------------------------------------
+
+describe('analyzeBytes()', () => {
+  it('returns zero entropy and empty counts when fileAnalysis is not set', () => {
+    const bytes = new Uint8Array([1, 2, 3, 4, 5])
+    const r = analyzeBytes(bytes)
+    expect(r.entropy).toBe(0)
+    expect(r.strings).toEqual([])
+    expect(r.counts).toBeInstanceOf(Uint32Array)
+    expect(r.counts.length).toBe(256)
+    expect(Array.from(r.counts).every((c) => c === 0)).toBe(true)
+  })
+
+  it('returns zero entropy when fileAnalysis is explicitly false', () => {
+    const bytes = new Uint8Array([1, 2, 3, 4, 5])
+    const r = analyzeBytes(bytes, { fileAnalysis: false })
+    expect(r.entropy).toBe(0)
+  })
+
+  it('returns zero entropy for empty input', () => {
+    const r = analyzeBytes(new Uint8Array(0), { fileAnalysis: true })
+    expect(r.entropy).toBe(0)
+    expect(r.counts.length).toBe(256)
+  })
+
+  it('returns zero entropy for null/undefined input', () => {
+    expect(analyzeBytes(null, { fileAnalysis: true }).entropy).toBe(0)
+    expect(analyzeBytes(undefined, { fileAnalysis: true }).entropy).toBe(0)
+  })
+
+  it('counts byte frequencies correctly', () => {
+    // 4× 0x00, 2× 0xFF, 1× 0x42
+    const bytes = new Uint8Array([0, 0, 0, 0, 0xff, 0xff, 0x42])
+    const r = analyzeBytes(bytes, { fileAnalysis: true })
+    expect(r.counts[0x00]).toBe(4)
+    expect(r.counts[0xff]).toBe(2)
+    expect(r.counts[0x42]).toBe(1)
+    expect(r.counts[0x01]).toBe(0)
+  })
+
+  it('computes Shannon entropy for a uniform 256-byte input (max entropy = 8.0)', () => {
+    const bytes = new Uint8Array(256)
+    for (let i = 0; i < 256; i++) bytes[i] = i
+    const r = analyzeBytes(bytes, { fileAnalysis: true })
+    expect(r.entropy).toBeCloseTo(8.0, 6)
+  })
+
+  it('computes zero entropy for all-zero input', () => {
+    const bytes = new Uint8Array(1024)
+    const r = analyzeBytes(bytes, { fileAnalysis: true })
+    expect(r.entropy).toBe(0)
+    expect(r.counts[0]).toBe(1024)
+  })
+
+  it('computes 1.0 bit of entropy for a 50/50 two-symbol input', () => {
+    const bytes = new Uint8Array(100)
+    for (let i = 0; i < 50; i++) bytes[i] = 0
+    for (let i = 50; i < 100; i++) bytes[i] = 1
+    const r = analyzeBytes(bytes, { fileAnalysis: true })
+    expect(r.entropy).toBeCloseTo(1.0, 6)
+  })
+
+  it('matches analyzeFileInChunks for the same input (compatibility check)', async () => {
+    const bytes = new Uint8Array(8192)
+    for (let i = 0; i < bytes.length; i++) bytes[i] = (i * 31) & 0xff
+    const file = new File([new Blob([bytes])], 'test.bin')
+    const slow = await analyzeFileInChunks(file, { fileAnalysis: true })
+    const fast = analyzeBytes(bytes, { fileAnalysis: true })
+    expect(fast.entropy).toBeCloseTo(slow.entropy, 10)
+    expect(Array.from(fast.counts)).toEqual(Array.from(slow.counts))
+  })
+
+  it('runs in milliseconds for a 7 MB buffer (regression: legacy path took ~15-30 s)', () => {
+    const bytes = new Uint8Array(7 * 1024 * 1024)
+    for (let i = 0; i < bytes.length; i++) bytes[i] = i & 0xff
+    const t0 = Date.now()
+    const r = analyzeBytes(bytes, { fileAnalysis: true })
+    const elapsed = Date.now() - t0
+    expect(r.entropy).toBeGreaterThan(7.9)
+    // Generous bound — locally ~30 ms, CI may vary. The legacy chunked path
+    // takes seconds to multi-seconds; if this assertion starts failing,
+    // someone reintroduced async/yield overhead.
+    expect(elapsed).toBeLessThan(2000)
   })
 })
 
