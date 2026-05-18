@@ -1,4 +1,4 @@
-import { ref, watch, onUnmounted } from 'vue'
+import { ref, shallowRef, watch, onUnmounted } from 'vue'
 
 /**
  * Composable for string extraction from binary data.
@@ -6,7 +6,11 @@ import { ref, watch, onUnmounted } from 'vue'
  * @param {import('vue').Ref<Array|Uint8Array>} fileBytes - reactive file bytes ref
  */
 export function useStringExtraction(fileBytes) {
-  const strings = ref([])
+  // shallowRef: only the outer array is reactive. Items are plain objects, not
+  // deeply-tracked Proxies. With 10k+ extracted strings, deep reactivity
+  // produced enough Proxy overhead to slow every reactive update across the
+  // whole app (e.g. tab switches) after the strings tab was first visited.
+  const strings = shallowRef([])
   const isLoading = ref(false)
   const progress = ref(0)
 
@@ -134,31 +138,33 @@ export function useStringExtraction(fileBytes) {
   }
 
   function processWorkerResults(results) {
-    strings.value = []
+    // Build the full list locally, then assign once. With shallowRef, a single
+    // assignment fires one reactive update instead of one per push.
+    const acc = []
 
-    // Process ASCII strings
     if (results.ascii && results.ascii.length > 0) {
-      results.ascii.forEach((str) => {
-        strings.value.push({
+      for (const str of results.ascii) {
+        acc.push({
           type: 'ASCII',
           size: str.length,
           value: escapeString(str.value),
           offset: str.offset
         })
-      })
+      }
     }
 
-    // Process UTF-16 strings
     const utf16le = results.utf16le || []
     const utf16be = results.utf16be || []
-    ;[...utf16le, ...utf16be].forEach((str) => {
-      strings.value.push({
+    for (const str of [...utf16le, ...utf16be]) {
+      acc.push({
         type: str.encoding,
         size: str.length,
         value: escapeString(str.value),
         offset: str.offset
       })
-    })
+    }
+
+    strings.value = acc
   }
 
   async function extractStringsWithWorker() {
@@ -202,20 +208,22 @@ export function useStringExtraction(fileBytes) {
     }
   }
 
-  function addString(str, type, offset = 0) {
-    if (str.trim().length > 3) {
-      // Minimum 4 characters
-      strings.value.push({
-        type: type,
-        size: str.length,
-        value: escapeString(str),
-        offset: offset
-      })
-    }
-  }
-
   function extractStringsSynchronous() {
-    strings.value = []
+    // Accumulate locally — pushing into strings.value 10k+ times would fire
+    // 10k+ reactive updates and trigger render scheduling on each.
+    const acc = []
+
+    function addString(str, type, offset = 0) {
+      if (str.trim().length > 3) {
+        acc.push({
+          type,
+          size: str.length,
+          value: escapeString(str),
+          offset
+        })
+      }
+    }
+
     let currentString = ''
     let currentType = 'ASCII'
     let startOffset = 0
@@ -260,6 +268,8 @@ export function useStringExtraction(fileBytes) {
     if (currentString) {
       addString(currentString, currentType, startOffset)
     }
+
+    strings.value = acc
   }
 
   async function extractStrings() {
