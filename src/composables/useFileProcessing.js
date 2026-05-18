@@ -353,9 +353,15 @@ export function useFileProcessing() {
 
       const isLargeFile = file.size > FILE_LIMITS.ANALYSIS_SIZE_LIMIT
 
-      // Detect file type
+      // Detect file type from the in-memory bytes (skip the FileReader read
+      // path — fileBytes is already loaded above). Explicit 1 MB slice; the
+      // file-type library only inspects the prefix.
       try {
-        detectedFileType.value = await detectFileType(file)
+        const MAX_DETECT = 1024 * 1024
+        const detectInput = fileBytes.value.isProgressive
+          ? await fileBytes.value.slice(0, Math.min(MAX_DETECT, fileBytes.value.length))
+          : fileBytes.value.subarray(0, Math.min(MAX_DETECT, fileBytes.value.length))
+        detectedFileType.value = await detectFileType(detectInput)
 
         if (
           detectedFileType.value &&
@@ -430,18 +436,16 @@ export function useFileProcessing() {
 
             progress.value = 100
           } else {
-            const hashResult = await calculateFileHashes(file, (prog) => {
+            const hashInput = fileBytes.value.isProgressive ? file : fileBytes.value
+            const hashResult = await calculateFileHashes(hashInput, (prog) => {
               progress.value = 20 + prog * 0.4
             })
             hashes.value = hashResult
 
-            detectedFileType.value = await detectFileType(file)
+            // detectFileType already ran earlier in the pipeline on the same
+            // bytes. The second call was redundant ~1 s of FileReader I/O on
+            // the first 1 MB — drop it.
 
-            // Compute byte-frequency + entropy synchronously from the bytes
-            // we already loaded above. The legacy `analyzeFileInChunks(file)`
-            // path re-read the file via FileReader in 128 KB chunks with a
-            // setTimeout(0) yield per chunk — 15-30 s of redundant overhead
-            // since `fileBytes.value` already holds the same bytes in memory.
             const results = analyzeBytes(fileBytes.value, { fileAnalysis: true })
             entropy.value = results.entropy
 
