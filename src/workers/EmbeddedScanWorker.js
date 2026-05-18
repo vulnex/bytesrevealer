@@ -140,6 +140,19 @@ export function processChunk(state, chunkStart, chunkBytes, opts = {}) {
   return { done, cancelled: state.cancelled, truncated: state.truncated }
 }
 
+/**
+ * Build the worker-thread → main-thread message envelope for a finding.
+ *
+ * Findings emitted by the scanner carry their own `type: 'Embedded Executable'`
+ * field (a human-readable label, distinct from the worker message protocol).
+ * The spread must come *before* the protocol type so `type: 'finding'` wins;
+ * otherwise the main-thread switch falls through and the finding is silently
+ * dropped — a bug that occurred in v0.5 and prompted this helper.
+ */
+export function buildFindingMessage(finding) {
+  return { ...finding, type: 'finding' }
+}
+
 // ─── Worker plumbing (skipped under Node test runners) ────────────────────
 
 const isWorker =
@@ -179,7 +192,7 @@ if (isWorker) {
           const { start, bytes, isFinal } = event.data
           const result = processChunk(state, start, bytes, {
             isFinal,
-            onFinding: (f) => post({ type: 'finding', ...f }),
+            onFinding: (f) => post(buildFindingMessage(f)),
             onProgress: (scanned, total) => post({ type: 'progress', scanned, total }),
             shouldCancel: () => cancelFlag
           })

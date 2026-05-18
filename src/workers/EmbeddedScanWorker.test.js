@@ -1,5 +1,10 @@
 import { describe, it, expect, vi } from 'vitest'
-import { createScanState, processChunk, VALIDATION_LOOKAHEAD } from './EmbeddedScanWorker.js'
+import {
+  createScanState,
+  processChunk,
+  VALIDATION_LOOKAHEAD,
+  buildFindingMessage
+} from './EmbeddedScanWorker.js'
 
 // Minimal ELF64 LE x86-64 fixture (64-byte header, all section-table fields zero).
 function buildELF() {
@@ -176,5 +181,53 @@ describe('EmbeddedScanWorker.processChunk', () => {
     })
     expect(r2.done).toBe(true)
     expect(findings).toHaveLength(1)
+  })
+})
+
+describe('buildFindingMessage', () => {
+  // Regression: scanner findings carry `type: 'Embedded Executable'`. Before
+  // the fix the worker plumbing emitted `{ type: 'finding', ...finding }`,
+  // which let `finding.type` overwrite the protocol type — the main thread's
+  // switch fell through and the finding was silently dropped.
+  it("forces protocol type to 'finding' even when finding object has its own type", () => {
+    const finding = {
+      type: 'Embedded Executable',
+      format: 'PE',
+      offset: 0x400,
+      fileSize: 6894376,
+      extractable: true,
+      details: { machine: 332, is64bit: false, characteristics: 271 }
+    }
+    const msg = buildFindingMessage(finding)
+    expect(msg.type).toBe('finding')
+    expect(msg.format).toBe('PE')
+    expect(msg.offset).toBe(0x400)
+    expect(msg.fileSize).toBe(6894376)
+    expect(msg.extractable).toBe(true)
+    expect(msg.details.machine).toBe(332)
+  })
+
+  it("preserves all finding fields besides the overwritten 'type'", () => {
+    const finding = {
+      type: 'Embedded Executable',
+      format: 'ELF',
+      offset: 0,
+      size: 64,
+      fileSize: 64,
+      extractable: true,
+      confidence: 'High',
+      details: { is64bit: true, isLittleEndian: true, machine: 0x3e }
+    }
+    const msg = buildFindingMessage(finding)
+    expect(msg).toEqual({
+      type: 'finding',
+      format: 'ELF',
+      offset: 0,
+      size: 64,
+      fileSize: 64,
+      extractable: true,
+      confidence: 'High',
+      details: { is64bit: true, isLittleEndian: true, machine: 0x3e }
+    })
   })
 })

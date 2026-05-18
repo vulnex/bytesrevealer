@@ -227,13 +227,10 @@ export function useFileProcessing() {
       if (token !== embeddedScanToken) return
       if (embeddedScan.cancelled) break
       const end = Math.min(start + CHUNK, total)
-      // .slice() returns a fresh ArrayBuffer we can transfer without losing fileBytes.
       const slice = fileBytes.value.slice(start, end)
       worker.postMessage({ type: 'chunk', start, bytes: slice, isFinal: end === total }, [
         slice.buffer
       ])
-      // Yield to the event loop occasionally so the UI stays responsive while
-      // the main thread copies chunks.
       if (((start / CHUNK) | 0) % 4 === 3) {
         await new Promise((resolve) => setTimeout(resolve, 0))
       }
