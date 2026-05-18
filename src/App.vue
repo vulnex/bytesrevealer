@@ -194,7 +194,7 @@
       </button>
 
       <button
-        v-if="fileBytes.length && features.visualView"
+        v-if="!loading.file && fileBytes.length && features.visualView"
         id="tab-visual"
         class="tab"
         role="tab"
@@ -208,7 +208,7 @@
       </button>
 
       <button
-        v-if="fileBytes.length && features.hexView"
+        v-if="!loading.file && fileBytes.length && features.hexView"
         id="tab-hex"
         class="tab"
         role="tab"
@@ -222,7 +222,7 @@
       </button>
 
       <button
-        v-if="fileBytes.length && features.stringAnalysis"
+        v-if="!loading.file && fileBytes.length && features.stringAnalysis"
         id="tab-strings"
         class="tab"
         role="tab"
@@ -236,7 +236,7 @@
       </button>
 
       <button
-        v-if="fileBytes.length && features.yaraScanning"
+        v-if="!loading.file && fileBytes.length && features.yaraScanning"
         id="tab-yara"
         class="tab"
         role="tab"
@@ -346,7 +346,12 @@
       </template>
 
       <!-- Visual View -->
-      <template v-if="features.visualView && fileBytes.length">
+      <!-- Gated on !loading.file so the component (and its workers) doesn't
+           mount during the critical-path file analysis. Mounting non-critical
+           feature components early floods the main-thread microtask queue with
+           worker init messages, which slows every `await` in the analysis path
+           (file-type detection, WebCrypto hashes) by seconds. -->
+      <template v-if="!loading.file && features.visualView && fileBytes.length">
         <div v-show="activeTab === 'visual'" role="tabpanel" aria-labelledby="tab-visual">
           <VisualView
             :file-bytes="fileBytes"
@@ -361,7 +366,7 @@
       </template>
 
       <!-- Hex View -->
-      <template v-if="features.hexView && fileBytes.length">
+      <template v-if="!loading.file && features.hexView && fileBytes.length">
         <div v-show="activeTab === 'hex'" role="tabpanel" aria-labelledby="tab-hex">
           <HexView
             :file-bytes="fileBytes"
@@ -384,7 +389,7 @@
       </template>
 
       <!-- String Analysis View -->
-      <template v-if="features.stringAnalysis && fileBytes.length">
+      <template v-if="!loading.file && features.stringAnalysis && fileBytes.length">
         <StringAnalysisView
           v-show="activeTab === 'strings'"
           ref="stringAnalysisView"
@@ -395,7 +400,7 @@
       </template>
 
       <!-- YARA Panel -->
-      <template v-if="features.yaraScanning && fileBytes.length">
+      <template v-if="!loading.file && features.yaraScanning && fileBytes.length">
         <YaraPanel
           v-show="activeTab === 'yara'"
           role="tabpanel"
