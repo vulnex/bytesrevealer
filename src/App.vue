@@ -365,10 +365,12 @@
           :embedded-executables="embeddedExecutables"
           :embedded-scan="embeddedScan"
           :embedded-extraction-states="embeddedExtractionStates"
+          :disasm-enabled="features.disassembly"
           @cancel-embedded-scan="cancelEmbeddedScan"
           @jump-to-embedded="jumpToEmbeddedOffset"
           @extract-embedded="handleExtractEmbedded"
           @cancel-extract-embedded="handleCancelExtractEmbedded"
+          @disassemble-embedded="disassembleEmbedded"
         />
       </template>
 
@@ -650,6 +652,7 @@ import { useFileProcessing } from './composables/useFileProcessing'
 import { useSearch } from './composables/useSearch'
 import { useSessionRestore } from './composables/useSessionRestore'
 import { useDisassemblyStore } from './stores/disassembly'
+import { detectDisasmArch } from './utils/disasmArchDetect'
 import { extractEmbedded, suggestFilename } from './services/EmbeddedExecutableExtractor'
 
 // Above this on-disk size, prompt the user before extracting *in Blob mode*.
@@ -796,6 +799,38 @@ export default {
       disasmStore.clearResults()
       disasmStore.setRange(offset, null)
       preferences.activeTab.value = 'disasm'
+    }
+
+    function disassembleEmbedded(finding) {
+      if (!finding || typeof finding.offset !== 'number') return
+      const bytes = fp.fileBytes.value
+      if (!bytes || !bytes.length) return
+      const size = finding.fileSize || finding.size || 0
+      if (size <= 0) return
+      const start = finding.offset
+      const end = Math.min(start + size, bytes.length)
+      if (end <= start) return
+
+      // Slice the embed and feed it to the same arch detector the main file
+      // load path uses. Its startOffset is relative to the slice; add the
+      // finding's offset to land on the embed's entry point in file coords.
+      const slice = bytes.subarray(start, end)
+      const detected = detectDisasmArch(slice)
+
+      preferences.activeTab.value = 'disasm'
+      // Wait for DisassemblyView's own auto-detect (which sees the host file's
+      // headers, not the embed's) to finish before we overwrite the store.
+      nextTick(() => {
+        disasmStore.clearResults()
+        if (detected) {
+          disasmStore.setArchitecture(detected.arch)
+          disasmStore.setMode(detected.mode)
+          const embedStart = start + (detected.startOffset || 0)
+          disasmStore.setRange(embedStart, end)
+        } else {
+          disasmStore.setRange(start, end)
+        }
+      })
     }
 
     // Reactive map: finding.offset → { bytesRead, totalBytes } while extraction
@@ -978,6 +1013,7 @@ export default {
       navigateToMatch,
       navigateToYaraMatch,
       disassembleFromHexOffset,
+      disassembleEmbedded,
       handleError,
       handleSessionLoaded,
       handleSessionSaved: session.handleSessionSaved

@@ -97,6 +97,21 @@ Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VU
                 >
                   Extract
                 </button>
+                <button
+                  v-if="disasmEnabled"
+                  type="button"
+                  class="disasm-button"
+                  :disabled="!f.extractable"
+                  :title="
+                    f.extractable
+                      ? 'Open this embedded executable in the Disassembly tab'
+                      : 'Cannot disassemble — file size unresolved'
+                  "
+                  :aria-label="`Disassemble embedded ${f.format} at offset ${formatOffset(f.offset)}`"
+                  @click="$emit('disassemble', f)"
+                >
+                  Disassemble
+                </button>
               </template>
             </td>
           </tr>
@@ -126,10 +141,14 @@ export default {
     extractionStates: {
       type: Object,
       default: () => ({})
+    },
+    disasmEnabled: {
+      type: Boolean,
+      default: false
     }
   },
 
-  emits: ['cancel', 'jump-to-offset', 'extract', 'cancel-extract'],
+  emits: ['cancel', 'jump-to-offset', 'extract', 'cancel-extract', 'disassemble'],
 
   computed: {
     shouldRender() {
@@ -431,6 +450,33 @@ export default {
 }
 
 .extract-button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.disasm-button {
+  background-color: var(--bg-secondary);
+  border: 1px solid var(--border-color);
+  color: var(--text-primary);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  margin-left: 6px;
+}
+
+.disasm-button:hover:not(:disabled) {
+  background-color: var(--bg-primary);
+  border-color: var(--link-color);
+  color: var(--link-color);
+}
+
+.disasm-button:focus-visible {
+  outline: 2px solid var(--link-color);
+  outline-offset: 2px;
+}
+
+.disasm-button:disabled {
   opacity: 0.45;
   cursor: not-allowed;
 }

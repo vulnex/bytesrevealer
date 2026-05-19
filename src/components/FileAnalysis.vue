@@ -129,10 +129,12 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
         :findings="embeddedExecutables"
         :scan="embeddedScan"
         :extraction-states="embeddedExtractionStates"
+        :disasm-enabled="disasmEnabled"
         @cancel="$emit('cancel-embedded-scan')"
         @jump-to-offset="(offset) => $emit('jump-to-embedded', offset)"
         @extract="(finding) => $emit('extract-embedded', finding)"
         @cancel-extract="(offset) => $emit('cancel-extract-embedded', offset)"
+        @disassemble="(finding) => $emit('disassemble-embedded', finding)"
       />
 
       <BinaryAnalysis :file-signatures="fileSignatures" />
@@ -213,6 +215,10 @@ export default {
     embeddedExtractionStates: {
       type: Object,
       default: () => ({})
+    },
+    disasmEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   emits: [
@@ -220,7 +226,8 @@ export default {
     'cancel-embedded-scan',
     'jump-to-embedded',
     'extract-embedded',
-    'cancel-extract-embedded'
+    'cancel-extract-embedded',
+    'disassemble-embedded'
   ],
   data() {
     return {
