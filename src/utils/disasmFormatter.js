@@ -37,6 +37,7 @@ export function formatAsAsm(instructions, options = {}) {
 
   const lines = []
   lines.push('; Bytes Revealer disassembly')
+  lines.push('; Source: https://bytesrevealer.online')
   if (architecture) {
     const archLine = mode
       ? `; Architecture: ${architecture}/${mode}`

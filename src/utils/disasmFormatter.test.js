@@ -12,6 +12,7 @@ describe('formatAsAsm', () => {
       generatedAt: '2026-05-19T00:00:00.000Z'
     })
     expect(text).toContain('; Bytes Revealer disassembly')
+    expect(text).toContain('; Source: https://bytesrevealer.online')
     expect(text).toContain('; Architecture: x86/64')
     expect(text).toContain('; Syntax: intel')
     expect(text).toContain('; Range: 0x1000 - 0x2000')
