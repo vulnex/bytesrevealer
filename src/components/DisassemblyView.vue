@@ -55,6 +55,48 @@
       <span v-if="disasmStore.lastDuration != null"
         >· decoded in {{ formatDuration(disasmStore.lastDuration) }}</span
       >
+      <span class="meta-hint">· press <kbd>?</kbd> for keys</span>
+    </div>
+
+    <div v-if="cmdMode && disasmStore.hasResults" class="cmd-bar">
+      <span class="cmd-prefix">{{ cmdMode === 'goto' ? 'Goto:' : '/' }}</span>
+      <input
+        ref="cmdInputRef"
+        v-model="cmdInput"
+        class="cmd-input"
+        :placeholder="cmdPlaceholder"
+        :aria-label="cmdMode === 'goto' ? 'Goto address' : 'Search'"
+        @keydown.escape.prevent="closeCmd"
+        @keydown.enter.prevent="onCmdEnter"
+      />
+      <span v-if="cmdMode === 'search'" class="cmd-status">
+        {{
+          searchMatchAddresses.length
+            ? `${searchCursor + 1} / ${searchMatchAddresses.length}`
+            : cmdInput
+              ? 'no matches'
+              : ''
+        }}
+      </span>
+      <button
+        v-if="cmdMode === 'search'"
+        class="cmd-btn"
+        title="Previous match (p)"
+        @click="prevMatch"
+      >
+        ↑
+      </button>
+      <button v-if="cmdMode === 'search'" class="cmd-btn" title="Next match (n)" @click="nextMatch">
+        ↓
+      </button>
+      <button class="cmd-btn" title="Close (Esc)" @click="closeCmd">×</button>
+    </div>
+
+    <div v-if="showHelp && disasmStore.hasResults" class="help-bar" role="note">
+      <div><kbd>j</kbd>/<kbd>k</kbd> next/prev instruction</div>
+      <div><kbd>g</kbd> goto address</div>
+      <div><kbd>/</kbd> search (then <kbd>n</kbd>/<kbd>p</kbd> for next/prev match)</div>
+      <div><kbd>Esc</kbd> close / clear</div>
     </div>
 
     <div v-if="disasmStore.hasResults" class="results-row">
@@ -64,6 +106,8 @@
         :xref-map="disasmStore.xrefMap"
         :instruction-address-set="disasmStore.instructionAddressSet"
         :file-bytes="fileBytes"
+        :search-matches="searchMatchSet"
+        :current-match-address="currentMatchAddress"
         class="results-listing"
         @navigate-to-offset="$emit('navigate-to-offset', $event)"
         @select-instruction="disasmStore.selectInstruction($event)"
@@ -114,7 +158,7 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, ref, watch } from 'vue'
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import { useDisassemblyStore } from '../stores/disassembly'
 import { detectDisasmArch } from '../utils/disasmArchDetect'
 import { extractSymbolNames } from '../utils/disasmSymbols'
@@ -130,6 +174,10 @@ const props = defineProps({
   fileBytes: {
     type: [Array, Uint8Array],
     required: true
+  },
+  isActive: {
+    type: Boolean,
+    default: false
   }
 })
 
@@ -138,6 +186,188 @@ defineEmits(['navigate-to-offset'])
 const disasmStore = useDisassemblyStore()
 
 const sidebarTab = ref('detail')
+
+// Keyboard navigation state.
+// cmdMode is 'goto' | 'search' | null. cmdInput is the live text in the bar.
+const cmdMode = ref(null)
+const cmdInput = ref('')
+const cmdInputRef = ref(null)
+const searchCursor = ref(0)
+const showHelp = ref(false)
+
+const cmdPlaceholder = computed(() =>
+  cmdMode.value === 'goto'
+    ? 'address — e.g. 0x401000 or 4198400'
+    : 'substring match against mnemonic + operands'
+)
+
+const searchMatchAddresses = computed(() => {
+  if (cmdMode.value !== 'search' || !cmdInput.value) return []
+  const q = cmdInput.value.toLowerCase()
+  const out = []
+  for (const ins of disasmStore.instructions) {
+    const text = `${ins.mnemonic} ${ins.opStr || ''}`.toLowerCase()
+    if (text.includes(q)) out.push(ins.address)
+  }
+  return out
+})
+
+const searchMatchSet = computed(() => new Set(searchMatchAddresses.value))
+
+const currentMatchAddress = computed(() => {
+  const matches = searchMatchAddresses.value
+  if (!matches.length) return null
+  const i = Math.min(searchCursor.value, matches.length - 1)
+  return matches[i]
+})
+
+// When a new search produces matches, jump selection to the first one so
+// the listing scrolls into view immediately.
+watch(searchMatchAddresses, (matches) => {
+  searchCursor.value = 0
+  if (matches.length) disasmStore.selectInstruction(matches[0])
+})
+
+function openSearch() {
+  cmdMode.value = 'search'
+  cmdInput.value = ''
+  searchCursor.value = 0
+  nextTick(() => cmdInputRef.value?.focus())
+}
+
+function openGoto() {
+  cmdMode.value = 'goto'
+  cmdInput.value = ''
+  nextTick(() => cmdInputRef.value?.focus())
+}
+
+function closeCmd() {
+  cmdMode.value = null
+  cmdInput.value = ''
+}
+
+function performGoto() {
+  const raw = cmdInput.value.trim()
+  if (!raw) return
+  // Accept hex with or without 0x, or decimal if the user typed pure digits.
+  let target
+  if (/^0x[0-9a-f]+$/i.test(raw)) target = Number.parseInt(raw.slice(2), 16)
+  else if (/^[0-9]+$/.test(raw)) target = Number.parseInt(raw, 10)
+  else target = Number.parseInt(raw, 16)
+  if (!Number.isFinite(target)) return
+
+  const ins = disasmStore.instructions
+  let found = null
+  for (const i of ins) {
+    if (i.address >= target) {
+      found = i
+      break
+    }
+  }
+  if (!found && ins.length) found = ins[ins.length - 1]
+  if (found) disasmStore.selectInstruction(found.address)
+  closeCmd()
+}
+
+function nextMatch() {
+  const matches = searchMatchAddresses.value
+  if (!matches.length) return
+  searchCursor.value = (searchCursor.value + 1) % matches.length
+  disasmStore.selectInstruction(matches[searchCursor.value])
+}
+
+function prevMatch() {
+  const matches = searchMatchAddresses.value
+  if (!matches.length) return
+  searchCursor.value = (searchCursor.value - 1 + matches.length) % matches.length
+  disasmStore.selectInstruction(matches[searchCursor.value])
+}
+
+function onCmdEnter() {
+  if (cmdMode.value === 'goto') performGoto()
+  else if (cmdMode.value === 'search') nextMatch()
+}
+
+function moveRow(delta) {
+  const ins = disasmStore.instructions
+  if (!ins.length) return
+  let idx = 0
+  if (disasmStore.selectedAddress != null) {
+    const found = ins.findIndex((i) => i.address === disasmStore.selectedAddress)
+    idx = found >= 0 ? found : 0
+  }
+  idx = Math.max(0, Math.min(ins.length - 1, idx + delta))
+  disasmStore.selectInstruction(ins[idx].address)
+}
+
+function isTypingElsewhere(target) {
+  if (!target) return false
+  if (target === cmdInputRef.value) return false
+  const tag = target.tagName
+  return tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT' || target.isContentEditable
+}
+
+function handleKeydown(event) {
+  if (!props.isActive) return
+  if (!disasmStore.hasResults) return
+  if (isTypingElsewhere(event.target)) return
+
+  // While the command bar input has focus, only Esc / Enter are handled
+  // (Enter via the @keydown.enter on the input, Esc via the @keydown.escape
+  // on the input). Letters typed inside the input are pure text input.
+  if (cmdMode.value) {
+    if (event.key === 'Escape') {
+      event.preventDefault()
+      closeCmd()
+    }
+    return
+  }
+
+  // Free-roam shortcuts.
+  switch (event.key) {
+    case 'j':
+      event.preventDefault()
+      moveRow(1)
+      break
+    case 'k':
+      event.preventDefault()
+      moveRow(-1)
+      break
+    case 'g':
+      event.preventDefault()
+      openGoto()
+      break
+    case '/':
+      event.preventDefault()
+      openSearch()
+      break
+    case 'n':
+      if (searchMatchAddresses.value.length) {
+        event.preventDefault()
+        nextMatch()
+      }
+      break
+    case 'p':
+      if (searchMatchAddresses.value.length) {
+        event.preventDefault()
+        prevMatch()
+      }
+      break
+    case '?':
+      event.preventDefault()
+      showHelp.value = !showHelp.value
+      break
+    case 'Escape':
+      if (showHelp.value) {
+        event.preventDefault()
+        showHelp.value = false
+      }
+      break
+  }
+}
+
+onMounted(() => window.addEventListener('keydown', handleKeydown))
+onBeforeUnmount(() => window.removeEventListener('keydown', handleKeydown))
 
 let worker = null
 let runId = 0
@@ -360,6 +590,96 @@ onBeforeUnmount(() => {
   gap: 10px;
   font-size: 12px;
   color: var(--text-muted, #888);
+  align-items: center;
+}
+
+.meta-hint {
+  font-size: 11px;
+  color: var(--text-muted, #888);
+}
+
+.meta-hint kbd {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 10px;
+  padding: 0 4px;
+  border: 1px solid var(--border-color, #444);
+  border-radius: 3px;
+  background: var(--bg-primary, #1e1e1e);
+}
+
+.cmd-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 10px;
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px solid var(--link-color, #4ec9b0);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.cmd-prefix {
+  color: var(--link-color, #4ec9b0);
+  font-weight: 600;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+}
+
+.cmd-input {
+  flex: 1 1 auto;
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #d4d4d4);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 3px;
+  padding: 4px 8px;
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 13px;
+  outline: none;
+}
+
+.cmd-input:focus {
+  border-color: var(--link-color, #4ec9b0);
+}
+
+.cmd-status {
+  font-size: 12px;
+  color: var(--text-muted, #888);
+  font-variant-numeric: tabular-nums;
+}
+
+.cmd-btn {
+  padding: 2px 8px;
+  font-size: 12px;
+  background: var(--bg-secondary, #3a3a3a);
+  color: var(--text-primary, #d4d4d4);
+  border: 1px solid var(--border-color, #555);
+  border-radius: 3px;
+  cursor: pointer;
+}
+
+.cmd-btn:hover {
+  background: var(--button-hover, #4a4a4a);
+}
+
+.help-bar {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  padding: 6px 10px;
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px dashed var(--border-color, #444);
+  border-radius: 4px;
+  font-size: 12px;
+  color: var(--text-muted, #888);
+}
+
+.help-bar kbd {
+  font-family: 'Monaco', 'Menlo', 'Courier New', monospace;
+  font-size: 11px;
+  padding: 0 5px;
+  border: 1px solid var(--border-color, #555);
+  border-radius: 3px;
+  background: var(--bg-primary, #1e1e1e);
+  color: var(--text-primary, #d4d4d4);
 }
 
 .empty-state {

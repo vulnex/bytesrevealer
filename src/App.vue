@@ -456,6 +456,7 @@
           role="tabpanel"
           aria-labelledby="tab-disasm"
           :file-bytes="fileBytes"
+          :is-active="activeTab === 'disasm'"
           @navigate-to-offset="navigateToYaraMatch"
         />
       </template>

@@ -16,7 +16,11 @@
             v-for="row in visibleRows"
             :key="row.ins.address"
             class="instruction-row"
-            :class="{ selected: row.ins.address === selectedAddress }"
+            :class="{
+              selected: row.ins.address === selectedAddress,
+              'search-match': searchMatches.has(row.ins.address),
+              'search-match-current': row.ins.address === currentMatchAddress
+            }"
             @click="onRowClick(row.ins)"
           >
             <td class="col-address">
@@ -95,6 +99,14 @@ const props = defineProps({
   },
   fileBytes: {
     type: [Uint8Array, Array],
+    default: null
+  },
+  searchMatches: {
+    type: Set,
+    default: () => new Set()
+  },
+  currentMatchAddress: {
+    type: Number,
     default: null
   }
 })
@@ -309,6 +321,19 @@ const formatBytes = formatDisasmBytes
 .instruction-row.selected {
   background: var(--surface-selected, #3a3a3a);
   box-shadow: inset 2px 0 0 var(--link-color, #4ec9b0);
+}
+
+.instruction-row.search-match {
+  background: rgba(255, 200, 80, 0.08);
+}
+
+.instruction-row.search-match.search-match-current {
+  background: rgba(255, 200, 80, 0.22);
+  box-shadow: inset 2px 0 0 #ffb454;
+}
+
+.instruction-row.selected.search-match {
+  background: rgba(255, 200, 80, 0.18);
 }
 
 .xref-badge {
