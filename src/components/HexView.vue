@@ -221,12 +221,14 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
       :selection-start="selectionStart"
       :selection-end="selectionEnd"
       :clicked-offset="contextMenu.clickedOffset"
+      :disassembly-enabled="disassemblyEnabled"
       @close="closeContextMenu"
       @copy="handleCopyResult"
       @export="openExportDialog"
       @export-range="openExportRangeDialog"
       @add-bookmark="handleAddBookmark"
       @add-annotation="handleAddAnnotation"
+      @disassemble-from-here="onDisassembleFromHere"
     />
 
     <!-- Export Dialog -->
@@ -329,6 +331,10 @@ export default {
     embeddedExecutables: {
       type: Array,
       default: () => []
+    },
+    disassemblyEnabled: {
+      type: Boolean,
+      default: false
     }
   },
   emits: [
@@ -336,7 +342,8 @@ export default {
     'remove-bookmark',
     'update-annotation',
     'remove-annotation',
-    'byte-selection'
+    'byte-selection',
+    'disassemble-from-here'
   ],
 
   setup(props, { emit }) {
@@ -540,6 +547,7 @@ export default {
       totalSize: hexExport.totalSize,
       fileData: hexExport.fileData,
       toast: hexExport.toast,
+      onDisassembleFromHere: (offset) => emit('disassemble-from-here', offset),
       // Props exposed for template
       fileBytes: props.fileBytes, // eslint-disable-line vue/no-dupe-keys
       chunkManager: props.chunkManager // eslint-disable-line vue/no-dupe-keys

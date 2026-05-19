@@ -72,8 +72,9 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount } from 'vue'
+import { onBeforeUnmount, watch } from 'vue'
 import { useDisassemblyStore } from '../stores/disassembly'
+import { detectDisasmArch } from '../utils/disasmArchDetect'
 import DisasmToolbar from './DisasmToolbar.vue'
 import DisasmListing from './DisasmListing.vue'
 
@@ -105,6 +106,24 @@ function onToggleHighlight(value) {
     disasmStore.toggleHexHighlight()
   }
 }
+
+function applyAutoDetect(bytes) {
+  if (!bytes || !bytes.length) return
+  if (disasmStore.isDisassembling) return
+  const detected = detectDisasmArch(bytes)
+  if (!detected) return
+  disasmStore.setArchitecture(detected.arch)
+  disasmStore.setMode(detected.mode)
+  if (detected.startOffset > 0 && disasmStore.startOffset === 0 && !disasmStore.hasResults) {
+    disasmStore.setRange(detected.startOffset, disasmStore.endOffset)
+  }
+}
+
+watch(
+  () => props.fileBytes,
+  (b) => applyAutoDetect(b),
+  { immediate: true }
+)
 
 async function runDisassembly() {
   if (!props.fileBytes || !props.fileBytes.length) return

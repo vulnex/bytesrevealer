@@ -137,6 +137,14 @@ reserved. * https://www.vulnex.com */
       <span class="menu-icon">📝</span>
       <span class="menu-text">Annotate Selection</span>
     </div>
+
+    <template v-if="disassemblyEnabled">
+      <div class="menu-divider"></div>
+      <div class="menu-item" @click="disassembleFromHere">
+        <span class="menu-icon">⚙</span>
+        <span class="menu-text">Disassemble from here</span>
+      </div>
+    </template>
   </div>
 </template>
 
@@ -170,9 +178,21 @@ export default {
     clickedOffset: {
       type: Number,
       default: null
+    },
+    disassemblyEnabled: {
+      type: Boolean,
+      default: false
     }
   },
-  emits: ['close', 'copy', 'export', 'export-range', 'add-bookmark', 'add-annotation'],
+  emits: [
+    'close',
+    'copy',
+    'export',
+    'export-range',
+    'add-bookmark',
+    'add-annotation',
+    'disassemble-from-here'
+  ],
   setup(props, { emit }) {
     const menuRef = ref(null)
     const showSubmenu = ref(null)
@@ -322,6 +342,17 @@ export default {
       }
     }
 
+    const disassembleFromHere = () => {
+      const offset =
+        props.clickedOffset !== null
+          ? props.clickedOffset
+          : props.selectionStart !== null
+            ? Math.min(props.selectionStart, props.selectionEnd ?? props.selectionStart)
+            : 0
+      emit('disassemble-from-here', offset)
+      emit('close')
+    }
+
     const handleClickOutside = (event) => {
       if (props.visible && menuRef.value && !menuRef.value.contains(event.target)) {
         emit('close')
@@ -359,7 +390,8 @@ export default {
       openExportDialog,
       openExportRangeDialog,
       addBookmarkAtOffset,
-      addAnnotationForSelection
+      addAnnotationForSelection,
+      disassembleFromHere
     }
   }
 }

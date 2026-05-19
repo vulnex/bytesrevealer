@@ -384,7 +384,7 @@
         <div v-show="activeTab === 'visual'" role="tabpanel" aria-labelledby="tab-visual">
           <VisualView
             :file-bytes="fileBytes"
-            :highlighted-bytes="highlightedBytes"
+            :highlighted-bytes="mergedHighlightedBytes"
             :colored-bytes="coloredBytes"
             :chunk-manager="chunkManager"
             :bookmarks="bookmarks"
@@ -400,12 +400,13 @@
           <HexView
             :file-bytes="fileBytes"
             :file-name="fileName"
-            :highlighted-bytes="highlightedBytes"
+            :highlighted-bytes="mergedHighlightedBytes"
             :colored-bytes="coloredBytes"
             :chunk-manager="chunkManager"
             :bookmarks="bookmarks"
             :annotations="annotations"
             :embedded-executables="embeddedExecutables"
+            :disassembly-enabled="features.disassembly"
             @byte-selection="handleByteSelection"
             @add-bookmark="addBookmark"
             @add-annotation="addAnnotation"
@@ -413,6 +414,7 @@
             @remove-bookmark="removeBookmark"
             @update-annotation="updateAnnotation"
             @remove-annotation="removeAnnotation"
+            @disassemble-from-here="disassembleFromHexOffset"
           />
         </div>
       </template>
@@ -627,7 +629,7 @@
 </template>
 
 <script>
-import { ref, reactive, nextTick, watch } from 'vue'
+import { ref, reactive, computed, nextTick, watch } from 'vue'
 import FileAnalysis from './components/FileAnalysis.vue'
 import VisualView from './components/VisualView.vue'
 import HexView from './components/HexView.vue'
@@ -647,6 +649,7 @@ import { useAnnotations } from './composables/useAnnotations'
 import { useFileProcessing } from './composables/useFileProcessing'
 import { useSearch } from './composables/useSearch'
 import { useSessionRestore } from './composables/useSessionRestore'
+import { useDisassemblyStore } from './stores/disassembly'
 import { extractEmbedded, suggestFilename } from './services/EmbeddedExecutableExtractor'
 
 // Above this on-disk size, prompt the user before extracting *in Blob mode*.
@@ -706,6 +709,15 @@ export default {
 
     // 3. Search (depends on fileBytes)
     const searchComposable = useSearch(fp.fileBytes)
+
+    const disasmStore = useDisassemblyStore()
+    const mergedHighlightedBytes = computed(() => {
+      const search = searchComposable.highlightedBytes.value || []
+      const disasm = disasmStore.instructionHighlightBytes
+      if (!disasm.length) return search
+      if (!search.length) return disasm
+      return [...search, ...disasm]
+    })
 
     // 4. Session restore (depends on all refs)
     const session = useSessionRestore({
@@ -777,6 +789,13 @@ export default {
       nextTick(() => {
         window.dispatchEvent(new CustomEvent('scrollToOffset', { detail: { offset, length: 4 } }))
       })
+    }
+
+    function disassembleFromHexOffset(offset) {
+      if (typeof offset !== 'number' || offset < 0) return
+      disasmStore.clearResults()
+      disasmStore.setRange(offset, null)
+      preferences.activeTab.value = 'disasm'
     }
 
     // Reactive map: finding.offset → { bytesRead, totalBytes } while extraction
@@ -938,6 +957,7 @@ export default {
       searchPattern: searchComposable.searchPattern,
       searchType: searchComposable.searchType,
       highlightedBytes: searchComposable.highlightedBytes,
+      mergedHighlightedBytes,
       searchProgress: searchComposable.searchProgress,
       isSearching: searchComposable.isSearching,
       searchResults: searchComposable.searchResults,
@@ -957,6 +977,7 @@ export default {
       resetFile,
       navigateToMatch,
       navigateToYaraMatch,
+      disassembleFromHexOffset,
       handleError,
       handleSessionLoaded,
       handleSessionSaved: session.handleSessionSaved
