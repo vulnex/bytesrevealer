@@ -107,12 +107,15 @@ import { computed } from 'vue'
 
 const DEFAULT_RANGE_BYTES = 0x1000
 
-const architectures = ['x86', 'arm', 'arm64', 'mips']
+// MIPS is intentionally omitted: the bundled capstone-wasm build does not
+// include MIPS support at runtime even though the CS_ARCH_MIPS constant is
+// exported. If a future capstone-wasm version ships with MIPS compiled in,
+// re-add it here (the disasmClassify table and worker arch map are ready).
+const architectures = ['x86', 'arm', 'arm64']
 const MODES_BY_ARCH = {
   x86: ['16', '32', '64'],
   arm: ['arm', 'thumb'],
-  arm64: ['arm'],
-  mips: ['mips32', 'mips64']
+  arm64: ['arm']
 }
 
 const props = defineProps({

@@ -144,4 +144,43 @@ describe('DisasmWorker end-to-end (capstone-wasm)', () => {
     expect(intel[0].opStr).toBe('rbp, rsp')
     expect(att[0].opStr).toBe('%rsp, %rbp')
   }, 15000)
+
+  it('disassembles ARM (A32 LE) instructions', async () => {
+    const { Capstone, Const, loadCapstone } = await import('capstone-wasm')
+    await loadCapstone()
+
+    // mov r0, #0  ;  bx lr
+    const bytes = new Uint8Array([0x00, 0x00, 0xa0, 0xe3, 0x1e, 0xff, 0x2f, 0xe1])
+    const { archConst, modeConst } = resolveArchMode('arm', 'arm')
+    const cs = new Capstone(archConst, modeConst)
+    const instructions = cs.disasm(bytes, { address: 0 })
+    cs.close()
+
+    expect(archConst).toBe(Const.CS_ARCH_ARM)
+    expect(instructions).toHaveLength(2)
+    expect(instructions[0].mnemonic).toBe('mov')
+    expect(instructions[1].mnemonic).toBe('bx')
+  }, 15000)
+
+  it('disassembles ARM64 instructions', async () => {
+    const { Capstone, Const, loadCapstone } = await import('capstone-wasm')
+    await loadCapstone()
+
+    // nop  ;  ret
+    const bytes = new Uint8Array([0x1f, 0x20, 0x03, 0xd5, 0xc0, 0x03, 0x5f, 0xd6])
+    const { archConst, modeConst } = resolveArchMode('arm64', 'arm')
+    const cs = new Capstone(archConst, modeConst)
+    const instructions = cs.disasm(bytes, { address: 0 })
+    cs.close()
+
+    expect(archConst).toBe(Const.CS_ARCH_ARM64)
+    expect(instructions).toHaveLength(2)
+    expect(instructions[0].mnemonic).toBe('nop')
+    expect(instructions[1].mnemonic).toBe('ret')
+  }, 15000)
+
+  // MIPS is intentionally not tested: capstone-wasm exports CS_ARCH_MIPS but
+  // the bundled WASM is built without MIPS support — `new Capstone(CS_ARCH_MIPS,...)`
+  // raises CS_ERR_ARCH at runtime. The arch is hidden from the toolbar and
+  // dropped from auto-detect; see DisasmToolbar.vue / disasmArchDetect.js.
 })

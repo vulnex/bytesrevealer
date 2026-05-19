@@ -44,6 +44,74 @@ describe('classifyMnemonic', () => {
     expect(classifyMnemonic('')).toBe('unclassified')
     expect(classifyMnemonic(undefined)).toBe('unclassified')
   })
+
+  it('classifies ARM/ARM64 branches as control-flow', () => {
+    expect(classifyMnemonic('b')).toBe('control-flow')
+    expect(classifyMnemonic('bl')).toBe('control-flow')
+    expect(classifyMnemonic('bx')).toBe('control-flow')
+    expect(classifyMnemonic('blx')).toBe('control-flow')
+    expect(classifyMnemonic('br')).toBe('control-flow')
+    expect(classifyMnemonic('blr')).toBe('control-flow')
+    expect(classifyMnemonic('cbz')).toBe('control-flow')
+    expect(classifyMnemonic('tbnz')).toBe('control-flow')
+    expect(classifyMnemonic('beq')).toBe('control-flow')
+    expect(classifyMnemonic('bne')).toBe('control-flow')
+    expect(classifyMnemonic('b.eq')).toBe('control-flow')
+    expect(classifyMnemonic('b.ne')).toBe('control-flow')
+  })
+
+  it('classifies ARM load/store as data', () => {
+    expect(classifyMnemonic('ldr')).toBe('data')
+    expect(classifyMnemonic('str')).toBe('data')
+    expect(classifyMnemonic('ldp')).toBe('data')
+    expect(classifyMnemonic('stp')).toBe('data')
+    expect(classifyMnemonic('movz')).toBe('data')
+    expect(classifyMnemonic('movk')).toBe('data')
+    expect(classifyMnemonic('adrp')).toBe('data')
+  })
+
+  it('classifies ARM arithmetic and logical', () => {
+    expect(classifyMnemonic('mla')).toBe('arithmetic')
+    expect(classifyMnemonic('sdiv')).toBe('arithmetic')
+    expect(classifyMnemonic('udiv')).toBe('arithmetic')
+    expect(classifyMnemonic('orr')).toBe('logical')
+    expect(classifyMnemonic('eor')).toBe('logical')
+    expect(classifyMnemonic('bic')).toBe('logical')
+  })
+
+  it('classifies ARM comparison', () => {
+    expect(classifyMnemonic('tst')).toBe('comparison')
+    expect(classifyMnemonic('teq')).toBe('comparison')
+    expect(classifyMnemonic('cmn')).toBe('comparison')
+  })
+
+  it('classifies MIPS control-flow', () => {
+    expect(classifyMnemonic('j')).toBe('control-flow')
+    expect(classifyMnemonic('jal')).toBe('control-flow')
+    expect(classifyMnemonic('jr')).toBe('control-flow')
+    expect(classifyMnemonic('jalr')).toBe('control-flow')
+    expect(classifyMnemonic('bnez')).toBe('control-flow')
+    expect(classifyMnemonic('beqz')).toBe('control-flow')
+    expect(classifyMnemonic('syscall')).toBe('control-flow')
+  })
+
+  it('classifies MIPS data movement', () => {
+    expect(classifyMnemonic('lw')).toBe('data')
+    expect(classifyMnemonic('sw')).toBe('data')
+    expect(classifyMnemonic('lui')).toBe('data')
+    expect(classifyMnemonic('mflo')).toBe('data')
+    expect(classifyMnemonic('mtc0')).toBe('data')
+  })
+
+  it('classifies MIPS arithmetic, logical, comparison', () => {
+    expect(classifyMnemonic('addiu')).toBe('arithmetic')
+    expect(classifyMnemonic('mult')).toBe('arithmetic')
+    expect(classifyMnemonic('andi')).toBe('logical')
+    expect(classifyMnemonic('sll')).toBe('logical')
+    expect(classifyMnemonic('srl')).toBe('logical')
+    expect(classifyMnemonic('slt')).toBe('comparison')
+    expect(classifyMnemonic('sltu')).toBe('comparison')
+  })
 })
 
 describe('splitOperands', () => {

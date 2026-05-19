@@ -16,24 +16,24 @@
 
 import { readU16LE, readU16BE, readU32LE, readU32BE } from './binaryReaders'
 
+// MIPS PE/ELF machines (PE 0x0162/0x0166/0x0168/0x0266, ELF 0x08) are
+// intentionally absent: the bundled capstone-wasm build does not include
+// MIPS support at runtime. Auto-detecting a binary as MIPS would only seed
+// the disasm store with an arch that can't decode — better to fall through
+// and let the user pick something else.
 const PE_MACHINE_TO_CS = {
   0x014c: { arch: 'x86', mode: '32' },
   0x8664: { arch: 'x86', mode: '64' },
   0x01c0: { arch: 'arm', mode: 'arm' },
   0x01c4: { arch: 'arm', mode: 'thumb' },
-  0xaa64: { arch: 'arm64', mode: 'arm' },
-  0x0166: { arch: 'mips', mode: 'mips32' },
-  0x0266: { arch: 'mips', mode: 'mips32' },
-  0x0162: { arch: 'mips', mode: 'mips32' },
-  0x0168: { arch: 'mips', mode: 'mips32' }
+  0xaa64: { arch: 'arm64', mode: 'arm' }
 }
 
 const ELF_MACHINE_TO_CS = {
   0x03: { arch: 'x86', mode: '32' },
   0x3e: { arch: 'x86', mode: '64' },
   0x28: { arch: 'arm', mode: 'arm' },
-  0xb7: { arch: 'arm64', mode: 'arm' },
-  0x08: { arch: 'mips', mode: 'mips32' }
+  0xb7: { arch: 'arm64', mode: 'arm' }
 }
 
 const MACHO_CPU_TO_CS = {

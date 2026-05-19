@@ -13,7 +13,12 @@
  * Pure / synchronous — no Capstone DETAIL mode required.
  */
 
-const X86_CATEGORIES = {
+// Mnemonic → category. Shared across architectures because categories are
+// semantic (data movement, arithmetic, …). When the same mnemonic exists on
+// multiple archs (e.g. `mov`, `add`) the category matches regardless of arch.
+// Architecture-specific conditional families (x86 j*, ARM b*) are handled by
+// regex below instead of enumerating every variant.
+const CATEGORIES = {
   // Control flow
   jmp: 'control-flow',
   call: 'control-flow',
@@ -124,21 +129,166 @@ const X86_CATEGORIES = {
   wait: 'system',
   fwait: 'system',
   lock: 'system',
-  cpuid: 'system'
+  cpuid: 'system',
+
+  // ── ARM / ARM64 ──
+  // Branch family
+  b: 'control-flow',
+  bl: 'control-flow',
+  bx: 'control-flow',
+  blx: 'control-flow',
+  br: 'control-flow',
+  blr: 'control-flow',
+  cbz: 'control-flow',
+  cbnz: 'control-flow',
+  tbz: 'control-flow',
+  tbnz: 'control-flow',
+  svc: 'control-flow',
+  hvc: 'control-flow',
+  smc: 'control-flow',
+  swi: 'control-flow',
+  eret: 'control-flow',
+  // Data
+  ldr: 'data',
+  ldrb: 'data',
+  ldrh: 'data',
+  ldrsb: 'data',
+  ldrsh: 'data',
+  ldrsw: 'data',
+  ldp: 'data',
+  ldm: 'data',
+  ldmia: 'data',
+  ldmdb: 'data',
+  str: 'data',
+  strb: 'data',
+  strh: 'data',
+  stp: 'data',
+  stm: 'data',
+  stmia: 'data',
+  stmdb: 'data',
+  mvn: 'data',
+  // `mov` is already covered in the x86 section above (same category).
+  movw: 'data',
+  movt: 'data',
+  movz: 'data',
+  movk: 'data',
+  movn: 'data',
+  mrs: 'data',
+  msr: 'data',
+  adr: 'data',
+  adrp: 'data',
+  // Arithmetic (extends the x86 'add'/'sub' etc. with arch-unique ones)
+  mla: 'arithmetic',
+  mls: 'arithmetic',
+  sdiv: 'arithmetic',
+  udiv: 'arithmetic',
+  smull: 'arithmetic',
+  umull: 'arithmetic',
+  smlal: 'arithmetic',
+  umlal: 'arithmetic',
+  rsb: 'arithmetic',
+  rsc: 'arithmetic',
+  // Logical
+  orr: 'logical',
+  eor: 'logical',
+  bic: 'logical',
+  lsl: 'logical',
+  lsr: 'logical',
+  asr: 'logical',
+  // Comparison
+  tst: 'comparison',
+  teq: 'comparison',
+  cmn: 'comparison',
+  // System
+  sev: 'system',
+  sevl: 'system',
+  wfe: 'system',
+  wfi: 'system',
+  yield: 'system',
+  dmb: 'system',
+  dsb: 'system',
+  isb: 'system',
+
+  // ── MIPS ──
+  // Control-flow
+  j: 'control-flow',
+  jal: 'control-flow',
+  jalr: 'control-flow',
+  jr: 'control-flow',
+  bnez: 'control-flow',
+  beqz: 'control-flow',
+  bgtz: 'control-flow',
+  bltz: 'control-flow',
+  blez: 'control-flow',
+  bgez: 'control-flow',
+  // Data
+  lw: 'data',
+  sw: 'data',
+  lb: 'data',
+  lbu: 'data',
+  lh: 'data',
+  lhu: 'data',
+  sb: 'data',
+  sh: 'data',
+  lui: 'data',
+  lwl: 'data',
+  lwr: 'data',
+  swl: 'data',
+  swr: 'data',
+  mflo: 'data',
+  mfhi: 'data',
+  mtlo: 'data',
+  mthi: 'data',
+  mfc0: 'data',
+  mtc0: 'data',
+  mfc1: 'data',
+  mtc1: 'data',
+  // Arithmetic
+  addi: 'arithmetic',
+  addu: 'arithmetic',
+  addiu: 'arithmetic',
+  subu: 'arithmetic',
+  mult: 'arithmetic',
+  multu: 'arithmetic',
+  divu: 'arithmetic',
+  // Logical
+  andi: 'logical',
+  ori: 'logical',
+  xori: 'logical',
+  nor: 'logical',
+  sll: 'logical',
+  srl: 'logical',
+  sra: 'logical',
+  sllv: 'logical',
+  srlv: 'logical',
+  srav: 'logical',
+  // Comparison
+  slt: 'comparison',
+  slti: 'comparison',
+  sltu: 'comparison',
+  sltiu: 'comparison',
+  // System
+  // `syscall` is already covered in the x86 section above (same category).
+  break: 'system'
 }
 
 // Conditional jumps share one category. Catches je/jne/jz/jnz/jl/jg/jb/ja/etc.
 const COND_JUMP_RE = /^j[a-z]+$/
 const COND_MOV_RE = /^cmov[a-z]+$/
 const COND_SET_RE = /^set[a-z]+$/
+// ARM A32 conditional branches: beq, bne, bcs, bhs, bcc, blo, bmi, bpl,
+// bvs, bvc, bhi, bls, bge, blt, bgt, ble, bal, bnv.
+// Also ARM64 b.<cond>: b.eq, b.ne, etc.
+const ARM_COND_BRANCH_RE = /^b\.?(eq|ne|cs|hs|cc|lo|mi|pl|vs|vc|hi|ls|ge|lt|gt|le|al|nv)$/
 
 export function classifyMnemonic(mnemonic) {
   if (!mnemonic) return 'unclassified'
   const m = mnemonic.toLowerCase()
-  if (X86_CATEGORIES[m]) return X86_CATEGORIES[m]
+  if (CATEGORIES[m]) return CATEGORIES[m]
   if (COND_JUMP_RE.test(m) && m !== 'jmp') return 'control-flow'
   if (COND_MOV_RE.test(m)) return 'data'
   if (COND_SET_RE.test(m)) return 'data'
+  if (ARM_COND_BRANCH_RE.test(m)) return 'control-flow'
   return 'unclassified'
 }
 

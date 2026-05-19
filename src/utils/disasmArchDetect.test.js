@@ -193,13 +193,9 @@ describe('detectDisasmArch — ELF', () => {
     })
   })
 
-  it('detects MIPS ELF', () => {
+  it('does not auto-detect MIPS (capstone-wasm has no MIPS support)', () => {
     const bytes = buildELF({ machine: 0x08 })
-    expect(detectDisasmArch(bytes)).toMatchObject({
-      format: 'ELF',
-      arch: 'mips',
-      mode: 'mips32'
-    })
+    expect(detectDisasmArch(bytes)).toBeNull()
   })
 
   it('honours big-endian e_machine', () => {
