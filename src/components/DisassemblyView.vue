@@ -108,6 +108,7 @@
         :file-bytes="fileBytes"
         :search-matches="searchMatchSet"
         :current-match-address="currentMatchAddress"
+        :symbol-names="disasmStore.symbolNames"
         class="results-listing"
         @navigate-to-offset="$emit('navigate-to-offset', $event)"
         @select-instruction="disasmStore.selectInstruction($event)"

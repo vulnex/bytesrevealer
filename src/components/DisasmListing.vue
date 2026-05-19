@@ -40,15 +40,24 @@
             </td>
             <td class="col-mnemonic">{{ row.ins.mnemonic }}</td>
             <td class="col-operands">
-              <template v-if="row.branchInRange">
+              <template v-for="(seg, i) in row.opSegments" :key="i">
                 <a
+                  v-if="seg.type === 'hex' && seg.isBranchTarget"
                   class="branch-link"
-                  :aria-label="`Jump to 0x${formatAddress(row.branchTarget)}`"
-                  @click.stop="onBranchClick(row.branchTarget)"
-                  >0x{{ formatAddress(row.branchTarget) }}</a
+                  :title="seg.symbol ? seg.displayText : ''"
+                  :aria-label="`Jump to ${seg.symbol || seg.displayText}`"
+                  @click.stop="onBranchClick(seg.value)"
+                  >{{ seg.symbol || seg.displayText }}</a
                 >
+                <span
+                  v-else-if="seg.type === 'hex' && seg.symbol"
+                  class="op-symbol"
+                  :title="seg.displayText"
+                  >{{ seg.symbol }}</span
+                >
+                <template v-else-if="seg.type === 'hex'">{{ seg.displayText }}</template>
+                <template v-else>{{ seg.text }}</template>
               </template>
-              <template v-else>{{ row.ins.opStr }}</template>
               <span v-if="row.stringPreview" class="string-ref">
                 → <span class="string-quote">"{{ row.stringPreview }}"</span>
               </span>
@@ -108,6 +117,10 @@ const props = defineProps({
   currentMatchAddress: {
     type: Number,
     default: null
+  },
+  symbolNames: {
+    type: Map,
+    default: () => new Map()
   }
 })
 
@@ -140,6 +153,35 @@ const visibleRange = computed(() => {
   return { start, end }
 })
 
+// Split an opStr into literal-text + hex-immediate segments so the
+// template can render branch links and symbol substitutions inline.
+function buildOpSegments(opStr, { branchTarget, branchInRange, symbolNames }) {
+  if (!opStr) return []
+  const re = /0x[0-9a-f]+/gi
+  const out = []
+  let lastIdx = 0
+  let m
+  while ((m = re.exec(opStr)) !== null) {
+    if (m.index > lastIdx) {
+      out.push({ type: 'literal', text: opStr.slice(lastIdx, m.index) })
+    }
+    const value = Number.parseInt(m[0].slice(2), 16)
+    const isFiniteValue = Number.isFinite(value)
+    out.push({
+      type: 'hex',
+      value: isFiniteValue ? value : null,
+      displayText: m[0],
+      symbol: isFiniteValue ? symbolNames.get(value) || null : null,
+      isBranchTarget: branchInRange && isFiniteValue && value === branchTarget
+    })
+    lastIdx = m.index + m[0].length
+  }
+  if (lastIdx < opStr.length) {
+    out.push({ type: 'literal', text: opStr.slice(lastIdx) })
+  }
+  return out
+}
+
 // Build per-row annotations only for rows currently in the visible window.
 // O(visible) work per scroll/selection — bounded by BUFFER_ROWS + viewport,
 // independent of the total instruction count.
@@ -153,8 +195,20 @@ const visibleRows = computed(() => {
     const branchTarget = extractBranchTarget(ins)
     const branchInRange = branchTarget != null && props.instructionAddressSet.has(branchTarget)
 
+    const opSegments = buildOpSegments(ins.opStr, {
+      branchTarget,
+      branchInRange,
+      symbolNames: props.symbolNames
+    })
+
+    // String-ref preview is suppressed when any hex segment already got a
+    // symbol or branch annotation — don't double-decorate the same address.
+    const anyHexAnnotated = opSegments.some(
+      (s) => s.type === 'hex' && (s.symbol || s.isBranchTarget)
+    )
+
     let stringPreview = null
-    if (!branchInRange && props.fileBytes && props.fileBytes.length) {
+    if (!branchInRange && !anyHexAnnotated && props.fileBytes && props.fileBytes.length) {
       const imm = branchTarget != null ? null : extractDataImmediate(ins)
       if (imm != null) {
         stringPreview = readAsciiPreview(props.fileBytes, imm, {
@@ -177,6 +231,7 @@ const visibleRows = computed(() => {
       ins,
       branchTarget,
       branchInRange,
+      opSegments,
       stringPreview,
       xrefSources,
       xrefTitle
@@ -357,6 +412,12 @@ const formatBytes = formatDisasmBytes
 
 .branch-link:hover {
   text-decoration-style: solid;
+}
+
+.op-symbol {
+  color: #dcdcaa;
+  cursor: help;
+  border-bottom: 1px dotted #dcdcaa;
 }
 
 .string-ref {
