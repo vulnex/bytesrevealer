@@ -22,16 +22,19 @@ const isAnalyze = process.env.ANALYZE === 'true'
 export default defineConfig({
   plugins: [
     vue(),
-    // Gzip pre-compression (.gz files)
+    // Gzip pre-compression (.gz files). The plugin's default include regex
+    // omits .wasm — extend it so capstone-wasm (~1.7MB) ships compressed.
     compression({
       algorithm: 'gzip',
       threshold: 1024,
+      include: /\.(html|xml|css|json|js|mjs|svg|yaml|yml|toml|wasm)$/,
       exclude: [/\.(br|gz)$/]
     }),
-    // Brotli pre-compression (.br files)
+    // Brotli pre-compression (.br files).
     compression({
       algorithm: 'brotliCompress',
       threshold: 1024,
+      include: /\.(html|xml|css|json|js|mjs|svg|yaml|yml|toml|wasm)$/,
       exclude: [/\.(br|gz)$/]
     }),
     // Bundle visualizer (only when ANALYZE=true)
