@@ -68,7 +68,40 @@
         @navigate-to-offset="$emit('navigate-to-offset', $event)"
         @select-instruction="disasmStore.selectInstruction($event)"
       />
-      <InstructionDetail :instruction="disasmStore.selectedInstruction" />
+      <div class="sidebar" role="tabpanel">
+        <div class="sidebar-tabs" role="tablist">
+          <button
+            type="button"
+            role="tab"
+            class="sidebar-tab"
+            :class="{ active: sidebarTab === 'detail' }"
+            :aria-selected="sidebarTab === 'detail'"
+            @click="sidebarTab = 'detail'"
+          >
+            Detail
+          </button>
+          <button
+            type="button"
+            role="tab"
+            class="sidebar-tab"
+            :class="{ active: sidebarTab === 'functions' }"
+            :aria-selected="sidebarTab === 'functions'"
+            @click="sidebarTab = 'functions'"
+          >
+            Functions ({{ disasmStore.functionStarts.length }})
+          </button>
+        </div>
+        <InstructionDetail
+          v-if="sidebarTab === 'detail'"
+          :instruction="disasmStore.selectedInstruction"
+        />
+        <FunctionList
+          v-else
+          :functions="disasmStore.functionStarts"
+          :selected-address="disasmStore.selectedAddress"
+          @select-function="disasmStore.selectInstruction($event)"
+        />
+      </div>
     </div>
 
     <div v-else-if="!disasmStore.isDisassembling && !disasmStore.error" class="empty-state">
@@ -81,13 +114,14 @@
 </template>
 
 <script setup>
-import { onBeforeUnmount, watch } from 'vue'
+import { onBeforeUnmount, ref, watch } from 'vue'
 import { useDisassemblyStore } from '../stores/disassembly'
 import { detectDisasmArch } from '../utils/disasmArchDetect'
 import { formatAsAsm, suggestAsmFilename } from '../utils/disasmFormatter'
 import DisasmToolbar from './DisasmToolbar.vue'
 import DisasmListing from './DisasmListing.vue'
 import InstructionDetail from './InstructionDetail.vue'
+import FunctionList from './FunctionList.vue'
 
 const DEFAULT_RANGE_BYTES = 0x1000
 
@@ -101,6 +135,8 @@ const props = defineProps({
 defineEmits(['navigate-to-offset'])
 
 const disasmStore = useDisassemblyStore()
+
+const sidebarTab = ref('detail')
 
 let worker = null
 let runId = 0
@@ -337,9 +373,62 @@ onBeforeUnmount(() => {
   min-width: 0;
 }
 
+.sidebar {
+  flex: 0 0 280px;
+  min-width: 240px;
+  max-width: 320px;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-secondary, #2a2a2a);
+  border: 1px solid var(--border-color, #444);
+  border-radius: 4px;
+  overflow: hidden;
+  align-self: flex-start;
+}
+
+.sidebar-tabs {
+  display: flex;
+  border-bottom: 1px solid var(--border-color, #444);
+  background: var(--bg-primary, #1e1e1e);
+}
+
+.sidebar-tab {
+  flex: 1 1 0;
+  padding: 8px 10px;
+  background: transparent;
+  border: none;
+  border-right: 1px solid var(--border-color, #444);
+  color: var(--text-muted, #888);
+  font-size: 12px;
+  font-family: inherit;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sidebar-tab:last-child {
+  border-right: none;
+}
+
+.sidebar-tab:hover {
+  background: var(--surface-hover, #2d2d2d);
+  color: var(--text-primary, #d4d4d4);
+}
+
+.sidebar-tab.active {
+  background: var(--bg-secondary, #2a2a2a);
+  color: var(--link-color, #4ec9b0);
+  font-weight: 600;
+}
+
 @media (max-width: 900px) {
   .results-row {
     flex-direction: column;
+  }
+  .sidebar {
+    flex: 0 0 auto;
+    max-width: 100%;
+    width: 100%;
   }
 }
 </style>

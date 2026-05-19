@@ -14,6 +14,7 @@
 import { defineStore } from 'pinia'
 import { createLogger } from '../utils/logger'
 import { buildXrefMap } from '../utils/disasmXref'
+import { detectFunctionStarts } from '../utils/disasmFunctions'
 
 const logger = createLogger('DisassemblyStore')
 
@@ -58,6 +59,11 @@ export const useDisassemblyStore = defineStore('disassembly', {
       for (const i of state.instructions) set.add(i.address)
       return set
     },
+
+    // [{address, name}] heuristically detected function starts. Metadata-
+    // based names (PE exports / ELF symtab / Mach-O LC_FUNCTION_STARTS)
+    // will overlay names on this list in a follow-up commit.
+    functionStarts: (state) => detectFunctionStarts(state.instructions, state.architecture),
 
     instructionHighlightBytes: (state) => {
       if (!state.highlightInHex) return []
