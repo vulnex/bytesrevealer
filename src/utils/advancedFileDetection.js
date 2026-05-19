@@ -1207,6 +1207,122 @@ function getElfSections(bytes) {
   }
 }
 
+/**
+ * Walk the ELF section table to find STT_FUNC / STT_GNU_IFUNC symbols.
+ * Prefers `.symtab` (full, unstripped); falls back to `.dynsym` (the
+ * dynamic-linker table that survives stripping).
+ *
+ * Returns `[{name, fileOffset}]` with addresses already translated from
+ * virtual to file offsets via the SHF_ALLOC section that contains each
+ * symbol's `st_value`. Returns null on parse failure / no symbol table.
+ */
+function getELFSymbols(bytes) {
+  try {
+    const hdr = getElfHeaderInfo(bytes)
+    if (!hdr || hdr.shoff === 0 || hdr.shnum === 0) return null
+
+    // Pass 1: collect every section header with the fields we need.
+    const sections = []
+    for (let i = 0; i < hdr.shnum; i++) {
+      const off = hdr.shoff + i * hdr.shentsize
+      if (off + hdr.shentsize > bytes.length) break
+      const s = {}
+      s.name = readElfUint32(bytes, off, hdr.bigEndian)
+      s.type = readElfUint32(bytes, off + 4, hdr.bigEndian)
+      if (hdr.is64) {
+        s.flags = readElfUint64(bytes, off + 8, hdr.bigEndian)
+        s.addr = readElfUint64(bytes, off + 16, hdr.bigEndian)
+        s.offset = readElfUint64(bytes, off + 24, hdr.bigEndian)
+        s.size = readElfUint64(bytes, off + 32, hdr.bigEndian)
+        s.link = readElfUint32(bytes, off + 40, hdr.bigEndian)
+        s.entsize = readElfUint64(bytes, off + 56, hdr.bigEndian)
+      } else {
+        s.flags = readElfUint32(bytes, off + 8, hdr.bigEndian)
+        s.addr = readElfUint32(bytes, off + 12, hdr.bigEndian)
+        s.offset = readElfUint32(bytes, off + 16, hdr.bigEndian)
+        s.size = readElfUint32(bytes, off + 20, hdr.bigEndian)
+        s.link = readElfUint32(bytes, off + 24, hdr.bigEndian)
+        s.entsize = readElfUint32(bytes, off + 36, hdr.bigEndian)
+      }
+      sections.push(s)
+    }
+
+    // Prefer SHT_SYMTAB (2), fall back to SHT_DYNSYM (11).
+    let symSection = sections.find((s) => s.type === 2)
+    if (!symSection) symSection = sections.find((s) => s.type === 11)
+    if (!symSection || symSection.entsize === 0 || symSection.size === 0) return null
+    if (symSection.offset + symSection.size > bytes.length) return null
+    if (symSection.link === 0 || symSection.link >= sections.length) return null
+
+    const strSection = sections[symSection.link]
+    if (!strSection || strSection.offset + strSection.size > bytes.length) return null
+
+    const readSymName = (nameIdx) => {
+      if (nameIdx < 0 || nameIdx >= strSection.size) return ''
+      const start = strSection.offset + nameIdx
+      if (start >= bytes.length) return ''
+      let end = start
+      const max = Math.min(strSection.offset + strSection.size, start + 256)
+      while (end < max && bytes[end] !== 0) end++
+      return new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(start, end))
+    }
+
+    // Translate a virtual address into a file offset by finding the
+    // SHF_ALLOC section that contains it. (SHF_ALLOC bit = 0x2.)
+    const vaddrToFileOffset = (vaddr) => {
+      for (const s of sections) {
+        if (!(Number(s.flags) & 0x2)) continue
+        if (s.size === 0) continue
+        if (vaddr >= s.addr && vaddr < s.addr + s.size) {
+          return s.offset + (vaddr - s.addr)
+        }
+      }
+      return -1
+    }
+
+    const out = []
+    const symCount = Math.floor(symSection.size / symSection.entsize)
+    for (let i = 0; i < symCount; i++) {
+      const sOff = symSection.offset + i * symSection.entsize
+      if (sOff + symSection.entsize > bytes.length) break
+
+      let stName, stInfo, stShndx, stValue
+      if (hdr.is64) {
+        // Elf64_Sym: name(4) info(1) other(1) shndx(2) value(8) size(8)
+        stName = readElfUint32(bytes, sOff, hdr.bigEndian)
+        stInfo = bytes[sOff + 4]
+        stShndx = readElfUint16(bytes, sOff + 6, hdr.bigEndian)
+        stValue = readElfUint64(bytes, sOff + 8, hdr.bigEndian)
+      } else {
+        // Elf32_Sym: name(4) value(4) size(4) info(1) other(1) shndx(2)
+        stName = readElfUint32(bytes, sOff, hdr.bigEndian)
+        stValue = readElfUint32(bytes, sOff + 4, hdr.bigEndian)
+        stInfo = bytes[sOff + 12]
+        stShndx = readElfUint16(bytes, sOff + 14, hdr.bigEndian)
+      }
+
+      const type = stInfo & 0xf
+      // STT_FUNC = 2, STT_GNU_IFUNC = 10. Anything else isn't a function.
+      if (type !== 2 && type !== 10) continue
+      // Undefined / absolute / reserved indices aren't real defined funcs.
+      if (stShndx === 0 || stShndx >= 0xff00) continue
+      if (stValue === 0) continue
+
+      const fileOff = vaddrToFileOffset(Number(stValue))
+      if (fileOff < 0 || fileOff >= bytes.length) continue
+
+      const name = readSymName(stName)
+      if (!name) continue
+
+      out.push({ name, fileOffset: fileOff })
+    }
+    return out
+  } catch (error) {
+    logger.error('Error in getELFSymbols:', error)
+    return null
+  }
+}
+
 function getElfDynamicEntries(bytes) {
   try {
     const hdr = getElfHeaderInfo(bytes)
@@ -2321,5 +2437,6 @@ export {
   analyzePEStructure,
   detectSpecificFileType,
   detectNestedFiles,
-  getPEExportSymbols
+  getPEExportSymbols,
+  getELFSymbols
 }

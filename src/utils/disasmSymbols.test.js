@@ -131,14 +131,176 @@ function buildPEWithExports(exports) {
   return { bytes, expected }
 }
 
+/**
+ * Build a minimal ELF64 little-endian image with a SHT_SYMTAB plus a
+ * SHT_STRTAB and a SHF_ALLOC `.text` section so vaddr → fileOffset
+ * translation has somewhere to land.
+ */
+function buildELF64WithSymbols(funcs) {
+  // Layout decisions:
+  // 0x000 — ELF header (64 bytes)
+  // 0x100 — .text raw data (size 0x100), maps to vaddr 0x400000
+  // 0x200 — .symtab raw data
+  // 0x300 — .strtab raw data
+  // 0x380 — .shstrtab raw data (section name strings)
+  // 0x400 — section headers (5 sections × 64 bytes = 320 bytes)
+  const ehSize = 64
+  const shentsize = 64
+  const symEntSize = 24
+  const textOff = 0x100
+  const textSize = 0x100
+  const textAddr = 0x400000
+  const symtabOff = 0x200
+  const strtabOff = 0x300
+  const shstrtabOff = 0x380
+  const shoff = 0x400
+  const numSections = 5
+  const totalSize = shoff + numSections * shentsize + 0x40
+  const bytes = new Uint8Array(totalSize)
+
+  // ── ELF header ──
+  bytes.set([0x7f, 0x45, 0x4c, 0x46], 0) // ELF magic
+  bytes[4] = 2 // EI_CLASS = ELFCLASS64
+  bytes[5] = 1 // EI_DATA = ELFDATA2LSB
+  bytes[6] = 1 // EI_VERSION
+  // e_type at 16 = ET_EXEC (2)
+  writeU16LE(bytes, 16, 2)
+  // e_machine at 18 = EM_X86_64 (0x3e)
+  writeU16LE(bytes, 18, 0x3e)
+  // e_version at 20
+  writeU32LE(bytes, 20, 1)
+  // e_entry at 24 (u64) — leave 0 for the test
+  // e_phoff at 32 (u64) = 0 (no program headers)
+  // e_shoff at 40 (u64) = shoff
+  writeU32LE(bytes, 40, shoff)
+  writeU32LE(bytes, 44, 0)
+  // e_flags at 48 = 0
+  // e_ehsize at 52 = 64
+  writeU16LE(bytes, 52, ehSize)
+  // e_phentsize at 54, e_phnum at 56 = 0
+  // e_shentsize at 58 = 64
+  writeU16LE(bytes, 58, shentsize)
+  // e_shnum at 60
+  writeU16LE(bytes, 60, numSections)
+  // e_shstrndx at 62 = 4 (last section is .shstrtab)
+  writeU16LE(bytes, 62, 4)
+
+  // ── .shstrtab content ──
+  // Layout: NUL + ".text\0" + ".symtab\0" + ".strtab\0" + ".shstrtab\0"
+  const names = ['', '.text', '.symtab', '.strtab', '.shstrtab']
+  const nameOffsets = []
+  let cur = shstrtabOff
+  for (const n of names) {
+    nameOffsets.push(cur - shstrtabOff)
+    for (let i = 0; i < n.length; i++) bytes[cur + i] = n.charCodeAt(i)
+    bytes[cur + n.length] = 0
+    cur += n.length + 1
+  }
+  const shstrtabSize = cur - shstrtabOff
+
+  // ── .strtab content (function names) ──
+  // Layout: NUL byte first (st_name=0 means no name), then each func name + NUL
+  const funcNameOffsets = []
+  let strCur = strtabOff
+  bytes[strCur++] = 0
+  for (const name of funcs) {
+    funcNameOffsets.push(strCur - strtabOff)
+    for (let i = 0; i < name.length; i++) bytes[strCur + i] = name.charCodeAt(i)
+    bytes[strCur + name.length] = 0
+    strCur += name.length + 1
+  }
+  const strtabSize = strCur - strtabOff
+
+  // ── .symtab content ──
+  // Entry 0: STN_UNDEF (all zeros).
+  // Then one STT_FUNC entry per function, st_value = textAddr + i*0x10.
+  const symCount = 1 + funcs.length
+  const symSize = symCount * symEntSize
+  const expected = {}
+  for (let i = 0; i < funcs.length; i++) {
+    const entryOff = symtabOff + (i + 1) * symEntSize
+    // Elf64_Sym: name(4) info(1) other(1) shndx(2) value(8) size(8)
+    writeU32LE(bytes, entryOff, funcNameOffsets[i])
+    bytes[entryOff + 4] = 2 // st_info: STT_FUNC (type=2, binding=0)
+    bytes[entryOff + 5] = 0 // st_other
+    writeU16LE(bytes, entryOff + 6, 1) // st_shndx = 1 (.text)
+    const vaddr = textAddr + i * 0x10
+    writeU32LE(bytes, entryOff + 8, vaddr & 0xffffffff)
+    writeU32LE(bytes, entryOff + 12, 0)
+    // st_size: leave 0
+    expected[funcs[i]] = textOff + (vaddr - textAddr)
+  }
+
+  // ── Section headers ──
+  // 0: SHN_UNDEF (zero)
+  // 1: .text
+  // 2: .symtab
+  // 3: .strtab
+  // 4: .shstrtab
+  function writeShdr(idx, fields) {
+    const base = shoff + idx * shentsize
+    writeU32LE(bytes, base, fields.name)
+    writeU32LE(bytes, base + 4, fields.type)
+    writeU32LE(bytes, base + 8, fields.flags) // 64-bit field but we only set the low 32
+    writeU32LE(bytes, base + 16, fields.addr)
+    writeU32LE(bytes, base + 24, fields.offset)
+    writeU32LE(bytes, base + 32, fields.size)
+    writeU32LE(bytes, base + 40, fields.link)
+    writeU32LE(bytes, base + 56, fields.entsize)
+  }
+  // SHN_UNDEF stays all zeros — explicit no-op
+  writeShdr(1, {
+    name: nameOffsets[1],
+    type: 1, // SHT_PROGBITS
+    flags: 0x6, // SHF_ALLOC | SHF_EXECINSTR
+    addr: textAddr,
+    offset: textOff,
+    size: textSize,
+    link: 0,
+    entsize: 0
+  })
+  writeShdr(2, {
+    name: nameOffsets[2],
+    type: 2, // SHT_SYMTAB
+    flags: 0,
+    addr: 0,
+    offset: symtabOff,
+    size: symSize,
+    link: 3, // .strtab
+    entsize: symEntSize
+  })
+  writeShdr(3, {
+    name: nameOffsets[3],
+    type: 3, // SHT_STRTAB
+    flags: 0,
+    addr: 0,
+    offset: strtabOff,
+    size: strtabSize,
+    link: 0,
+    entsize: 0
+  })
+  writeShdr(4, {
+    name: nameOffsets[4],
+    type: 3, // SHT_STRTAB
+    flags: 0,
+    addr: 0,
+    offset: shstrtabOff,
+    size: shstrtabSize,
+    link: 0,
+    entsize: 0
+  })
+
+  return { bytes, expected }
+}
+
 describe('extractSymbolNames', () => {
   it('returns an empty map for empty / null bytes', () => {
     expect(extractSymbolNames(null).size).toBe(0)
     expect(extractSymbolNames(new Uint8Array(0)).size).toBe(0)
   })
 
-  it('returns an empty map for non-PE bytes', () => {
-    expect(extractSymbolNames(new Uint8Array([0x7f, 0x45, 0x4c, 0x46])).size).toBe(0)
+  it('returns an empty map for a non-PE / non-ELF prefix', () => {
+    expect(extractSymbolNames(new Uint8Array([0xff, 0xff, 0xff, 0xff])).size).toBe(0)
   })
 
   it('parses a PE export directory and maps name → file offset', () => {
@@ -147,6 +309,14 @@ describe('extractSymbolNames', () => {
     expect(map.size).toBe(2)
     expect(map.get(expected.CreateFileA)).toBe('CreateFileA')
     expect(map.get(expected.CloseHandle)).toBe('CloseHandle')
+  })
+
+  it('parses an ELF64 SHT_SYMTAB and maps function names → file offsets', () => {
+    const { bytes, expected } = buildELF64WithSymbols(['main', 'helper'])
+    const map = extractSymbolNames(bytes)
+    expect(map.size).toBe(2)
+    expect(map.get(expected.main)).toBe('main')
+    expect(map.get(expected.helper)).toBe('helper')
   })
 
   it('keeps the first name when two exports share a function offset', () => {

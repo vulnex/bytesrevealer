@@ -17,10 +17,21 @@
  * tab falls back to heuristic-only names.
  */
 
-import { getPEExportSymbols } from './advancedFileDetection'
+import { getPEExportSymbols, getELFSymbols } from './advancedFileDetection'
 
 function looksLikePE(bytes) {
   return bytes && bytes.length >= 2 && bytes[0] === 0x4d && bytes[1] === 0x5a
+}
+
+function looksLikeELF(bytes) {
+  return (
+    bytes &&
+    bytes.length >= 4 &&
+    bytes[0] === 0x7f &&
+    bytes[1] === 0x45 &&
+    bytes[2] === 0x4c &&
+    bytes[3] === 0x46
+  )
 }
 
 /**
@@ -39,24 +50,24 @@ export function extractSymbolNames(fileBytes) {
   const empty = new Map()
   if (!fileBytes || !fileBytes.length) return empty
 
-  if (looksLikePE(fileBytes)) {
-    const exports = getPEExportSymbols(fileBytes)
-    if (!exports || !exports.length) return empty
-    const map = new Map()
-    for (const sym of exports) {
-      if (Number.isFinite(sym.fileOffset) && typeof sym.name === 'string' && sym.name.length) {
-        // First write wins — if two exports share a function offset the
-        // alphabetically-earlier name will be kept by the export-table
-        // ordering already in place.
-        if (!map.has(sym.fileOffset)) {
-          map.set(sym.fileOffset, sym.name)
-        }
-      }
-    }
-    return map
-  }
+  if (looksLikePE(fileBytes)) return collectSymbols(getPEExportSymbols(fileBytes))
+  if (looksLikeELF(fileBytes)) return collectSymbols(getELFSymbols(fileBytes))
 
-  // ELF / Mach-O symbol extraction is intentionally deferred — see
+  // Mach-O symbol extraction is intentionally deferred — see
   // devnotes/disassembly-phase5-design.md for the plan.
   return empty
+}
+
+function collectSymbols(symbols) {
+  const map = new Map()
+  if (!symbols || !symbols.length) return map
+  for (const sym of symbols) {
+    if (Number.isFinite(sym.fileOffset) && typeof sym.name === 'string' && sym.name.length) {
+      // First write wins so the source-order name is stable.
+      if (!map.has(sym.fileOffset)) {
+        map.set(sym.fileOffset, sym.name)
+      }
+    }
+  }
+  return map
 }
