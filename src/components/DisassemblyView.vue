@@ -61,6 +61,9 @@
       <DisasmListing
         :instructions="disasmStore.instructions"
         :selected-address="disasmStore.selectedAddress"
+        :xref-map="disasmStore.xrefMap"
+        :instruction-address-set="disasmStore.instructionAddressSet"
+        :file-bytes="fileBytes"
         class="results-listing"
         @navigate-to-offset="$emit('navigate-to-offset', $event)"
         @select-instruction="disasmStore.selectInstruction($event)"

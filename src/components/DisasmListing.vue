@@ -13,25 +13,47 @@
         </thead>
         <tbody>
           <tr
-            v-for="ins in visibleInstructions"
-            :key="ins.address"
+            v-for="row in visibleRows"
+            :key="row.ins.address"
             class="instruction-row"
-            :class="{ selected: ins.address === selectedAddress }"
-            @click="onRowClick(ins)"
+            :class="{ selected: row.ins.address === selectedAddress }"
+            @click="onRowClick(row.ins)"
           >
             <td class="col-address">
-              <code>0x{{ formatAddress(ins.address) }}</code>
+              <code>0x{{ formatAddress(row.ins.address) }}</code>
+              <span
+                v-if="row.xrefSources.length"
+                class="xref-badge"
+                :title="row.xrefTitle"
+                :aria-label="`Referenced from ${row.xrefSources.length} location${
+                  row.xrefSources.length === 1 ? '' : 's'
+                }`"
+                >← {{ row.xrefSources.length }}</span
+              >
             </td>
             <td class="col-bytes">
-              <code>{{ formatBytes(ins.bytes) }}</code>
+              <code>{{ formatBytes(row.ins.bytes) }}</code>
             </td>
-            <td class="col-mnemonic">{{ ins.mnemonic }}</td>
-            <td class="col-operands">{{ ins.opStr }}</td>
+            <td class="col-mnemonic">{{ row.ins.mnemonic }}</td>
+            <td class="col-operands">
+              <template v-if="row.branchInRange">
+                <a
+                  class="branch-link"
+                  :aria-label="`Jump to 0x${formatAddress(row.branchTarget)}`"
+                  @click.stop="onBranchClick(row.branchTarget)"
+                  >0x{{ formatAddress(row.branchTarget) }}</a
+                >
+              </template>
+              <template v-else>{{ row.ins.opStr }}</template>
+              <span v-if="row.stringPreview" class="string-ref">
+                → <span class="string-quote">"{{ row.stringPreview }}"</span>
+              </span>
+            </td>
             <td class="col-action">
               <button
                 class="go-btn"
-                :aria-label="`Go to offset 0x${formatAddress(ins.address)}`"
-                @click.stop="onGoClick(ins)"
+                :aria-label="`Go to offset 0x${formatAddress(row.ins.address)} in hex view`"
+                @click.stop="onGoClick(row.ins)"
               >
                 Go
               </button>
@@ -44,12 +66,15 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { ref, computed, watch, onMounted, onBeforeUnmount, nextTick } from 'vue'
 import { formatDisasmAddress, formatDisasmBytes } from '../utils/disasmDisplay'
+import { extractBranchTarget, extractDataImmediate } from '../utils/disasmXref'
+import { readAsciiPreview } from '../utils/disasmStrings'
 
 const ROW_HEIGHT = 24
 const HEADER_HEIGHT = 28
 const BUFFER_ROWS = 50
+const MAX_XREF_DISPLAYED = 5
 
 const props = defineProps({
   instructions: {
@@ -58,6 +83,18 @@ const props = defineProps({
   },
   selectedAddress: {
     type: Number,
+    default: null
+  },
+  xrefMap: {
+    type: Map,
+    default: () => new Map()
+  },
+  instructionAddressSet: {
+    type: Set,
+    default: () => new Set()
+  },
+  fileBytes: {
+    type: [Uint8Array, Array],
     default: null
   }
 })
@@ -71,6 +108,10 @@ function onRowClick(ins) {
 function onGoClick(ins) {
   emit('select-instruction', ins.address)
   emit('navigate-to-offset', { offset: ins.address, length: ins.size })
+}
+
+function onBranchClick(target) {
+  emit('select-instruction', target)
 }
 
 const containerRef = ref(null)
@@ -87,9 +128,49 @@ const visibleRange = computed(() => {
   return { start, end }
 })
 
-const visibleInstructions = computed(() => {
+// Build per-row annotations only for rows currently in the visible window.
+// O(visible) work per scroll/selection — bounded by BUFFER_ROWS + viewport,
+// independent of the total instruction count.
+const visibleRows = computed(() => {
   const { start, end } = visibleRange.value
-  return props.instructions.slice(start, end)
+  const out = []
+  for (let i = start; i < end; i++) {
+    const ins = props.instructions[i]
+    if (!ins) continue
+
+    const branchTarget = extractBranchTarget(ins)
+    const branchInRange = branchTarget != null && props.instructionAddressSet.has(branchTarget)
+
+    let stringPreview = null
+    if (!branchInRange && props.fileBytes && props.fileBytes.length) {
+      const imm = branchTarget != null ? null : extractDataImmediate(ins)
+      if (imm != null) {
+        stringPreview = readAsciiPreview(props.fileBytes, imm, {
+          minLen: 4,
+          maxLen: 64,
+          previewLen: 40
+        })
+      }
+    }
+
+    const allSources = props.xrefMap.get(ins.address) || []
+    const xrefSources = allSources.slice(0, MAX_XREF_DISPLAYED)
+    const xrefTitle = allSources.length
+      ? `Referenced from: ${allSources
+          .map((s) => '0x' + formatDisasmAddress(s))
+          .join(', ')}${allSources.length > MAX_XREF_DISPLAYED ? ' …' : ''}`
+      : ''
+
+    out.push({
+      ins,
+      branchTarget,
+      branchInRange,
+      stringPreview,
+      xrefSources,
+      xrefTitle
+    })
+  }
+  return out
 })
 
 const offsetY = computed(() => visibleRange.value.start * ROW_HEIGHT)
@@ -109,6 +190,31 @@ function updateViewportHeight() {
     viewportHeight.value = containerRef.value.clientHeight
   }
 }
+
+// When selectedAddress changes from outside (e.g. a branch-link click),
+// scroll the listing to bring that row into view. Row-click selections
+// pass through this path too but the row is already visible by definition,
+// so the scroll is a no-op for that case.
+watch(
+  () => props.selectedAddress,
+  (addr) => {
+    if (addr == null || !containerRef.value) return
+    const index = props.instructions.findIndex((i) => i.address === addr)
+    if (index < 0) return
+    const targetTop = index * ROW_HEIGHT
+    const container = containerRef.value
+    const viewTop = container.scrollTop
+    const viewBottom = viewTop + container.clientHeight - HEADER_HEIGHT
+    if (targetTop < viewTop || targetTop + ROW_HEIGHT > viewBottom) {
+      // Centre target row in the viewport.
+      const half = Math.max(0, container.clientHeight / 2 - ROW_HEIGHT)
+      container.scrollTop = Math.max(0, targetTop - half)
+      nextTick(() => {
+        scrollTop.value = container.scrollTop
+      })
+    }
+  }
+)
 
 onMounted(() => {
   updateViewportHeight()
@@ -171,7 +277,7 @@ const formatBytes = formatDisasmBytes
 }
 
 .col-address {
-  width: 120px;
+  width: 160px;
   color: var(--text-muted, #888);
 }
 
@@ -203,6 +309,39 @@ const formatBytes = formatDisasmBytes
 .instruction-row.selected {
   background: var(--surface-selected, #3a3a3a);
   box-shadow: inset 2px 0 0 var(--link-color, #4ec9b0);
+}
+
+.xref-badge {
+  margin-left: 6px;
+  padding: 0 5px;
+  font-size: 10px;
+  color: var(--link-color, #4ec9b0);
+  border: 1px solid var(--link-color, #4ec9b0);
+  border-radius: 8px;
+  vertical-align: middle;
+  cursor: help;
+  font-family: inherit;
+}
+
+.branch-link {
+  color: var(--link-color, #4ec9b0);
+  text-decoration: underline;
+  text-decoration-style: dotted;
+  cursor: pointer;
+}
+
+.branch-link:hover {
+  text-decoration-style: solid;
+}
+
+.string-ref {
+  margin-left: 8px;
+  color: var(--text-muted, #888);
+  font-size: 12px;
+}
+
+.string-quote {
+  color: #ce9178;
 }
 
 .go-btn {

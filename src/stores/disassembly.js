@@ -13,6 +13,7 @@
 
 import { defineStore } from 'pinia'
 import { createLogger } from '../utils/logger'
+import { buildXrefMap } from '../utils/disasmXref'
 
 const logger = createLogger('DisassemblyStore')
 
@@ -45,6 +46,17 @@ export const useDisassemblyStore = defineStore('disassembly', {
     selectedInstruction: (state) => {
       if (state.selectedAddress == null) return null
       return state.instructions.find((i) => i.address === state.selectedAddress) || null
+    },
+
+    // Map<targetAddr, sourceAddr[]> — built once per instructions change.
+    xrefMap: (state) => buildXrefMap(state.instructions),
+
+    // Set<address> of every decoded instruction — used by the listing to
+    // decide whether a branch target is in-range and therefore navigable.
+    instructionAddressSet: (state) => {
+      const set = new Set()
+      for (const i of state.instructions) set.add(i.address)
+      return set
     },
 
     instructionHighlightBytes: (state) => {
