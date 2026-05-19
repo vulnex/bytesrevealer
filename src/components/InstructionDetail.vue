@@ -60,6 +60,7 @@
 <script setup>
 import { computed } from 'vue'
 import { classifyInstruction } from '../utils/disasmClassify'
+import { formatDisasmAddress, formatDisasmBytes } from '../utils/disasmDisplay'
 
 const props = defineProps({
   instruction: {
@@ -72,16 +73,8 @@ const classification = computed(
   () => classifyInstruction(props.instruction) || { category: 'unclassified', operands: [] }
 )
 
-function formatAddress(addr) {
-  return (addr ?? 0).toString(16).toUpperCase().padStart(8, '0')
-}
-
-function formatBytes(bytes) {
-  if (!bytes || !bytes.length) return ''
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join(' ')
-}
+const formatAddress = formatDisasmAddress
+const formatBytes = formatDisasmBytes
 </script>
 
 <style scoped>

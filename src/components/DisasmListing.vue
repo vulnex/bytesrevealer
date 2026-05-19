@@ -45,6 +45,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue'
+import { formatDisasmAddress, formatDisasmBytes } from '../utils/disasmDisplay'
 
 const ROW_HEIGHT = 24
 const HEADER_HEIGHT = 28
@@ -119,16 +120,8 @@ onBeforeUnmount(() => {
   if (scrollRaf) cancelAnimationFrame(scrollRaf)
 })
 
-function formatAddress(addr) {
-  return addr.toString(16).toUpperCase().padStart(8, '0')
-}
-
-function formatBytes(bytes) {
-  if (!bytes) return ''
-  return Array.from(bytes)
-    .map((b) => b.toString(16).padStart(2, '0'))
-    .join(' ')
-}
+const formatAddress = formatDisasmAddress
+const formatBytes = formatDisasmBytes
 </script>
 
 <style scoped>
