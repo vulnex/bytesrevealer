@@ -31,13 +31,21 @@ export const useDisassemblyStore = defineStore('disassembly', {
     error: null,
     lastDuration: null,
     lastDisassembledAt: null,
-    highlightInHex: false
+    highlightInHex: false,
+    // Address of the instruction the user has selected in the listing. UI
+    // state only — not part of serializableState, cleared on reset.
+    selectedAddress: null
   }),
 
   getters: {
     hasResults: (state) => state.instructions.length > 0,
 
     instructionCount: (state) => state.instructions.length,
+
+    selectedInstruction: (state) => {
+      if (state.selectedAddress == null) return null
+      return state.instructions.find((i) => i.address === state.selectedAddress) || null
+    },
 
     instructionHighlightBytes: (state) => {
       if (!state.highlightInHex) return []
@@ -118,10 +126,19 @@ export const useDisassemblyStore = defineStore('disassembly', {
       this.lastDisassembledAt = null
       this.progress = 0
       this.error = null
+      this.selectedAddress = null
     },
 
     toggleHexHighlight() {
       this.highlightInHex = !this.highlightInHex
+    },
+
+    selectInstruction(address) {
+      this.selectedAddress = address
+    },
+
+    clearSelectedInstruction() {
+      this.selectedAddress = null
     },
 
     reset() {
@@ -138,6 +155,7 @@ export const useDisassemblyStore = defineStore('disassembly', {
       this.lastDuration = null
       this.lastDisassembledAt = null
       this.highlightInHex = false
+      this.selectedAddress = null
     },
 
     restoreFromSession(savedState) {

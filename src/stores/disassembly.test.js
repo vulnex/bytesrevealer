@@ -25,6 +25,53 @@ describe('DisassemblyStore', () => {
     expect(store.lastDuration).toBeNull()
     expect(store.lastDisassembledAt).toBeNull()
     expect(store.highlightInHex).toBe(false)
+    expect(store.selectedAddress).toBeNull()
+    expect(store.selectedInstruction).toBeNull()
+  })
+
+  describe('selection', () => {
+    it('selectInstruction stores the address and exposes the instruction', () => {
+      store.instructions = [
+        { address: 0x1000, size: 1, mnemonic: 'ret', opStr: '', bytes: new Uint8Array([0xc3]) },
+        {
+          address: 0x1001,
+          size: 1,
+          mnemonic: 'nop',
+          opStr: '',
+          bytes: new Uint8Array([0x90])
+        }
+      ]
+      store.selectInstruction(0x1001)
+      expect(store.selectedAddress).toBe(0x1001)
+      expect(store.selectedInstruction?.mnemonic).toBe('nop')
+    })
+
+    it('clearSelectedInstruction resets the address', () => {
+      store.selectInstruction(0x1234)
+      store.clearSelectedInstruction()
+      expect(store.selectedAddress).toBeNull()
+      expect(store.selectedInstruction).toBeNull()
+    })
+
+    it('selectedInstruction returns null when address does not match any row', () => {
+      store.instructions = [
+        { address: 0x1000, size: 1, mnemonic: 'ret', opStr: '', bytes: new Uint8Array([0xc3]) }
+      ]
+      store.selectInstruction(0x9999)
+      expect(store.selectedInstruction).toBeNull()
+    })
+
+    it('clearResults wipes selection', () => {
+      store.selectInstruction(0x1000)
+      store.clearResults()
+      expect(store.selectedAddress).toBeNull()
+    })
+
+    it('reset wipes selection', () => {
+      store.selectInstruction(0x1000)
+      store.reset()
+      expect(store.selectedAddress).toBeNull()
+    })
   })
 
   // ── Getters ──

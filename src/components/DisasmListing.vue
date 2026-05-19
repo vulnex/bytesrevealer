@@ -16,7 +16,8 @@
             v-for="ins in visibleInstructions"
             :key="ins.address"
             class="instruction-row"
-            @click="$emit('navigate-to-offset', { offset: ins.address, length: ins.size })"
+            :class="{ selected: ins.address === selectedAddress }"
+            @click="onRowClick(ins)"
           >
             <td class="col-address">
               <code>0x{{ formatAddress(ins.address) }}</code>
@@ -30,7 +31,7 @@
               <button
                 class="go-btn"
                 :aria-label="`Go to offset 0x${formatAddress(ins.address)}`"
-                @click.stop="$emit('navigate-to-offset', { offset: ins.address, length: ins.size })"
+                @click.stop="onGoClick(ins)"
               >
                 Go
               </button>
@@ -53,10 +54,23 @@ const props = defineProps({
   instructions: {
     type: Array,
     required: true
+  },
+  selectedAddress: {
+    type: Number,
+    default: null
   }
 })
 
-defineEmits(['navigate-to-offset'])
+const emit = defineEmits(['navigate-to-offset', 'select-instruction'])
+
+function onRowClick(ins) {
+  emit('select-instruction', ins.address)
+}
+
+function onGoClick(ins) {
+  emit('select-instruction', ins.address)
+  emit('navigate-to-offset', { offset: ins.address, length: ins.size })
+}
 
 const containerRef = ref(null)
 const scrollTop = ref(0)
@@ -191,6 +205,11 @@ function formatBytes(bytes) {
 .instruction-row:hover {
   background: var(--surface-hover, #2d2d2d);
   cursor: pointer;
+}
+
+.instruction-row.selected {
+  background: var(--surface-selected, #3a3a3a);
+  box-shadow: inset 2px 0 0 var(--link-color, #4ec9b0);
 }
 
 .go-btn {

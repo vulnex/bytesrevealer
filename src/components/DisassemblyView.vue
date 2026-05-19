@@ -57,11 +57,16 @@
       >
     </div>
 
-    <DisasmListing
-      v-if="disasmStore.hasResults"
-      :instructions="disasmStore.instructions"
-      @navigate-to-offset="$emit('navigate-to-offset', $event)"
-    />
+    <div v-if="disasmStore.hasResults" class="results-row">
+      <DisasmListing
+        :instructions="disasmStore.instructions"
+        :selected-address="disasmStore.selectedAddress"
+        class="results-listing"
+        @navigate-to-offset="$emit('navigate-to-offset', $event)"
+        @select-instruction="disasmStore.selectInstruction($event)"
+      />
+      <InstructionDetail :instruction="disasmStore.selectedInstruction" />
+    </div>
 
     <div v-else-if="!disasmStore.isDisassembling && !disasmStore.error" class="empty-state">
       <p>
@@ -79,6 +84,7 @@ import { detectDisasmArch } from '../utils/disasmArchDetect'
 import { formatAsAsm, suggestAsmFilename } from '../utils/disasmFormatter'
 import DisasmToolbar from './DisasmToolbar.vue'
 import DisasmListing from './DisasmListing.vue'
+import InstructionDetail from './InstructionDetail.vue'
 
 const DEFAULT_RANGE_BYTES = 0x1000
 
@@ -313,5 +319,24 @@ onBeforeUnmount(() => {
   color: var(--text-muted, #888);
   font-size: 13px;
   text-align: center;
+}
+
+.results-row {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  flex: 1 1 auto;
+  min-height: 400px;
+}
+
+.results-listing {
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+@media (max-width: 900px) {
+  .results-row {
+    flex-direction: column;
+  }
 }
 </style>
