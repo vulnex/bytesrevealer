@@ -654,6 +654,7 @@ import { useSearch } from './composables/useSearch'
 import { useSessionRestore } from './composables/useSessionRestore'
 import { useDisassemblyStore } from './stores/disassembly'
 import { detectDisasmArch } from './utils/disasmArchDetect'
+import { extractSymbolNames } from './utils/disasmSymbols'
 import { extractEmbedded, suggestFilename } from './services/EmbeddedExecutableExtractor'
 
 // Above this on-disk size, prompt the user before extracting *in Blob mode*.
@@ -830,6 +831,21 @@ export default {
           disasmStore.setRange(embedStart, end)
         } else {
           disasmStore.setRange(start, end)
+        }
+        // Replace host-file symbols (populated by DisassemblyView's
+        // fileBytes watcher) with the embed's own. The slice's symbol
+        // offsets are relative to the embed; rebase by +start so the
+        // keys line up with the host-absolute addresses Capstone emits
+        // (the worker is called with baseAddress = embedStart).
+        const embedSymbols = extractSymbolNames(slice)
+        if (embedSymbols.size) {
+          const rebased = new Map()
+          for (const [off, name] of embedSymbols) {
+            rebased.set(off + start, name)
+          }
+          disasmStore.setSymbolNames(rebased)
+        } else {
+          disasmStore.setSymbolNames(new Map())
         }
       })
     }
