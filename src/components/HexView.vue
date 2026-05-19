@@ -388,7 +388,9 @@ export default {
       navigationInProgress: scroll.navigationInProgress,
       handleScroll: scroll.handleScroll,
       hoveredByte: inspector.hoveredByte,
-      baseOffset
+      baseOffset,
+      selectionStart: selection.selectionStart,
+      selectionEnd: selection.selectionEnd
     })
 
     // Cross-composable wiring: onByteHover updates both inspector and selection

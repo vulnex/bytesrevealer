@@ -48,6 +48,13 @@ describe('useHexNavigation', () => {
     originalAlert = window.alert
     window.alert = vi.fn()
     vi.useFakeTimers()
+    // navigateToOffset awaits window.requestAnimationFrame to let layout
+    // settle after a tab change. Fake timers freeze rAF, so stub it on the
+    // window to fire synchronously and let the awaits resolve.
+    window.requestAnimationFrame = (cb) => {
+      cb()
+      return 0
+    }
   })
 
   afterEach(() => {
@@ -241,7 +248,7 @@ describe('useHexNavigation', () => {
 
     it('sets navigationInProgress during navigation and clears it after', async () => {
       const navigationInProgress = ref(false)
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
         useHexNavigation(
@@ -263,7 +270,7 @@ describe('useHexNavigation', () => {
 
     it('scrolls to correct position for normal-size files', async () => {
       const scrollTop = ref(0)
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
         useHexNavigation(
@@ -292,7 +299,7 @@ describe('useHexNavigation', () => {
       const scrollTop = ref(0)
       // totalRows * ROW_HEIGHT > 30000000
       const totalRows = ref(2000000) // 2M rows * 24 = 48M > 30M
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const [result, app] = withSetup(() =>
         useHexNavigation(
           makeProps(),
@@ -318,7 +325,7 @@ describe('useHexNavigation', () => {
       const forceViewRow = ref(5)
       const useVirtualNavigation = ref(true)
       const virtualOffset = ref(100)
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
         useHexNavigation(
@@ -343,6 +350,12 @@ describe('useHexNavigation', () => {
 
     it('loads chunks for progressive files', async () => {
       vi.useRealTimers()
+      // useRealTimers restores native rAF, which happy-dom doesn't provide;
+      // re-install the synchronous stub.
+      window.requestAnimationFrame = (cb) => {
+        cb()
+        return 0
+      }
       const getRange = vi.fn().mockResolvedValue(new Uint8Array(256))
       const fileBytes = new Uint8Array(1024)
       fileBytes.isProgressive = true
@@ -351,7 +364,7 @@ describe('useHexNavigation', () => {
         totalChunks: 4,
         getRange
       }
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
 
       const [result, app] = withSetup(() =>
@@ -369,7 +382,7 @@ describe('useHexNavigation', () => {
 
   describe('scrollToOffset', () => {
     it('delegates to navigateToOffset', async () => {
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
       const [result, app] = withSetup(() =>
         useHexNavigation(
@@ -384,6 +397,42 @@ describe('useHexNavigation', () => {
       const ret = await result.scrollToOffset(32, 1)
       // Should not throw, navigateToOffset was called internally
       expect(ret).toBeUndefined() // scrollToOffset doesn't return
+      app.unmount()
+    })
+
+    it('sets selection range when selectionStart/selectionEnd refs are provided', async () => {
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
+      const selectionStart = ref(null)
+      const selectionEnd = ref(null)
+      const [result, app] = withSetup(() =>
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            containerRef: ref(container),
+            selectionStart,
+            selectionEnd
+          })
+        )
+      )
+
+      await result.scrollToOffset(0x40, 4)
+      expect(selectionStart.value).toBe(0x40)
+      expect(selectionEnd.value).toBe(0x43)
+      app.unmount()
+    })
+
+    it('leaves selection alone when selection refs are not provided', async () => {
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
+      const [result, app] = withSetup(() =>
+        useHexNavigation(
+          makeProps(),
+          makeDeps({
+            containerRef: ref(container)
+          })
+        )
+      )
+
+      await expect(result.scrollToOffset(0x40, 4)).resolves.toBeUndefined()
       app.unmount()
     })
   })
@@ -409,7 +458,7 @@ describe('useHexNavigation', () => {
 
     // eslint-disable-next-line vitest/expect-expect -- smoke test: verifies no throw
     it('handles scrollToOffset CustomEvent with offset detail', async () => {
-      const container = { scrollTop: 0, clientHeight: 600 }
+      const container = { scrollTop: 0, clientHeight: 600, querySelector: () => null }
       const handleScroll = vi.fn()
       const navigationInProgress = ref(false)
       const [_result, app] = withSetup(() =>

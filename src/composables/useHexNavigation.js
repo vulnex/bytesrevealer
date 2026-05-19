@@ -17,7 +17,9 @@ export function useHexNavigation(
     navigationInProgress,
     handleScroll,
     hoveredByte,
-    baseOffset
+    baseOffset,
+    selectionStart,
+    selectionEnd
   }
 ) {
   const jumpOffset = ref('')
@@ -158,13 +160,30 @@ export function useHexNavigation(
     useVirtualNavigation.value = false
     virtualOffset.value = 0
 
-    const containerHeight = container.clientHeight || 600
-    const viewportRows = Math.floor(containerHeight / ROW_HEIGHT)
-    const centeredRow = Math.max(0, rowIndex - Math.floor(viewportRows / 2))
-    const centeredScrollTop = centeredRow * ROW_HEIGHT
+    // Set scrollTop.value first so the virtual-scroll renders rows around the
+    // target on the next Vue tick.
+    const rowScrollTop = rowIndex * ROW_HEIGHT
+    scrollTop.value = rowScrollTop
 
-    scrollTop.value = centeredScrollTop
-    container.scrollTop = centeredScrollTop
+    await nextTick()
+    // After a tab switch the container may have just transitioned from
+    // display:none; wait one frame for layout so clientHeight is valid and
+    // scrollTop writes aren't clamped.
+    await new Promise((resolve) => window.requestAnimationFrame(resolve))
+
+    // Prefer scrollIntoView on the actual rendered row — it's robust against
+    // display:none → block timing and centres reliably across browsers.
+    const displayOffset = rowIndex * BYTES_PER_ROW + baseOffset.value
+    const rowEl = container.querySelector(`[data-offset="${displayOffset}"]`)
+    if (rowEl) {
+      rowEl.scrollIntoView({ block: 'center', behavior: 'auto' })
+    } else {
+      const containerHeight = container.clientHeight || 600
+      const viewportRows = Math.floor(containerHeight / ROW_HEIGHT)
+      const centeredRow = Math.max(0, rowIndex - Math.floor(viewportRows / 2))
+      container.scrollTop = centeredRow * ROW_HEIGHT
+    }
+
     handleScroll(true)
 
     await nextTick()
@@ -172,8 +191,12 @@ export function useHexNavigation(
     return true
   }
 
-  async function scrollToOffset(offset, _length = 1) {
+  async function scrollToOffset(offset, length = 1) {
     await navigateToOffset(offset)
+    if (selectionStart && selectionEnd && Number.isFinite(offset) && length >= 1) {
+      selectionStart.value = offset
+      selectionEnd.value = offset + length - 1
+    }
   }
 
   // Lifecycle: listen for scrollToOffset CustomEvent
