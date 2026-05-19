@@ -36,7 +36,11 @@ export const useDisassemblyStore = defineStore('disassembly', {
     highlightInHex: false,
     // Address of the instruction the user has selected in the listing. UI
     // state only — not part of serializableState, cleared on reset.
-    selectedAddress: null
+    selectedAddress: null,
+    // Map<fileOffset, name> from binary metadata (PE exports today, more
+    // formats to come). Populated by DisassemblyView when fileBytes change
+    // and consumed by the functionStarts getter to overlay real names.
+    symbolNames: new Map()
   }),
 
   getters: {
@@ -60,10 +64,33 @@ export const useDisassemblyStore = defineStore('disassembly', {
       return set
     },
 
-    // [{address, name}] heuristically detected function starts. Metadata-
-    // based names (PE exports / ELF symtab / Mach-O LC_FUNCTION_STARTS)
-    // will overlay names on this list in a follow-up commit.
-    functionStarts: (state) => detectFunctionStarts(state.instructions, state.architecture),
+    // [{address, name, source}] — heuristic prologue detection overlaid
+    // with binary-metadata names (PE exports today). `source` is one of
+    // 'symbol' (named via metadata) or 'heuristic' (prologue pattern).
+    // Sorted by address. Metadata-named addresses not in the heuristic
+    // list are added — symbols are themselves authoritative function
+    // starts.
+    functionStarts: (state) => {
+      const heuristic = detectFunctionStarts(state.instructions, state.architecture)
+      const symbols = state.symbolNames
+      const seen = new Set()
+      const merged = []
+      for (const f of heuristic) {
+        const named = symbols.get(f.address)
+        merged.push({
+          address: f.address,
+          name: named || f.name,
+          source: named ? 'symbol' : 'heuristic'
+        })
+        seen.add(f.address)
+      }
+      for (const [addr, name] of symbols) {
+        if (seen.has(addr)) continue
+        merged.push({ address: addr, name, source: 'symbol' })
+      }
+      merged.sort((a, b) => a.address - b.address)
+      return merged
+    },
 
     instructionHighlightBytes: (state) => {
       if (!state.highlightInHex) return []
@@ -157,6 +184,10 @@ export const useDisassemblyStore = defineStore('disassembly', {
 
     clearSelectedInstruction() {
       this.selectedAddress = null
+    },
+
+    setSymbolNames(map) {
+      this.symbolNames = map instanceof Map ? map : new Map()
     },
 
     reset() {

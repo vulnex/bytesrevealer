@@ -117,6 +117,7 @@
 import { onBeforeUnmount, ref, watch } from 'vue'
 import { useDisassemblyStore } from '../stores/disassembly'
 import { detectDisasmArch } from '../utils/disasmArchDetect'
+import { extractSymbolNames } from '../utils/disasmSymbols'
 import { formatAsAsm, suggestAsmFilename } from '../utils/disasmFormatter'
 import DisasmToolbar from './DisasmToolbar.vue'
 import DisasmListing from './DisasmListing.vue'
@@ -193,9 +194,20 @@ function applyAutoDetect(bytes) {
   }
 }
 
+function applySymbolNames(bytes) {
+  if (!bytes || !bytes.length) {
+    disasmStore.setSymbolNames(new Map())
+    return
+  }
+  disasmStore.setSymbolNames(extractSymbolNames(bytes))
+}
+
 watch(
   () => props.fileBytes,
-  (b) => applyAutoDetect(b),
+  (b) => {
+    applyAutoDetect(b)
+    applySymbolNames(b)
+  },
   { immediate: true }
 )
 

@@ -20,11 +20,14 @@
         :key="fn.address"
         class="function-row"
         :class="{ selected: fn.address === selectedAddress }"
-        :title="`Jump to ${fn.name}`"
+        :title="`Jump to ${fn.name}${fn.source === 'symbol' ? ' (from binary metadata)' : ''}`"
         @click="$emit('select-function', fn.address)"
       >
         <code class="address">0x{{ formatAddress(fn.address) }}</code>
         <span class="name">{{ fn.name }}</span>
+        <span v-if="fn.source === 'symbol'" class="source-pill" title="Named via PE export table">
+          sym
+        </span>
       </li>
     </ul>
     <div class="count-footer">
@@ -104,6 +107,19 @@ const formatAddress = formatDisasmAddress
   color: var(--text-primary, #d4d4d4);
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1 1 auto;
+}
+
+.source-pill {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--link-color, #4ec9b0);
+  border: 1px solid var(--link-color, #4ec9b0);
+  border-radius: 8px;
+  padding: 0 5px;
+  flex-shrink: 0;
 }
 
 .count-footer {

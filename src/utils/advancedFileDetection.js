@@ -928,6 +928,78 @@ function getPEExports(bytes) {
   }
 }
 
+/**
+ * Walk the PE export directory and return every named export as
+ * `[{name, fileOffset}]`. Returns null when the binary has no export
+ * directory or it's malformed. Skips forwarders (exports whose RVA falls
+ * inside the export directory itself — they redirect to another DLL).
+ *
+ * Addresses are file offsets within `bytes`, not RVAs — ready to compare
+ * directly against the addresses Capstone produces when we disassemble at
+ * baseAddress = 0 (the standalone-PE case used by the disassembly tab).
+ */
+function getPEExportSymbols(bytes) {
+  try {
+    const hdr = getPEHeaderInfo(bytes)
+    if (!hdr) return null
+    const dirs = getPEDataDirectories(bytes)
+    if (dirs.length < 1 || dirs[0].rva === 0 || dirs[0].size === 0) return null
+
+    const exportRVA = dirs[0].rva
+    const exportSize = dirs[0].size
+    const exportOffset = rvaToFileOffset(bytes, hdr, exportRVA)
+    if (exportOffset < 0 || exportOffset + 40 > bytes.length) return null
+
+    const numberOfNames = readPEUint32(bytes, exportOffset + 24)
+    const addressOfFunctions = readPEUint32(bytes, exportOffset + 28)
+    const addressOfNames = readPEUint32(bytes, exportOffset + 32)
+    const addressOfNameOrdinals = readPEUint32(bytes, exportOffset + 36)
+
+    if (numberOfNames === 0) return []
+    if (addressOfFunctions === 0 || addressOfNames === 0 || addressOfNameOrdinals === 0) {
+      return []
+    }
+
+    const funcsBase = rvaToFileOffset(bytes, hdr, addressOfFunctions)
+    const namesBase = rvaToFileOffset(bytes, hdr, addressOfNames)
+    const ordsBase = rvaToFileOffset(bytes, hdr, addressOfNameOrdinals)
+    if (funcsBase < 0 || namesBase < 0 || ordsBase < 0) return []
+
+    const exportDirEnd = exportRVA + exportSize
+    const out = []
+    for (let i = 0; i < numberOfNames; i++) {
+      if (namesBase + i * 4 + 4 > bytes.length) break
+      if (ordsBase + i * 2 + 2 > bytes.length) break
+
+      const nameRVA = readPEUint32(bytes, namesBase + i * 4)
+      const ordinal = bytes[ordsBase + i * 2] | (bytes[ordsBase + i * 2 + 1] << 8)
+      if (funcsBase + ordinal * 4 + 4 > bytes.length) continue
+
+      const funcRVA = readPEUint32(bytes, funcsBase + ordinal * 4)
+      if (funcRVA === 0) continue
+      // Forwarder: RVA points inside the export directory itself.
+      if (funcRVA >= exportRVA && funcRVA < exportDirEnd) continue
+
+      const funcOffset = rvaToFileOffset(bytes, hdr, funcRVA)
+      if (funcOffset < 0 || funcOffset >= bytes.length) continue
+
+      const nameOffset = rvaToFileOffset(bytes, hdr, nameRVA)
+      if (nameOffset < 0 || nameOffset >= bytes.length) continue
+      let end = nameOffset
+      while (end < bytes.length && bytes[end] !== 0 && end - nameOffset < 256) end++
+      if (end === nameOffset) continue
+      const name = new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(nameOffset, end))
+      if (!name) continue
+
+      out.push({ name, fileOffset: funcOffset })
+    }
+    return out
+  } catch (error) {
+    logger.error('Error in getPEExportSymbols:', error)
+    return null
+  }
+}
+
 function getPECertificateInfo(bytes) {
   try {
     const hdr = getPEHeaderInfo(bytes)
@@ -2244,4 +2316,10 @@ function getMachOBuildVersion(bytes) {
 }
 
 // Export the functions
-export { findPEHeaderOffset, analyzePEStructure, detectSpecificFileType, detectNestedFiles }
+export {
+  findPEHeaderOffset,
+  analyzePEStructure,
+  detectSpecificFileType,
+  detectNestedFiles,
+  getPEExportSymbols
+}
