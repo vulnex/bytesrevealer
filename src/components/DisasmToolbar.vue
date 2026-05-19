@@ -81,6 +81,15 @@
       Clear
     </button>
 
+    <button
+      v-if="hasResults"
+      class="action-btn"
+      :disabled="disabled || isDisassembling"
+      @click="$emit('export')"
+    >
+      Export .asm
+    </button>
+
     <label class="highlight-toggle">
       <input
         type="checkbox"
@@ -127,7 +136,8 @@ const emit = defineEmits([
   'update:endOffset',
   'update:highlightInHex',
   'disassemble',
-  'clear'
+  'clear',
+  'export'
 ])
 
 const availableModes = computed(() => MODES_BY_ARCH[props.architecture] || [])

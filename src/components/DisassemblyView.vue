@@ -24,6 +24,7 @@
       @update:highlight-in-hex="onToggleHighlight($event)"
       @disassemble="runDisassembly"
       @clear="disasmStore.clearResults()"
+      @export="exportAsAsm"
     />
 
     <div
@@ -75,6 +76,7 @@
 import { onBeforeUnmount, watch } from 'vue'
 import { useDisassemblyStore } from '../stores/disassembly'
 import { detectDisasmArch } from '../utils/disasmArchDetect'
+import { formatAsAsm, suggestAsmFilename } from '../utils/disasmFormatter'
 import DisasmToolbar from './DisasmToolbar.vue'
 import DisasmListing from './DisasmListing.vue'
 
@@ -105,6 +107,33 @@ function onToggleHighlight(value) {
   if (value !== disasmStore.highlightInHex) {
     disasmStore.toggleHexHighlight()
   }
+}
+
+function exportAsAsm() {
+  if (!disasmStore.hasResults) return
+  const text = formatAsAsm(disasmStore.instructions, {
+    architecture: disasmStore.architecture,
+    mode: disasmStore.mode,
+    syntaxStyle: disasmStore.syntaxStyle,
+    startOffset: disasmStore.startOffset,
+    endOffset: disasmStore.endOffset,
+    generatedAt: disasmStore.lastDisassembledAt
+  })
+  const filename = suggestAsmFilename({
+    architecture: disasmStore.architecture,
+    mode: disasmStore.mode,
+    startOffset: disasmStore.startOffset
+  })
+  const blob = new Blob([text], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const a = document.createElement('a')
+  a.href = url
+  a.download = filename
+  a.style.display = 'none'
+  document.body.appendChild(a)
+  a.click()
+  document.body.removeChild(a)
+  setTimeout(() => URL.revokeObjectURL(url), 1000)
 }
 
 function applyAutoDetect(bytes) {
