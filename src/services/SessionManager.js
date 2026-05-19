@@ -301,7 +301,10 @@ class SessionManager {
       },
 
       // YARA scan state
-      yara: appState.yaraState || null
+      yara: appState.yaraState || null,
+
+      // Disassembly state
+      disasm: appState.disasmState || null
     }
   }
 

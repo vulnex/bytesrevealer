@@ -3,6 +3,7 @@ import { useSessionStore } from '../stores/session'
 import { useFormatStore } from '../stores/format'
 import { useSettingsStore } from '../stores/settings'
 import { useYaraStore } from '../stores/yara'
+import { useDisassemblyStore } from '../stores/disassembly'
 import { createLogger } from '../utils/logger'
 
 const logger = createLogger('SessionRestore')
@@ -64,7 +65,8 @@ export function useSessionRestore(deps) {
       bookmarks: bookmarks.value,
       annotations: annotations.value,
       tags: tags.value,
-      yaraState: useYaraStore().serializableState
+      yaraState: useYaraStore().serializableState,
+      disasmState: useDisassemblyStore().serializableState
     }
   })
 
@@ -128,6 +130,11 @@ export function useSessionRestore(deps) {
     // Restore YARA state
     if (session.yara) {
       useYaraStore().restoreFromSession(session.yara)
+    }
+
+    // Restore Disassembly state
+    if (session.disasm) {
+      useDisassemblyStore().restoreFromSession(session.disasm)
     }
 
     // Mark session store as clean since we just loaded

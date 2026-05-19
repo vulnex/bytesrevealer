@@ -6,6 +6,7 @@ import { useSessionStore } from '../stores/session'
 import { useFormatStore } from '../stores/format'
 import { useSettingsStore } from '../stores/settings'
 import { useYaraStore } from '../stores/yara'
+import { useDisassemblyStore } from '../stores/disassembly'
 import { useSessionRestore } from './useSessionRestore'
 
 vi.mock('../utils/logger', () => ({
@@ -104,6 +105,7 @@ describe('useSessionRestore', () => {
       expect(state.formatStore).toBeDefined()
       expect(state.formatStore.selectedFormatId).toBe('')
       expect(state.yaraState).toBeDefined()
+      expect(state.disasmState).toBeDefined()
       app.unmount()
     })
   })
@@ -153,6 +155,20 @@ describe('useSessionRestore', () => {
         yara: {
           currentRules: 'rule test {}',
           matchedRules: []
+        },
+        disasm: {
+          architecture: 'arm64',
+          mode: 'arm',
+          startOffset: 0x2000,
+          instructions: [
+            {
+              address: 0x2000,
+              mnemonic: 'ret',
+              opStr: '',
+              bytes: [0xc0, 0x03, 0x5f, 0xd6],
+              size: 4
+            }
+          ]
         }
       })
 
@@ -193,6 +209,14 @@ describe('useSessionRestore', () => {
       // YARA
       const yaraStore = useYaraStore()
       expect(yaraStore.currentRules).toBe('rule test {}')
+
+      // Disassembly
+      const disasmStore = useDisassemblyStore()
+      expect(disasmStore.architecture).toBe('arm64')
+      expect(disasmStore.mode).toBe('arm')
+      expect(disasmStore.startOffset).toBe(0x2000)
+      expect(disasmStore.instructions).toHaveLength(1)
+      expect(disasmStore.instructions[0].mnemonic).toBe('ret')
 
       // isDirty should be false after load
       const sessionStore = useSessionStore()
@@ -276,6 +300,23 @@ describe('useSessionRestore', () => {
 
       const yaraStore = useYaraStore()
       expect(yaraStore.currentRules).toBe('')
+      app.unmount()
+    })
+
+    it('handles missing disasm section gracefully', () => {
+      const deps = makeDeps()
+      const [result, app] = withSetup(() => useSessionRestore(deps))
+
+      expect(() => {
+        result.handleSessionLoaded({
+          name: 'No Disasm',
+          state: { features: {} }
+        })
+      }).not.toThrow()
+
+      const disasmStore = useDisassemblyStore()
+      expect(disasmStore.instructions).toEqual([])
+      expect(disasmStore.architecture).toBe('x86')
       app.unmount()
     })
   })

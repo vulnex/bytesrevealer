@@ -461,6 +461,23 @@ describe('SessionManager (additional pure method coverage)', () => {
       expect(session.yara).toBeNull()
     })
 
+    it('stores disasmState from appState', () => {
+      const state = {
+        disasmState: { architecture: 'x86', mode: '64', instructions: [{ address: 0 }] }
+      }
+      const session = mgr.createSessionData('S', state)
+      expect(session.disasm).toEqual({
+        architecture: 'x86',
+        mode: '64',
+        instructions: [{ address: 0 }]
+      })
+    })
+
+    it('stores null disasm when disasmState is not provided', () => {
+      const session = mgr.createSessionData('S', {})
+      expect(session.disasm).toBeNull()
+    })
+
     it('sanitizes file signatures through sanitizeForStorage', () => {
       const state = {
         fileSignatures: [
@@ -927,6 +944,7 @@ describe('SessionManager (async methods with mocked IDB)', () => {
           format: {},
           annotations: { notes: '', bookmarks: [], annotations: [], tags: [] },
           yara: null,
+          disasm: null,
           ...overrides
         }
       }
