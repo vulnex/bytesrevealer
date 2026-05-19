@@ -2079,6 +2079,174 @@ function getMachOSegments(bytes) {
   }
 }
 
+function readMachOUint64Local(bytes, offset, bigEndian) {
+  if (bigEndian) {
+    const hi = readMachOUint32(bytes, offset, true)
+    const lo = readMachOUint32(bytes, offset + 4, true)
+    return hi * 0x100000000 + lo
+  }
+  const lo = readMachOUint32(bytes, offset, false)
+  const hi = readMachOUint32(bytes, offset + 4, false)
+  return hi * 0x100000000 + lo
+}
+
+function readFixedString(bytes, offset, len) {
+  let end = offset
+  const max = offset + len
+  while (end < max && bytes[end] !== 0) end++
+  return new TextDecoder('utf-8', { fatal: false }).decode(bytes.slice(offset, end))
+}
+
+/**
+ * Walk Mach-O load commands to find LC_SYMTAB symbols whose `n_sect`
+ * points at a section inside the `__TEXT` segment — i.e. defined function
+ * symbols. Returns `[{name, fileOffset}]` with addresses already
+ * translated from virtual to file offsets via the `__TEXT` segment that
+ * owns each symbol's `n_value`.
+ *
+ * Returns null for universal/FAT binaries (those need slice selection),
+ * for bytes missing a SYMTAB, or on parse failure.
+ */
+function getMachOSymbols(bytes) {
+  try {
+    // Universal/FAT: skip — needs slice selection upstream.
+    if (
+      bytes &&
+      bytes.length >= 4 &&
+      bytes[0] === 0xca &&
+      bytes[1] === 0xfe &&
+      bytes[2] === 0xba &&
+      bytes[3] === 0xbe
+    ) {
+      return null
+    }
+    const bigEndian = isMachOBigEndian(bytes)
+    const is64 = isMachO64bit(bytes)
+    const headerSize = getMachOHeaderSize(bytes)
+    const ncmds = countMachOLoadCommands(bytes)
+    if (!ncmds) return null
+
+    const readU64 = (off) => readMachOUint64Local(bytes, off, bigEndian)
+
+    // Walk LCs once, collect symtab + segments + sections (1-indexed
+    // globally per Mach-O's nlist convention).
+    let symtab = null
+    const segments = []
+    const sections = []
+
+    let offset = headerSize
+    for (let i = 0; i < ncmds && offset + 8 <= bytes.length; i++) {
+      const cmd = readMachOUint32(bytes, offset, bigEndian)
+      const cmdsize = readMachOUint32(bytes, offset + 4, bigEndian)
+      if (cmdsize === 0 || offset + cmdsize > bytes.length) break
+
+      if (cmd === 0x02) {
+        // LC_SYMTAB
+        symtab = {
+          symoff: readMachOUint32(bytes, offset + 8, bigEndian),
+          nsyms: readMachOUint32(bytes, offset + 12, bigEndian),
+          stroff: readMachOUint32(bytes, offset + 16, bigEndian),
+          strsize: readMachOUint32(bytes, offset + 20, bigEndian)
+        }
+      } else if (cmd === 0x19) {
+        // LC_SEGMENT_64
+        const segname = readFixedString(bytes, offset + 8, 16)
+        const vmaddr = readU64(offset + 24)
+        const vmsize = readU64(offset + 32)
+        const fileoff = readU64(offset + 40)
+        const filesize = readU64(offset + 48)
+        const nsects = readMachOUint32(bytes, offset + 64, bigEndian)
+        segments.push({ name: segname, vmaddr, vmsize, fileoff, filesize })
+        const sectsStart = offset + 72
+        for (let j = 0; j < nsects && sectsStart + j * 80 + 80 <= offset + cmdsize; j++) {
+          const so = sectsStart + j * 80
+          sections.push({
+            sectname: readFixedString(bytes, so, 16),
+            segname: readFixedString(bytes, so + 16, 16),
+            addr: readU64(so + 32),
+            size: readU64(so + 40),
+            offset: readMachOUint32(bytes, so + 48, bigEndian)
+          })
+        }
+      } else if (cmd === 0x01) {
+        // LC_SEGMENT (32-bit)
+        const segname = readFixedString(bytes, offset + 8, 16)
+        const vmaddr = readMachOUint32(bytes, offset + 24, bigEndian)
+        const vmsize = readMachOUint32(bytes, offset + 28, bigEndian)
+        const fileoff = readMachOUint32(bytes, offset + 32, bigEndian)
+        const filesize = readMachOUint32(bytes, offset + 36, bigEndian)
+        const nsects = readMachOUint32(bytes, offset + 48, bigEndian)
+        segments.push({ name: segname, vmaddr, vmsize, fileoff, filesize })
+        const sectsStart = offset + 56
+        for (let j = 0; j < nsects && sectsStart + j * 68 + 68 <= offset + cmdsize; j++) {
+          const so = sectsStart + j * 68
+          sections.push({
+            sectname: readFixedString(bytes, so, 16),
+            segname: readFixedString(bytes, so + 16, 16),
+            addr: readMachOUint32(bytes, so + 32, bigEndian),
+            size: readMachOUint32(bytes, so + 36, bigEndian),
+            offset: readMachOUint32(bytes, so + 40, bigEndian)
+          })
+        }
+      }
+
+      offset += cmdsize
+    }
+
+    if (!symtab) return null
+
+    const textSeg = segments.find((s) => s.name === '__TEXT')
+    if (!textSeg) return null
+
+    const nlistSize = is64 ? 16 : 12
+    if (symtab.symoff + symtab.nsyms * nlistSize > bytes.length) return null
+    if (symtab.stroff + symtab.strsize > bytes.length) return null
+
+    const out = []
+    for (let i = 0; i < symtab.nsyms; i++) {
+      const so = symtab.symoff + i * nlistSize
+      const nStrx = readMachOUint32(bytes, so, bigEndian)
+      const nType = bytes[so + 4]
+      const nSect = bytes[so + 5]
+      // n_desc at so+6 (u16), unused here
+      const nValue = is64 ? readU64(so + 8) : readMachOUint32(bytes, so + 8, bigEndian)
+
+      // Stabs (debug entries) live in the high bits of n_type — ignore.
+      if (nType & 0xe0) continue
+      // N_TYPE mask = 0x0e; N_SECT = 0x0e means "defined in a section".
+      if ((nType & 0x0e) !== 0x0e) continue
+      if (nStrx === 0 || nStrx >= symtab.strsize) continue
+      if (nValue === 0) continue
+      if (nSect === 0 || nSect > sections.length) continue
+
+      // Only keep symbols whose home section sits in __TEXT — eliminates
+      // data/rodata symbols that share the N_SECT type.
+      const sect = sections[nSect - 1]
+      if (!sect || sect.segname !== '__TEXT') continue
+
+      const nameStart = symtab.stroff + nStrx
+      let nameEnd = nameStart
+      const nameMax = Math.min(symtab.stroff + symtab.strsize, nameStart + 256)
+      while (nameEnd < nameMax && bytes[nameEnd] !== 0) nameEnd++
+      if (nameEnd === nameStart) continue
+      const name = new TextDecoder('utf-8', { fatal: false }).decode(
+        bytes.slice(nameStart, nameEnd)
+      )
+      if (!name) continue
+
+      if (nValue < textSeg.vmaddr || nValue >= textSeg.vmaddr + textSeg.vmsize) continue
+      const fileOff = textSeg.fileoff + (nValue - textSeg.vmaddr)
+      if (fileOff < 0 || fileOff >= bytes.length) continue
+
+      out.push({ name, fileOffset: fileOff })
+    }
+    return out
+  } catch (error) {
+    logger.error('Error in getMachOSymbols:', error)
+    return null
+  }
+}
+
 function checkMachODynamicLinking(bytes) {
   try {
     if (bytes[0] === 0xca && bytes[1] === 0xfe && bytes[2] === 0xba && bytes[3] === 0xbe)
@@ -2438,5 +2606,6 @@ export {
   detectSpecificFileType,
   detectNestedFiles,
   getPEExportSymbols,
-  getELFSymbols
+  getELFSymbols,
+  getMachOSymbols
 }

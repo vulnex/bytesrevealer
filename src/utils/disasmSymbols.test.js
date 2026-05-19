@@ -293,6 +293,125 @@ function buildELF64WithSymbols(funcs) {
   return { bytes, expected }
 }
 
+/**
+ * Build a minimal Mach-O64 little-endian image: header + LC_SEGMENT_64
+ * for __TEXT (with one __text section) + LC_SYMTAB + raw bytes + nlist
+ * array + string table.
+ */
+function buildMachO64WithSymbols(funcs) {
+  const segCmdSize = 72 + 80 // segment header + 1 section
+  const symCmdSize = 24
+  const ncmds = 2
+  const sizeofcmds = segCmdSize + symCmdSize
+  const textFileOff = 0x100
+  const textFileSize = 0x100
+  // __TEXT segment vmaddr is 0x100000000 (encoded inline as two u32 LE
+  // halves below). The __text section sits 0x100 above that.
+  const sectVmaddr = 0x100000100
+  const symtabOff = 0x200
+  const strtabOff = 0x300
+  const totalSize = 0x400
+  const bytes = new Uint8Array(totalSize)
+
+  // ── Header ──
+  // magic = 0xfeedfacf (little-endian on disk): cf fa ed fe
+  writeU32LE(bytes, 0, 0xfeedfacf)
+  // cputype = 0x01000007 (x86_64)
+  writeU32LE(bytes, 4, 0x01000007)
+  // cpusubtype = 0x3
+  writeU32LE(bytes, 8, 0x3)
+  // filetype = 2 (MH_EXECUTE)
+  writeU32LE(bytes, 12, 0x2)
+  // ncmds
+  writeU32LE(bytes, 16, ncmds)
+  // sizeofcmds
+  writeU32LE(bytes, 20, sizeofcmds)
+  // flags
+  writeU32LE(bytes, 24, 0)
+  // reserved
+  writeU32LE(bytes, 28, 0)
+
+  // ── LC_SEGMENT_64 __TEXT ──
+  const segOff = 32
+  writeU32LE(bytes, segOff, 0x19) // cmd = LC_SEGMENT_64
+  writeU32LE(bytes, segOff + 4, segCmdSize) // cmdsize
+  // segname = "__TEXT" + padding
+  for (let i = 0; i < '__TEXT'.length; i++) bytes[segOff + 8 + i] = '__TEXT'.charCodeAt(i)
+  // vmaddr (u64) = 0x100000000
+  writeU32LE(bytes, segOff + 24, 0)
+  writeU32LE(bytes, segOff + 28, 1)
+  // vmsize (u64) = 0x1000
+  writeU32LE(bytes, segOff + 32, 0x1000)
+  writeU32LE(bytes, segOff + 36, 0)
+  // fileoff (u64) = 0
+  writeU32LE(bytes, segOff + 40, 0)
+  writeU32LE(bytes, segOff + 44, 0)
+  // filesize (u64) = totalSize
+  writeU32LE(bytes, segOff + 48, totalSize)
+  writeU32LE(bytes, segOff + 52, 0)
+  // maxprot = 5 (r-x)
+  writeU32LE(bytes, segOff + 56, 5)
+  // initprot = 5
+  writeU32LE(bytes, segOff + 60, 5)
+  // nsects = 1
+  writeU32LE(bytes, segOff + 64, 1)
+  // flags = 0
+  writeU32LE(bytes, segOff + 68, 0)
+
+  // ── section_64 __TEXT,__text ──
+  const sectOff = segOff + 72
+  for (let i = 0; i < '__text'.length; i++) bytes[sectOff + i] = '__text'.charCodeAt(i)
+  for (let i = 0; i < '__TEXT'.length; i++) bytes[sectOff + 16 + i] = '__TEXT'.charCodeAt(i)
+  // addr (u64) = sectVmaddr
+  writeU32LE(bytes, sectOff + 32, sectVmaddr & 0xffffffff)
+  writeU32LE(bytes, sectOff + 36, Math.floor(sectVmaddr / 0x100000000))
+  // size (u64) = textFileSize
+  writeU32LE(bytes, sectOff + 40, textFileSize)
+  writeU32LE(bytes, sectOff + 44, 0)
+  // offset (u32) = textFileOff
+  writeU32LE(bytes, sectOff + 48, textFileOff)
+  // align/reloff/nreloc/flags/reserved1/2/3 = 0 (already zeroed)
+
+  // ── LC_SYMTAB ──
+  const stOff = segOff + segCmdSize
+  writeU32LE(bytes, stOff, 0x2) // cmd
+  writeU32LE(bytes, stOff + 4, symCmdSize) // cmdsize
+  writeU32LE(bytes, stOff + 8, symtabOff) // symoff
+  writeU32LE(bytes, stOff + 12, 1 + funcs.length) // nsyms (1 sentinel + functions)
+  writeU32LE(bytes, stOff + 16, strtabOff) // stroff
+
+  // ── String table ──
+  // [0] = NUL (so n_strx=0 means "no name").
+  bytes[strtabOff] = 0
+  const strOffsets = []
+  let cur = strtabOff + 1
+  for (const name of funcs) {
+    strOffsets.push(cur - strtabOff)
+    for (let i = 0; i < name.length; i++) bytes[cur + i] = name.charCodeAt(i)
+    bytes[cur + name.length] = 0
+    cur += name.length + 1
+  }
+  writeU32LE(bytes, stOff + 20, cur - strtabOff) // strsize
+
+  // ── nlist_64 entries ──
+  // Symbol 0: null sentinel (all zeros).
+  // Then one STT_FUNC-like (N_SECT, n_sect=1, in __TEXT) per function.
+  const expected = {}
+  for (let i = 0; i < funcs.length; i++) {
+    const nOff = symtabOff + (i + 1) * 16
+    writeU32LE(bytes, nOff, strOffsets[i]) // n_strx
+    bytes[nOff + 4] = 0x0e // n_type: N_SECT
+    bytes[nOff + 5] = 1 // n_sect: 1 (first section = __text)
+    // n_desc at +6 stays 0
+    const vaddr = sectVmaddr + i * 0x10
+    writeU32LE(bytes, nOff + 8, vaddr & 0xffffffff)
+    writeU32LE(bytes, nOff + 12, Math.floor(vaddr / 0x100000000))
+    expected[funcs[i]] = textFileOff + (vaddr - sectVmaddr)
+  }
+
+  return { bytes, expected }
+}
+
 describe('extractSymbolNames', () => {
   it('returns an empty map for empty / null bytes', () => {
     expect(extractSymbolNames(null).size).toBe(0)
@@ -309,6 +428,19 @@ describe('extractSymbolNames', () => {
     expect(map.size).toBe(2)
     expect(map.get(expected.CreateFileA)).toBe('CreateFileA')
     expect(map.get(expected.CloseHandle)).toBe('CloseHandle')
+  })
+
+  it('parses a Mach-O64 LC_SYMTAB and maps function names → file offsets', () => {
+    const { bytes, expected } = buildMachO64WithSymbols(['_main', '_helper'])
+    const map = extractSymbolNames(bytes)
+    expect(map.size).toBe(2)
+    expect(map.get(expected._main)).toBe('_main')
+    expect(map.get(expected._helper)).toBe('_helper')
+  })
+
+  it('returns an empty map for universal/FAT Mach-O (needs slice selection)', () => {
+    const bytes = new Uint8Array([0xca, 0xfe, 0xba, 0xbe, 0, 0, 0, 0])
+    expect(extractSymbolNames(bytes).size).toBe(0)
   })
 
   it('parses an ELF64 SHT_SYMTAB and maps function names → file offsets', () => {

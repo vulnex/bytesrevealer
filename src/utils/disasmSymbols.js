@@ -17,7 +17,7 @@
  * tab falls back to heuristic-only names.
  */
 
-import { getPEExportSymbols, getELFSymbols } from './advancedFileDetection'
+import { getPEExportSymbols, getELFSymbols, getMachOSymbols } from './advancedFileDetection'
 
 function looksLikePE(bytes) {
   return bytes && bytes.length >= 2 && bytes[0] === 0x4d && bytes[1] === 0x5a
@@ -31,6 +31,18 @@ function looksLikeELF(bytes) {
     bytes[1] === 0x45 &&
     bytes[2] === 0x4c &&
     bytes[3] === 0x46
+  )
+}
+
+function looksLikeMachO(bytes) {
+  if (!bytes || bytes.length < 4) return false
+  const b = bytes
+  // Single-arch magics (BE/LE, 32/64). FAT (0xcafebabe) is handled inside
+  // getMachOSymbols, which returns null for it.
+  return (
+    (b[0] === 0xfe && b[1] === 0xed && b[2] === 0xfa && (b[3] === 0xce || b[3] === 0xcf)) ||
+    ((b[0] === 0xce || b[0] === 0xcf) && b[1] === 0xfa && b[2] === 0xed && b[3] === 0xfe) ||
+    (b[0] === 0xca && b[1] === 0xfe && b[2] === 0xba && b[3] === 0xbe)
   )
 }
 
@@ -52,9 +64,8 @@ export function extractSymbolNames(fileBytes) {
 
   if (looksLikePE(fileBytes)) return collectSymbols(getPEExportSymbols(fileBytes))
   if (looksLikeELF(fileBytes)) return collectSymbols(getELFSymbols(fileBytes))
+  if (looksLikeMachO(fileBytes)) return collectSymbols(getMachOSymbols(fileBytes))
 
-  // Mach-O symbol extraction is intentionally deferred — see
-  // devnotes/disassembly-phase5-design.md for the plan.
   return empty
 }
 
