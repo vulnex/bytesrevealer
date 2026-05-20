@@ -41,3 +41,19 @@ export function readU32BE(bytes, offset) {
     0
   )
 }
+
+// Returned as JS Number. Precision is exact up to Number.MAX_SAFE_INTEGER (2^53-1),
+// which covers any realistic file offset or user-mode virtual address. Values above
+// that lose precision; callers that may see them (e.g. kernel-half VAs) should treat
+// the result as approximate.
+export function readU64LE(bytes, offset) {
+  const low = readU32LE(bytes, offset)
+  const high = readU32LE(bytes, offset + 4)
+  return high * 0x100000000 + low
+}
+
+export function readU64BE(bytes, offset) {
+  const high = readU32BE(bytes, offset)
+  const low = readU32BE(bytes, offset + 4)
+  return high * 0x100000000 + low
+}

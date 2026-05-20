@@ -14,7 +14,7 @@
  * stays independent of advancedFileDetection's heavier analysis path.
  */
 
-import { readU16LE, readU16BE, readU32LE, readU32BE } from './binaryReaders'
+import { readU16LE, readU16BE, readU32LE, readU32BE, readU64LE, readU64BE } from './binaryReaders'
 
 // MIPS PE/ELF machines (PE 0x0162/0x0166/0x0168/0x0266, ELF 0x08) are
 // intentionally absent: the bundled capstone-wasm build does not include
@@ -42,6 +42,9 @@ const MACHO_CPU_TO_CS = {
   0x0000000c: { arch: 'arm', mode: 'arm' },
   0x0100000c: { arch: 'arm64', mode: 'arm' }
 }
+
+const PT_LOAD = 1
+const LC_MAIN = 0x80000028
 
 function detectPE(bytes) {
   if (bytes.length < 0x40) return null
@@ -94,28 +97,111 @@ function detectELF(bytes) {
   if (bytes[0] !== 0x7f || bytes[1] !== 0x45 || bytes[2] !== 0x4c || bytes[3] !== 0x46) {
     return null
   }
-  const eiData = bytes[5]
-  const bigEndian = eiData === 2
+  const eiClass = bytes[4]
+  if (eiClass !== 1 && eiClass !== 2) return null
+  const bigEndian = bytes[5] === 2
   const machine = bigEndian ? readU16BE(bytes, 18) : readU16LE(bytes, 18)
   const mapped = ELF_MACHINE_TO_CS[machine]
   if (!mapped) return null
-  return { format: 'ELF', ...mapped, startOffset: 0 }
+  const startOffset = resolveELFEntryFileOffset(bytes, eiClass === 2, bigEndian) ?? 0
+  return { format: 'ELF', ...mapped, startOffset }
+}
+
+function resolveELFEntryFileOffset(bytes, is64, bigEndian) {
+  const readU16 = bigEndian ? readU16BE : readU16LE
+  const readU32 = bigEndian ? readU32BE : readU32LE
+  const readU64 = bigEndian ? readU64BE : readU64LE
+  const headerSize = is64 ? 64 : 52
+  if (bytes.length < headerSize) return null
+
+  const eEntry = is64 ? readU64(bytes, 0x18) : readU32(bytes, 0x18)
+  if (eEntry === 0) return null
+  const ePhoff = is64 ? readU64(bytes, 0x20) : readU32(bytes, 0x1c)
+  const ePhentsize = is64 ? readU16(bytes, 0x36) : readU16(bytes, 0x2a)
+  const ePhnum = is64 ? readU16(bytes, 0x38) : readU16(bytes, 0x2c)
+  if (ePhoff === 0 || ePhentsize === 0 || ePhnum === 0) return null
+
+  // PHDR layouts:
+  //   ELF32 (32 bytes): p_type@0, p_offset@4, p_vaddr@8, p_filesz@16
+  //   ELF64 (56 bytes): p_type@0, p_offset@8, p_vaddr@16, p_filesz@32
+  for (let i = 0; i < ePhnum; i++) {
+    const phOff = ePhoff + i * ePhentsize
+    if (phOff + ePhentsize > bytes.length) return null
+    if (readU32(bytes, phOff) !== PT_LOAD) continue
+    const pOffset = is64 ? readU64(bytes, phOff + 8) : readU32(bytes, phOff + 4)
+    const pVaddr = is64 ? readU64(bytes, phOff + 16) : readU32(bytes, phOff + 8)
+    const pFilesz = is64 ? readU64(bytes, phOff + 32) : readU32(bytes, phOff + 16)
+    if (eEntry >= pVaddr && eEntry < pVaddr + pFilesz) {
+      const fileOff = pOffset + (eEntry - pVaddr)
+      if (fileOff >= 0 && fileOff < bytes.length) return fileOff
+      return null
+    }
+  }
+  return null
 }
 
 function detectMachO(bytes) {
   if (bytes.length < 8) return null
+  // Mach-O magic on disk:
+  //   LE 32-bit: CE FA ED FE   (u32-LE → 0xfeedface)
+  //   LE 64-bit: CF FA ED FE   (u32-LE → 0xfeedfacf)
+  //   BE 32-bit: FE ED FA CE   (u32-LE → 0xcefaedfe)
+  //   BE 64-bit: FE ED FA CF   (u32-LE → 0xcffaedfe)
+  // Native MH_MAGIC/MH_MAGIC_64 in the file's byte order means the rest of
+  // the header is in that same byte order; CIGAM magics mean the file is
+  // stored in the opposite byte order from how we're reading it.
   const magic = readU32LE(bytes, 0)
-  let cputype = null
-  if (magic === 0xfeedfacf || magic === 0xfeedface) {
-    cputype = readU32BE(bytes, 4)
-  } else if (magic === 0xcffaedfe || magic === 0xcefaedfe) {
-    cputype = readU32LE(bytes, 4)
+  let bigEndian
+  let is64
+  if (magic === 0xfeedfacf) {
+    bigEndian = false
+    is64 = true
+  } else if (magic === 0xfeedface) {
+    bigEndian = false
+    is64 = false
+  } else if (magic === 0xcffaedfe) {
+    bigEndian = true
+    is64 = true
+  } else if (magic === 0xcefaedfe) {
+    bigEndian = true
+    is64 = false
   } else {
     return null
   }
+
+  const readU32 = bigEndian ? readU32BE : readU32LE
+  const readU64 = bigEndian ? readU64BE : readU64LE
+  const cputype = readU32(bytes, 4)
   const mapped = MACHO_CPU_TO_CS[cputype]
   if (!mapped) return null
-  return { format: 'MachO', ...mapped, startOffset: 0 }
+
+  const startOffset = resolveMachOEntryFileOffset(bytes, is64, readU32, readU64) ?? 0
+  return { format: 'MachO', ...mapped, startOffset }
+}
+
+function resolveMachOEntryFileOffset(bytes, is64, readU32, readU64) {
+  const headerSize = is64 ? 32 : 28
+  if (bytes.length < headerSize + 8) return null
+  const ncmds = readU32(bytes, 16)
+  const sizeofcmds = readU32(bytes, 20)
+  if (ncmds === 0 || sizeofcmds === 0) return null
+  const cmdEnd = Math.min(bytes.length, headerSize + sizeofcmds)
+
+  let off = headerSize
+  for (let i = 0; i < ncmds; i++) {
+    if (off + 8 > cmdEnd) return null
+    const cmd = readU32(bytes, off)
+    const cmdsize = readU32(bytes, off + 4)
+    if (cmdsize === 0) return null
+    if (cmd === LC_MAIN) {
+      if (off + 16 > bytes.length) return null
+      const entryoff = readU64(bytes, off + 8)
+      if (entryoff >= 0 && entryoff < bytes.length) return entryoff
+      return null
+    }
+    off += cmdsize
+  }
+  return null
 }
 
 export function detectDisasmArch(bytes) {
