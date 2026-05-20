@@ -27,16 +27,6 @@ const logger = createLogger('KsyCompiler')
 class KsyCompiler {
   constructor() {
     this.cache = new CompilerCache()
-    this.worker = null
-    this.initWorker()
-  }
-
-  /**
-   * Initialize the compilation worker
-   */
-  initWorker() {
-    // Worker will be initialized when needed
-    this.workerReady = false
   }
 
   /**
@@ -338,83 +328,9 @@ ${className};
   }
 
   /**
-   * Create parser from compiled JavaScript.
-   *
-   * SECURITY: This method previously used `new Function()` (equivalent to eval)
-   * to execute arbitrary compiled JavaScript, which allowed code injection from
-   * user-supplied KSY format files. Dynamic code execution has been disabled.
-   * Use AdvancedKsyCompiler instead, which parses KSY fields directly without
-   * any eval or new Function calls.
-   *
-   * @param {string} compiledJS - Compiled JavaScript code (no longer executed)
-   * @returns {Function} Never returns — always throws
-   * @throws {Error} Always throws indicating this path is disabled
-   */
-  createParserFromCompiled(_compiledJS) {
-    // SECURITY: new Function() / eval of arbitrary compiled JS has been removed.
-    // This path is disabled to prevent arbitrary code execution from user-supplied
-    // KSY format files. Use AdvancedKsyCompiler.compile() instead.
-    logger.warn(
-      'createParserFromCompiled() is disabled for security reasons — use AdvancedKsyCompiler instead'
-    )
-    throw new Error(
-      'createParserFromCompiled() is disabled for security reasons: dynamic code execution ' +
-        'of compiled JavaScript is not allowed. Use AdvancedKsyCompiler which parses KSY fields directly.'
-    )
-  }
-
-  /**
-   * Compile from Worker (for complex formats)
-   * @deprecated Use compile() which delegates to AdvancedKsyCompiler instead.
-   * @param {string} ksyContent - KSY content
-   * @returns {Promise<Function>} Parser class
-   */
-  async compileInWorker(ksyContent) {
-    // Delegate to the safe compile() path instead of executing compiled JS
-    return this.compile(ksyContent).then((result) => {
-      if (result && result.success !== false) return result
-      throw new Error('Compilation failed via compileInWorker — use compile() directly')
-    })
-  }
-
-  /**
-   * @deprecated Legacy worker compilation path — retained for reference only.
-   */
-  async _compileInWorkerLegacy(ksyContent) {
-    if (!this.worker) {
-      const workerCode = await import('../compiler/KaitaiCompilerWorker.js')
-      this.worker = workerCode.createCompilerWorker()
-    }
-
-    return new Promise((resolve, reject) => {
-      const messageHandler = (event) => {
-        if (event.data.type === 'compiled') {
-          this.worker.removeEventListener('message', messageHandler)
-          reject(
-            new Error('Dynamic code execution from worker compilation is disabled for security')
-          )
-        } else if (event.data.type === 'error') {
-          this.worker.removeEventListener('message', messageHandler)
-          reject(new Error(event.data.error))
-        }
-      }
-
-      this.worker.addEventListener('message', messageHandler)
-      this.worker.postMessage({
-        type: 'compile',
-        content: ksyContent
-      })
-    })
-  }
-
-  /**
    * Clean up resources
    */
   destroy() {
-    if (this.worker) {
-      this.worker.terminate()
-      this.worker = null
-    }
     this.cache.clear()
   }
 }
