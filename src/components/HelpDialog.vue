@@ -1,6 +1,6 @@
 /** * VULNEX -Bytes Revealer- * * File: HelpDialog.vue * Author: Simon Roses Femerling * Created:
-2025-09-29 * Last Modified: 2026-03-30 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025
-VULNEX. All rights reserved. * https://www.vulnex.com */
+2025-09-29 * Last Modified: 2026-07-31 * Version: 0.5 * License: Apache-2.0 * Copyright (c)
+2025-2026 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="help-dialog-overlay" @click="handleOverlayClick">
@@ -36,8 +36,21 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <h3>Changelog</h3>
           <div class="changelog-entries">
             <div class="changelog-entry">
-              <h4>Version 0.5 (May 2026)</h4>
+              <h4>Version 0.5 (July 2026)</h4>
               <ul>
+                <li>
+                  Disassembly view — multi-architecture disassembler (x86/x64, ARM, ARM64) powered
+                  by Capstone WASM, with architecture and entry point auto-detected from PE, ELF,
+                  and Mach-O headers
+                </li>
+                <li>
+                  "Disassemble from here" in the Hex View context menu; disassembled instruction
+                  bytes highlight back in Hex and Visual views
+                </li>
+                <li>
+                  Function symbols overlaid on the disassembly listing with names substituted into
+                  operands, plus objdump-style .asm export
+                </li>
                 <li>
                   Paste Data input — analyze byte fragments directly from hex, C/Python escape
                   sequences, base64, or hexdump output without writing them to disk first
@@ -57,6 +70,15 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                   from) user annotations
                 </li>
                 <li>New settings toggle to disable the embedded-executable scanner globally</li>
+                <li>
+                  Extraction streams directly to disk via the File System Access API on
+                  Chromium-based browsers, keeping memory flat even for gigabyte-sized embeds
+                </li>
+                <li>
+                  File-load pipeline overhaul — analysis of a typical executable is now ~150× faster
+                  (seconds to near-instant)
+                </li>
+                <li>Dependency security updates across the analysis stack</li>
               </ul>
             </div>
 
@@ -134,7 +156,10 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <div class="manual-section">
             <h4>Getting Started</h4>
             <ol>
-              <li>Click "Choose File" to select a file for analysis</li>
+              <li>
+                Click "Choose File" to select a file for analysis, or use "Paste Data" to analyze
+                byte fragments directly (hex, escape sequences, base64, or hexdump output)
+              </li>
               <li>Select which analysis features you want to enable</li>
               <li>Navigate through different views using the tabs</li>
               <li>Use the search bar to find specific patterns</li>
@@ -161,6 +186,12 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
 
               <dt><strong>YARA</strong></dt>
               <dd>Scan files with YARA rules for pattern matching and malware detection</dd>
+
+              <dt><strong>Disassembly</strong></dt>
+              <dd>
+                Disassemble machine code (x86/x64, ARM, ARM64) with architecture auto-detection,
+                function symbols, and .asm export
+              </dd>
 
               <dt><strong>Sessions</strong></dt>
               <dd>Save, restore, import, and export analysis sessions</dd>
@@ -240,6 +271,44 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           </div>
 
           <div class="manual-section">
+            <h4>Embedded Executables</h4>
+            <ul>
+              <li>
+                Loaded files are automatically scanned for PE, ELF, and Mach-O binaries hidden at
+                any offset; findings appear on the File View with format, architecture, and offset
+              </li>
+              <li>
+                Click a finding's offset to jump to it in Hex View, or use "Extract" to carve the
+                embedded binary out as a standalone download (on Chromium-based browsers it streams
+                directly to disk)
+              </li>
+              <li>The scanner can be disabled globally from Settings</li>
+            </ul>
+          </div>
+
+          <div class="manual-section">
+            <h4>Disassembly</h4>
+            <ul>
+              <li>
+                Architecture, mode, and start offset are auto-detected from PE/ELF/Mach-O headers;
+                all three can be overridden in the toolbar
+              </li>
+              <li>
+                Right-click any byte in Hex View and choose "Disassemble from here" to jump straight
+                into the listing at that offset
+              </li>
+              <li>
+                Disassembled instruction bytes are highlighted in Hex and Visual views; use "Go" on
+                an instruction to navigate back to its bytes
+              </li>
+              <li>
+                Detected function symbols appear in the Functions tab and are substituted into
+                operands; the listing can be exported as an .asm file
+              </li>
+            </ul>
+          </div>
+
+          <div class="manual-section">
             <h4>Performance Tips</h4>
             <ul>
               <li>Files under 50MB: All features available</li>
@@ -255,7 +324,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
           <h3>License</h3>
           <div class="license-content">
             <h4>Apache License, Version 2.0</h4>
-            <p>Copyright (c) 2025 VULNEX. All rights reserved.</p>
+            <p>Copyright (c) 2025-2026 VULNEX. All rights reserved.</p>
 
             <p>
               Licensed under the Apache License, Version 2.0 (the "License"); you may not use this
@@ -343,6 +412,18 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                 </p>
                 <a href="https://github.com/nickreyntjens/libyara-wasm" target="_blank"
                   >https://github.com/nickreyntjens/libyara-wasm</a
+                >
+                <p class="credit-license">License: BSD-3-Clause</p>
+              </div>
+
+              <div class="credit-item">
+                <h5>Capstone (capstone-wasm)</h5>
+                <p>
+                  WebAssembly build of the Capstone disassembly engine. Used for browser-based
+                  multi-architecture disassembly.
+                </p>
+                <a href="https://www.capstone-engine.org/" target="_blank"
+                  >https://www.capstone-engine.org/</a
                 >
                 <p class="credit-license">License: BSD-3-Clause</p>
               </div>
@@ -479,6 +560,7 @@ VULNEX. All rights reserved. * https://www.vulnex.com */
                 <li>Bookmarks and annotations</li>
                 <li>Session management — save, restore, and share sessions</li>
                 <li>Deep PE, ELF, and Mach-O binary analysis</li>
+                <li>Multi-architecture disassembly (x86/x64, ARM, ARM64) via Capstone</li>
                 <li>Embedded executable detection and extraction (PE/ELF/Mach-O)</li>
                 <li>Paste byte data directly (hex, escape sequences, base64, hexdump)</li>
                 <li>Real-time data inspection</li>
