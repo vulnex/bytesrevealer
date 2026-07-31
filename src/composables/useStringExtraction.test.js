@@ -353,7 +353,9 @@ describe('useStringExtraction', () => {
       app.unmount()
     })
 
-    it('falls back to sync on worker error message', async () => {
+    // Runs the real sync-extraction fallback over the full 10MB buffer —
+    // multi-second by design and over vitest's 5s default on slow CI runners
+    it('falls back to sync on worker error message', { timeout: 30000 }, async () => {
       // Small enough that sync will find nothing interesting
       const bigArray = new Uint8Array(10 * 1024 * 1024 + 1)
       // Put a string at the start so sync extraction finds it

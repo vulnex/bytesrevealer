@@ -71,7 +71,9 @@ describe('usePasteDataDialog', () => {
   })
 
   describe('size gating', () => {
-    it('rejects pastes over MAX_PASTE_SIZE via oversized flag', () => {
+    // Parses a >100MB hex string through the real computed chain —
+    // multi-second by design and near vitest's 5s default on slow CI runners
+    it('rejects pastes over MAX_PASTE_SIZE via oversized flag', { timeout: 30000 }, () => {
       const { rawText, oversized, canSubmit, statusClass } = usePasteDataDialog()
       // Synthesize a hex string that decodes to > MAX_PASTE_SIZE bytes.
       // Each hex pair = 1 byte, so we need MAX_PASTE_SIZE * 2 + 2 hex chars.
@@ -81,7 +83,7 @@ describe('usePasteDataDialog', () => {
       expect(statusClass.value).toBe('error')
     })
 
-    it('flags large pastes (>10MB, ≤50MB) but still allows submit', () => {
+    it('flags large pastes (>10MB, ≤50MB) but still allows submit', { timeout: 30000 }, () => {
       const { rawText, largePaste, canSubmit, statusClass } = usePasteDataDialog()
       // 11MB worth of bytes = 22MB of hex chars
       rawText.value = '00'.repeat(LARGE_PASTE_WARNING + 1024)
