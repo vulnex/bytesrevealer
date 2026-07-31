@@ -1,6 +1,6 @@
 /** * VULNEX -Bytes Revealer- * * File: ExportOptions.vue * Author: Simon Roses Femerling * Created:
-2025-04-03 * Last Modified: 2025-004-03 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
-VULNEX. All rights reserved. * https://www.vulnex.com */
+2025-04-03 * Last Modified: 2025-004-03 * Version: 0.2 * License: Apache-2.0 * Copyright (c)
+2025-2026 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="settings-panel p-4">

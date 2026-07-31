@@ -1,5 +1,5 @@
 /** * VULNEX -Bytes Revealer- * * File: EmbeddedExecutables.vue * Author: Simon Roses Femerling *
-Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025 VULNEX. */
+Created: 2026-05-08 * Version: 0.5 * License: Apache-2.0 * Copyright (c) 2025-2026 VULNEX. */
 
 <template>
   <section

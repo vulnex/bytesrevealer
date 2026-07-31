@@ -6,7 +6,7 @@
  * Created: 2026-05-17
  * Version: 0.5
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  * https://www.vulnex.com
  *
  * Human-readable architecture name lookups for PE / ELF / Mach-O. Shared

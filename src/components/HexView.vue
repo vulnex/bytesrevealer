@@ -1,6 +1,6 @@
 /** * VULNEX -Bytes Revealer- * * File: HexView.vue * Author: Simon Roses Femerling * Created:
-2025-02-12 * Last Modified: 2025-02-17 * Version: 0.2 * License: Apache-2.0 * Copyright (c) 2025
-VULNEX. All rights reserved. * https://www.vulnex.com */
+2025-02-12 * Last Modified: 2025-02-17 * Version: 0.2 * License: Apache-2.0 * Copyright (c)
+2025-2026 VULNEX. All rights reserved. * https://www.vulnex.com */
 
 <template>
   <div class="hex-view-container" aria-label="Hex editor">

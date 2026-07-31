@@ -8,7 +8,7 @@
  * Last Modified: 2025-01-16
  * Version: 0.1
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  * https://www.vulnex.com
  */
 

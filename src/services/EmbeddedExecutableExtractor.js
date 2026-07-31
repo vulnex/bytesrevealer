@@ -6,7 +6,7 @@
  * Created: 2026-05-17
  * Version: 0.5
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  * https://www.vulnex.com
  *
  * Carves an embedded PE/ELF/Mach-O out of the host file into a Blob,

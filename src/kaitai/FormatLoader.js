@@ -7,7 +7,7 @@
  * Last Modified: 2025-09-27
  * Version: 0.5
  * License: Apache-2.0
- * Copyright (c) 2025 VULNEX. All rights reserved.
+ * Copyright (c) 2025-2026 VULNEX. All rights reserved.
  */
 
 import logger from '../utils/logger'
