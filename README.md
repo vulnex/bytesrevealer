@@ -355,13 +355,10 @@ To report security vulnerabilities, please see [SECURITY.md](SECURITY.md).
 
 ### Version 0.5 (July 2026)
 
-- New Disassembly view with multi-architecture support (x86/x64, ARM, ARM64) powered by Capstone WASM
-- Architecture, mode, and entry point auto-detected from PE, ELF, and Mach-O headers
 - Full-file scanner detects PE/ELF/Mach-O binaries hidden at any offset
 - Extract embedded executables as standalone downloads
 - Paste Data input for analyzing byte fragments without disk writes
 - File-load pipeline overhaul: ~150× faster analysis for typical executables
-- Session persistence extended to disassembly state
 - Test suite grown to 2088 tests
 - Dependency security updates
 
@@ -412,7 +409,7 @@ To report security vulnerabilities, please see [SECURITY.md](SECURITY.md).
 
 ## Future Enhancements
 
-- Disassembly support via Capstone.js
+- Disassembly support via Capstone.js (coming in the next release)
 - Additional file format support
 - More visualization options
 - Pattern recognition improvements
